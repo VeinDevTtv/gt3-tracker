@@ -422,10 +422,22 @@ export default function GT3Tracker() {
     import('html2pdf.js').then(html2pdf => {
       // Create a styled container for our report
       const reportContainer = document.createElement('div');
-      reportContainer.style.padding = '20px';
-      reportContainer.style.fontFamily = 'Arial, sans-serif';
+      reportContainer.style.fontFamily = "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
       reportContainer.style.maxWidth = '800px';
       reportContainer.style.margin = '0 auto';
+      reportContainer.style.fontSize = '12px';
+      reportContainer.style.lineHeight = '1.5';
+      
+      // Get the theme color for consistent branding
+      const colorMap = {
+        blue: '#3b82f6',
+        green: '#10b981',
+        red: '#ef4444',
+        purple: '#8b5cf6',
+        orange: '#f97316'
+      };
+      
+      const accentColor = colorMap[themeColor] || colorMap.blue;
       
       // Add report content
       const reportDate = new Date().toLocaleDateString();
@@ -434,91 +446,326 @@ export default function GT3Tracker() {
       const percentComplete = (totalSaved / target) * 100;
       
       reportContainer.innerHTML = `
-        <div style="text-align:center; margin-bottom:20px;">
-          <h1 style="color:#1a73e8;">${goalName} Savings Report</h1>
-          <p style="color:#666;">Generated on ${reportDate}</p>
-        </div>
+        <style>
+          /* Reset and base styles */
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          
+          .report-container {
+            padding: 40px;
+            color: #333;
+          }
+          
+          h1, h2, h3 {
+            color: #222;
+            font-weight: 600;
+          }
+          
+          .report-header {
+            position: relative;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+          }
+          
+          .report-header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100px;
+            height: 3px;
+            background-color: ${accentColor};
+          }
+          
+          .logo-area {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+          }
+          
+          .logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background-color: ${accentColor};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+          }
+          
+          .date {
+            color: #666;
+            font-size: 13px;
+          }
+          
+          .stats-cards {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+          }
+          
+          .stat-card {
+            flex: 1;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+          }
+          
+          .stat-card h3 {
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 8px;
+          }
+          
+          .stat-card p {
+            font-size: 22px;
+            font-weight: 700;
+            color: #222;
+          }
+          
+          .highlight {
+            color: ${accentColor};
+          }
+          
+          .progress-section {
+            margin-bottom: 30px;
+          }
+          
+          .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 10px;
+          }
+          
+          .progress-bar-container {
+            height: 12px;
+            background: #eee;
+            border-radius: 6px;
+            overflow: hidden;
+          }
+          
+          .progress-bar {
+            height: 100%;
+            background: ${accentColor};
+            border-radius: 6px;
+          }
+          
+          .data-section {
+            margin-bottom: 30px;
+          }
+          
+          .section-title {
+            position: relative;
+            font-size: 16px;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+          }
+          
+          .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background-color: ${accentColor};
+          }
+          
+          .data-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          
+          .data-table th {
+            text-align: left;
+            padding: 10px;
+            background: #f5f5f5;
+            font-weight: 600;
+            font-size: 12px;
+          }
+          
+          .data-table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+          }
+          
+          .data-table tr:last-child td {
+            border-bottom: none;
+          }
+          
+          .weeks-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          
+          .weeks-table th {
+            padding: 10px;
+            text-align: left;
+            background: #f5f5f5;
+            font-weight: 600;
+            font-size: 12px;
+          }
+          
+          .weeks-table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+          }
+          
+          .trend-indicator {
+            display: inline-block;
+            margin-left: 5px;
+            font-size: 10px;
+          }
+          
+          .positive {
+            color: #10b981;
+          }
+          
+          .negative {
+            color: #ef4444;
+          }
+          
+          .amount {
+            font-family: monospace;
+            font-size: 13px;
+            text-align: right;
+          }
+          
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            text-align: center;
+            color: #999;
+            font-size: 11px;
+          }
+        </style>
         
-        <div style="display:flex; justify-content:space-between; margin-bottom:30px;">
-          <div style="flex:1; padding:15px; background:#f8f9fa; border-radius:8px; margin-right:10px;">
-            <h3 style="margin-top:0; color:#1a73e8;">Target Amount</h3>
-            <p style="font-size:24px; font-weight:bold;">${target.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+        <div class="report-container">
+          <div class="report-header">
+            <div class="logo-area">
+              <div class="logo">GT3</div>
+              <div class="date">Generated on ${reportDate}</div>
+            </div>
+            <h1>${goalName} Savings Report</h1>
           </div>
-          <div style="flex:1; padding:15px; background:#f8f9fa; border-radius:8px; margin-right:10px;">
-            <h3 style="margin-top:0; color:#1a73e8;">Total Saved</h3>
-            <p style="font-size:24px; font-weight:bold;">${totalSaved.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+          
+          <div class="stats-cards">
+            <div class="stat-card">
+              <h3>Target Amount</h3>
+              <p>${target.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+            </div>
+            <div class="stat-card">
+              <h3>Total Saved</h3>
+              <p>${totalSaved.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+            </div>
+            <div class="stat-card">
+              <h3>Remaining</h3>
+              <p>${remainingAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+            </div>
           </div>
-          <div style="flex:1; padding:15px; background:#f8f9fa; border-radius:8px;">
-            <h3 style="margin-top:0; color:#1a73e8;">Remaining</h3>
-            <p style="font-size:24px; font-weight:bold;">${remainingAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+          
+          <div class="progress-section">
+            <div class="progress-header">
+              <h2 class="section-title">Progress</h2>
+              <span class="highlight" style="font-weight: 700; font-size: 16px;">${percentComplete.toFixed(1)}%</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar" style="width: ${Math.min(100, percentComplete)}%;"></div>
+            </div>
           </div>
-        </div>
-        
-        <div style="margin-bottom:30px;">
-          <h2 style="color:#1a73e8;">Progress: ${percentComplete.toFixed(2)}%</h2>
-          <div style="background:#e0e0e0; height:24px; border-radius:12px; overflow:hidden;">
-            <div style="background:#1a73e8; width:${Math.min(100, percentComplete)}%; height:100%;"></div>
-          </div>
-        </div>
-        
-        <div style="margin-bottom:30px;">
-          <h2 style="color:#1a73e8;">Savings Stats</h2>
-          <table style="width:100%; border-collapse:collapse;">
-            <tr style="background:#f8f9fa;">
-              <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Statistic</th>
-              <th style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">Value</th>
-            </tr>
-            <tr>
-              <td style="padding:10px; border-bottom:1px solid #ddd;">Weeks with Data</td>
-              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">${weeks.filter(w => w.profit > 0).length} of ${weeks.length}</td>
-            </tr>
-            <tr style="background:#f8f9fa;">
-              <td style="padding:10px; border-bottom:1px solid #ddd;">Average Weekly Saving</td>
-              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">
-                ${(weeks.filter(w => w.profit > 0).length > 0 
-                  ? (totalSaved / weeks.filter(w => w.profit > 0).length) 
-                  : 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:10px; border-bottom:1px solid #ddd;">Current Streak</td>
-              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">${streakInfo.currentStreak} weeks</td>
-            </tr>
-            <tr style="background:#f8f9fa;">
-              <td style="padding:10px; border-bottom:1px solid #ddd;">Best Streak</td>
-              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">${streakInfo.bestStreak} weeks</td>
-            </tr>
-            <tr>
-              <td style="padding:10px; border-bottom:1px solid #ddd;">Start Date</td>
-              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">${startDate}</td>
-            </tr>
-          </table>
-        </div>
-        
-        <div style="margin-bottom:30px;">
-          <h2 style="color:#1a73e8;">Recent Weekly Savings</h2>
-          <table style="width:100%; border-collapse:collapse;">
-            <tr style="background:#f8f9fa;">
-              <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Week</th>
-              <th style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">Amount</th>
-              <th style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">Cumulative</th>
-            </tr>
-            ${weeks.slice(-10).map((week, i) => `
-              <tr ${i % 2 === 1 ? 'style="background:#f8f9fa;"' : ''}>
-                <td style="padding:10px; border-bottom:1px solid #ddd;">Week ${week.week}</td>
-                <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">
-                  ${week.profit.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                </td>
-                <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">
-                  ${week.cumulative.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+          
+          <div class="data-section">
+            <h2 class="section-title">Savings Statistics</h2>
+            <table class="data-table">
+              <tr>
+                <th>Statistic</th>
+                <th style="text-align: right;">Value</th>
+              </tr>
+              <tr>
+                <td>Weeks with Data</td>
+                <td style="text-align: right;">${weeks.filter(w => w.profit > 0).length} of ${weeks.length}</td>
+              </tr>
+              <tr>
+                <td>Average Weekly Saving</td>
+                <td style="text-align: right; font-family: monospace;">
+                  ${(weeks.filter(w => w.profit > 0).length > 0 
+                    ? (totalSaved / weeks.filter(w => w.profit > 0).length) 
+                    : 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                 </td>
               </tr>
-            `).join('')}
-          </table>
-        </div>
-        
-        <div style="text-align:center; margin-top:40px; color:#666; font-size:12px;">
-          <p>This report was generated by the ${goalName} Savings Tracker</p>
+              <tr>
+                <td>Current Streak</td>
+                <td style="text-align: right;">${streakInfo.currentStreak} weeks</td>
+              </tr>
+              <tr>
+                <td>Best Streak</td>
+                <td style="text-align: right;">${streakInfo.bestStreak} weeks</td>
+              </tr>
+              <tr>
+                <td>Weekly Target (Avg. to reach goal)</td>
+                <td style="text-align: right; font-family: monospace;">${(target / totalWeeks).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+              </tr>
+              <tr>
+                <td>Start Date</td>
+                <td style="text-align: right;">${startDate}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <div class="data-section">
+            <h2 class="section-title">Recent Weekly Savings</h2>
+            <table class="weeks-table">
+              <tr>
+                <th>Week</th>
+                <th style="text-align: right;">Amount</th>
+                <th style="text-align: right;">Cumulative</th>
+                <th style="text-align: right;">% of Target</th>
+              </tr>
+              ${weeks.slice(-10).map((week, i, arr) => {
+                const prevWeek = i > 0 ? arr[i-1] : null;
+                const isIncrease = prevWeek ? week.profit > prevWeek.profit : false;
+                const percentOfTarget = (week.profit / (target / totalWeeks) * 100).toFixed(1);
+                
+                return `
+                  <tr>
+                    <td>Week ${week.week}</td>
+                    <td class="amount">
+                      ${week.profit.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                      ${prevWeek ? `<span class="trend-indicator ${isIncrease ? 'positive' : 'negative'}">
+                        ${isIncrease ? '▲' : '▼'}
+                      </span>` : ''}
+                    </td>
+                    <td class="amount">
+                      ${week.cumulative.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    </td>
+                    <td style="text-align: right;">
+                      ${percentOfTarget}%
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </table>
+          </div>
+          
+          <div class="footer">
+            <p>This report was generated by the ${goalName} Savings Tracker</p>
+            <p>All data is stored locally in your browser.</p>
+          </div>
         </div>
       `;
       
@@ -528,11 +775,20 @@ export default function GT3Tracker() {
       // Create PDF
       const element = reportContainer;
       const opt = {
-        margin: 10,
+        margin: [15, 15, 15, 15],
         filename: `${goalName.replace(/\s+/g, '-')}-savings-report.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        image: { type: 'jpeg', quality: 1.0 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          logging: false
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true
+        }
       };
       
       // Generate PDF and remove the temporary element when done
@@ -548,7 +804,7 @@ export default function GT3Tracker() {
       console.error('Error generating PDF:', error);
       showToast('Failed to generate PDF report', '❌');
     });
-  }, [weeks, target, goalName, startDate, streakInfo]);
+  }, [weeks, target, goalName, startDate, streakInfo, themeColor, totalWeeks]);
   
   // Generate social media sharing image
   const generateSharingImage = useCallback(() => {
