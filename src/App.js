@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import Home from './pages/Home';
@@ -11,6 +11,56 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import Profile from './components/auth/Profile';
 import NavMenu from './components/NavMenu';
 import { Toaster } from 'react-hot-toast';
+
+// Simple error boundary component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("React Error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+          <h1 style={{ color: '#e11d48' }}>Something went wrong</h1>
+          <pre style={{ 
+            backgroundColor: '#f1f5f9', 
+            padding: '15px', 
+            borderRadius: '4px',
+            overflow: 'auto' 
+          }}>
+            {this.state.error && this.state.error.toString()}
+          </pre>
+          <p>Check the console for more details.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{
+              backgroundColor: '#0ea5e9',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Reload page
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const MILESTONES = [10000, 25000, 50000, 75000, 100000, 150000, 200000, 250000];
 
@@ -1113,98 +1163,100 @@ export default function GT3Tracker() {
   }, [theme, themeColor, weeks, target, goalName, streakInfo, showToast]);
 
   return (
-    <Router>
-      <AuthProvider>
-        <div className={`${theme} min-h-screen flex flex-col`}>
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: theme === 'dark' ? '#1F2937' : '#ffffff',
-                color: theme === 'dark' ? '#ffffff' : '#1F2937',
-              },
-            }}
-          />
-          
-          <NavMenu />
-          
-          {toast && (
-            <div 
-              className={`fixed top-4 right-4 py-2 px-4 rounded-lg shadow-lg flex items-center gap-2 z-50 transform translate-x-0 transition-transform duration-300 ease-out ${
-                theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
-              }`}
-            >
-              {toast.emoji && <span className="text-xl">{toast.emoji}</span>}
-              <p>{toast.message}</p>
-            </div>
-          )}
-          
-          <main className="flex-grow">
-            <Routes>
-              {/* Auth routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              
-              {/* Protected routes */}
-              <Route element={<PrivateRoute />}>
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/settings" element={
-                  <Settings 
-                    theme={theme}
-                    target={target}
-                    goalName={goalName}
-                    totalWeeks={totalWeeks}
-                    visibleWeeks={visibleWeeks}
-                    showCumulative={showCumulative}
-                    startDate={startDate}
-                    onTargetChange={handleTargetChange}
-                    onGoalNameChange={handleGoalNameChange}
-                    onTotalWeeksChange={handleTotalWeeksChange}
-                    onVisibleWeeksChange={handleVisibleWeeksChange}
-                    onToggleCumulative={handleToggleCumulative}
-                    onStartDateChange={handleStartDateChange}
-                    showConfirmReset={showConfirmReset}
-                    setShowConfirmReset={setShowConfirmReset}
-                    resetValues={resetValues}
-                    exportAsCSV={exportAsCSV}
-                    exportAsJSON={exportAsJSON}
-                    importJSON={importJSON}
-                    themeColor={themeColor}
-                    onThemeColorChange={changeThemeColor}
-                    generatePdfReport={generatePdfReport}
-                    generateSharingImage={generateSharingImage}
-                  />
-                } />
-                <Route path="/" element={
-                  <Home 
-                    theme={theme}
-                    toggleTheme={toggleTheme}
-                    target={target}
-                    goalName={goalName}
-                    weeks={weeks}
-                    visibleWeeks={visibleWeeks}
-                    showCumulative={showCumulative}
-                    totalProfit={totalProfit}
-                    remaining={remaining}
-                    progressPercentage={progressPercentage}
-                    handleProfitChange={handleProfitChange}
-                    prediction={prediction}
-                    streakInfo={streakInfo}
-                    weeklyTarget={weeklyTargetAverage}
-                    startDate={startDate}
-                    toast={toast}
-                    themeColor={themeColor}
-                    displayedWeeks={displayedWeeks}
-                    weeklyTargetAverage={weeklyTargetAverage}
-                    setToast={showToast}
-                  />
-                } />
-              </Route>
-            </Routes>
-          </main>
-        </div>
-      </AuthProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <div className={`${theme} min-h-screen flex flex-col`}>
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: theme === 'dark' ? '#1F2937' : '#ffffff',
+                  color: theme === 'dark' ? '#ffffff' : '#1F2937',
+                },
+              }}
+            />
+            
+            <NavMenu />
+            
+            {toast && (
+              <div 
+                className={`fixed top-4 right-4 py-2 px-4 rounded-lg shadow-lg flex items-center gap-2 z-50 transform translate-x-0 transition-transform duration-300 ease-out ${
+                  theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
+                }`}
+              >
+                {toast.emoji && <span className="text-xl">{toast.emoji}</span>}
+                <p>{toast.message}</p>
+              </div>
+            )}
+            
+            <main className="flex-grow">
+              <Routes>
+                {/* Auth routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                
+                {/* Protected routes */}
+                <Route element={<PrivateRoute />}>
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/settings" element={
+                    <Settings 
+                      theme={theme}
+                      target={target}
+                      goalName={goalName}
+                      totalWeeks={totalWeeks}
+                      visibleWeeks={visibleWeeks}
+                      showCumulative={showCumulative}
+                      startDate={startDate}
+                      onTargetChange={handleTargetChange}
+                      onGoalNameChange={handleGoalNameChange}
+                      onTotalWeeksChange={handleTotalWeeksChange}
+                      onVisibleWeeksChange={handleVisibleWeeksChange}
+                      onToggleCumulative={handleToggleCumulative}
+                      onStartDateChange={handleStartDateChange}
+                      showConfirmReset={showConfirmReset}
+                      setShowConfirmReset={setShowConfirmReset}
+                      resetValues={resetValues}
+                      exportAsCSV={exportAsCSV}
+                      exportAsJSON={exportAsJSON}
+                      importJSON={importJSON}
+                      themeColor={themeColor}
+                      onThemeColorChange={changeThemeColor}
+                      generatePdfReport={generatePdfReport}
+                      generateSharingImage={generateSharingImage}
+                    />
+                  } />
+                  <Route path="/" element={
+                    <Home 
+                      theme={theme}
+                      toggleTheme={toggleTheme}
+                      target={target}
+                      goalName={goalName}
+                      weeks={weeks}
+                      visibleWeeks={visibleWeeks}
+                      showCumulative={showCumulative}
+                      totalProfit={totalProfit}
+                      remaining={remaining}
+                      progressPercentage={progressPercentage}
+                      handleProfitChange={handleProfitChange}
+                      prediction={prediction}
+                      streakInfo={streakInfo}
+                      weeklyTarget={weeklyTargetAverage}
+                      startDate={startDate}
+                      toast={toast}
+                      themeColor={themeColor}
+                      displayedWeeks={displayedWeeks}
+                      weeklyTargetAverage={weeklyTargetAverage}
+                      setToast={showToast}
+                    />
+                  } />
+                </Route>
+              </Routes>
+            </main>
+          </div>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }

@@ -1,17 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where,
-  orderBy,
-  onSnapshot
-} from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-hot-toast';
 
@@ -30,22 +17,15 @@ export function CompetitionProvider({ children }) {
 
   // Fetch all public competitions
   useEffect(() => {
-    const q = query(
-      collection(db, "competitions"),
-      where("isPublic", "==", true),
-      orderBy("createdAt", "desc")
-    );
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const competitionList = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setCompetitions(competitionList);
-      setLoading(false);
-    });
-
-    return unsubscribe;
+    // Simulating data fetch from localStorage
+    try {
+      const storedCompetitions = JSON.parse(localStorage.getItem('gt3_competitions') || '[]');
+      const publicCompetitions = storedCompetitions.filter(comp => comp.isPublic === true);
+      setCompetitions(publicCompetitions);
+    } catch (error) {
+      console.error("Error loading competitions:", error);
+    }
+    setLoading(false);
   }, []);
 
   // Fetch user's competitions when user is logged in
@@ -55,20 +35,15 @@ export function CompetitionProvider({ children }) {
       return;
     }
 
-    const q = query(
-      collection(db, "competitions"),
-      where("participants", "array-contains", currentUser.uid)
-    );
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const userCompList = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setUserCompetitions(userCompList);
-    });
-
-    return unsubscribe;
+    try {
+      const storedCompetitions = JSON.parse(localStorage.getItem('gt3_competitions') || '[]');
+      const userComps = storedCompetitions.filter(comp => 
+        comp.participants && comp.participants.includes(currentUser.id)
+      );
+      setUserCompetitions(userComps);
+    } catch (error) {
+      console.error("Error loading user competitions:", error);
+    }
   }, [currentUser]);
 
   // Create a new competition
@@ -79,20 +54,34 @@ export function CompetitionProvider({ children }) {
     }
 
     try {
+      // Get existing competitions
+      const storedCompetitions = JSON.parse(localStorage.getItem('gt3_competitions') || '[]');
+      
+      // Create new competition object
       const newCompetition = {
+        id: Date.now().toString(),
         ...competitionData,
-        createdBy: currentUser.uid,
-        creatorName: currentUser.displayName || "Anonymous",
-        participants: [currentUser.uid],
+        createdBy: currentUser.id,
+        creatorName: currentUser.username || "Anonymous",
+        participants: [currentUser.id],
         createdAt: new Date().toISOString(),
         status: "active"
       };
 
-      const docRef = await addDoc(collection(db, "competitions"), newCompetition);
+      // Save to localStorage
+      localStorage.setItem('gt3_competitions', JSON.stringify([...storedCompetitions, newCompetition]));
+      
+      // Update state with the new competition
+      if (newCompetition.isPublic) {
+        setCompetitions(prev => [...prev, newCompetition]);
+      }
+      setUserCompetitions(prev => [...prev, newCompetition]);
+      
       toast.success("Competition created successfully!");
-      return docRef.id;
+      return newCompetition.id;
     } catch (error) {
-      toast.error("Failed to create competition: " + error.message);
+      console.error("Error creating competition:", error);
+      toast.error("Failed to create competition");
       return null;
     }
   }
@@ -105,28 +94,46 @@ export function CompetitionProvider({ children }) {
     }
 
     try {
-      const competitionRef = doc(db, "competitions", competitionId);
-      const competition = competitions.find(c => c.id === competitionId) || 
-                        userCompetitions.find(c => c.id === competitionId);
+      const storedCompetitions = JSON.parse(localStorage.getItem('gt3_competitions') || '[]');
+      const competitionIndex = storedCompetitions.findIndex(comp => comp.id === competitionId);
       
-      if (!competition) {
+      if (competitionIndex === -1) {
         toast.error("Competition not found");
         return false;
       }
 
-      if (competition.participants.includes(currentUser.uid)) {
+      const competition = storedCompetitions[competitionIndex];
+      
+      if (competition.participants.includes(currentUser.id)) {
         toast.error("You are already participating in this competition");
         return false;
       }
 
-      await updateDoc(competitionRef, {
-        participants: [...competition.participants, currentUser.uid]
-      });
+      // Update the competition with the new participant
+      storedCompetitions[competitionIndex] = {
+        ...competition,
+        participants: [...competition.participants, currentUser.id]
+      };
+      
+      // Save back to localStorage
+      localStorage.setItem('gt3_competitions', JSON.stringify(storedCompetitions));
+      
+      // Update state
+      if (competition.isPublic) {
+        setCompetitions(prevCompetitions => prevCompetitions.map(comp => 
+          comp.id === competitionId 
+            ? { ...comp, participants: [...comp.participants, currentUser.id] }
+            : comp
+        ));
+      }
+      
+      setUserCompetitions(prev => [...prev, storedCompetitions[competitionIndex]]);
       
       toast.success("Joined competition successfully!");
       return true;
     } catch (error) {
-      toast.error("Failed to join competition: " + error.message);
+      console.error("Error joining competition:", error);
+      toast.error("Failed to join competition");
       return false;
     }
   }
@@ -136,45 +143,65 @@ export function CompetitionProvider({ children }) {
     if (!currentUser) return false;
 
     try {
-      const competitionRef = doc(db, "competitions", competitionId);
-      const competition = userCompetitions.find(c => c.id === competitionId);
+      const storedCompetitions = JSON.parse(localStorage.getItem('gt3_competitions') || '[]');
+      const competitionIndex = storedCompetitions.findIndex(comp => comp.id === competitionId);
       
-      if (!competition) {
+      if (competitionIndex === -1) {
         toast.error("Competition not found");
         return false;
       }
 
-      if (!competition.participants.includes(currentUser.uid)) {
+      const competition = storedCompetitions[competitionIndex];
+      
+      if (!competition.participants.includes(currentUser.id)) {
         toast.error("You are not participating in this competition");
         return false;
       }
 
       // If user is the creator, don't allow leaving unless they're the only participant
-      if (competition.createdBy === currentUser.uid && competition.participants.length > 1) {
+      if (competition.createdBy === currentUser.id && competition.participants.length > 1) {
         toast.error("As the creator, you cannot leave a competition with other participants. Transfer ownership first.");
         return false;
       }
 
       // If user is the last participant and the creator, delete the competition
-      if (competition.participants.length === 1 && competition.createdBy === currentUser.uid) {
-        await deleteDoc(competitionRef);
+      if (competition.participants.length === 1 && competition.createdBy === currentUser.id) {
+        const updatedCompetitions = storedCompetitions.filter(comp => comp.id !== competitionId);
+        localStorage.setItem('gt3_competitions', JSON.stringify(updatedCompetitions));
+        
+        // Update state
+        setCompetitions(prev => prev.filter(comp => comp.id !== competitionId));
+        setUserCompetitions(prev => prev.filter(comp => comp.id !== competitionId));
+        
         toast.success("Competition deleted as you were the last participant");
         return true;
       }
 
       // Otherwise, just remove the user from participants
-      const updatedParticipants = competition.participants.filter(
-        id => id !== currentUser.uid
-      );
-      
-      await updateDoc(competitionRef, {
+      const updatedParticipants = competition.participants.filter(id => id !== currentUser.id);
+      storedCompetitions[competitionIndex] = {
+        ...competition,
         participants: updatedParticipants
-      });
+      };
+      
+      localStorage.setItem('gt3_competitions', JSON.stringify(storedCompetitions));
+      
+      // Update state
+      if (competition.isPublic) {
+        setCompetitions(prev => prev.map(comp => 
+          comp.id === competitionId 
+            ? { ...comp, participants: updatedParticipants }
+            : comp
+        ));
+      }
+      
+      setUserCompetitions(prev => prev.filter(comp => comp.id !== competitionId));
       
       toast.success("Left competition successfully");
       return true;
     } catch (error) {
-      toast.error("Failed to leave competition: " + error.message);
+      console.error("Error leaving competition:", error);
+      toast.error("Failed to leave competition");
       return false;
     }
   }
@@ -189,33 +216,41 @@ export function CompetitionProvider({ children }) {
       }
 
       // Get the competition to check its type and rules
-      const competition = competitions.find(c => c.id === competitionId) || 
-                          userCompetitions.find(c => c.id === competitionId);
+      const allCompetitions = [...competitions, ...userCompetitions];
+      const competition = allCompetitions.find(c => c.id === competitionId);
       
       if (!competition) {
         toast.error("Competition not found");
         return [];
       }
 
-      // Get all participants' data
-      const q = query(
-        collection(db, "userData"),
-        where("uid", "in", competition.participants)
-      );
+      // Get all users and filter for participants
+      const users = JSON.parse(localStorage.getItem('gt3_users') || '[]');
+      const participantsData = users
+        .filter(user => competition.participants.includes(user.id))
+        .map(user => {
+          // Don't include sensitive information
+          const { password, ...safeUserData } = user;
+          return safeUserData;
+        });
 
-      const querySnapshot = await getDocs(q);
-      const participantsData = querySnapshot.docs.map(doc => ({
-        userId: doc.id,
-        ...doc.data()
+      // Get user data for calculations (in a real app, this would come from a database)
+      // For now, we'll generate mock data
+      const enhancedParticipantsData = participantsData.map(user => ({
+        ...user,
+        totalSaved: Math.floor(Math.random() * 150000),
+        target: 280000,
+        weeks: Array.from({ length: 10 }, () => ({
+          profit: Math.floor(Math.random() * 5000)
+        }))
       }));
 
-      // Sort based on competition type (savings, weekly goal achieved, etc.)
-      const sortedData = participantsData.sort((a, b) => {
+      // Sort based on competition type
+      const sortedData = enhancedParticipantsData.sort((a, b) => {
         switch(competition.type) {
           case "total-savings":
             return b.totalSaved - a.totalSaved;
           case "weekly-gain":
-            // Assuming each user has a weeks array
             const aLatestWeek = a.weeks?.slice(-1)[0]?.profit || 0;
             const bLatestWeek = b.weeks?.slice(-1)[0]?.profit || 0;
             return bLatestWeek - aLatestWeek;
@@ -245,7 +280,7 @@ export function CompetitionProvider({ children }) {
     }
   }
 
-  // Update a user's position on the leaderboard (typically after they update their progress)
+  // Update a user's position on the leaderboard
   async function updateLeaderboardPosition(competitionId) {
     // This will force a refresh of the leaderboard data
     if (leaderboards[competitionId]) {
