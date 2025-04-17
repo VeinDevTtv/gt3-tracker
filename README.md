@@ -4,6 +4,14 @@ A React application to track your savings progress towards purchasing a Porsche 
 
 ![Porsche GT3](https://files.porsche.com/filestore/image/multimedia/none/992-gt3-modelimage-sideshot/model/765dfc51-51bc-11eb-80d1-005056bbdc38/porsche-model.png)
 
+## Recent Updates
+
+The application has been enhanced with two major new features:
+
+1. **AI Assistant**: Using OpenAI's API, you can now ask questions about your savings progress and receive personalized insights, advice, and encouragement based on your current stats.
+
+2. **Dedicated Settings Page**: All configuration options have been moved to a separate settings page, giving the main tracking interface a cleaner, more focused design.
+
 ## Overview
 
 This application helps you track your weekly savings toward a Porsche GT3. It visually represents your progress with charts and indicators, making it easier to stay motivated and on track with your savings goal.
@@ -26,6 +34,14 @@ This application helps you track your weekly savings toward a Porsche GT3. It vi
   - Weekly target calculation to reach your goal
   - Current saving streak and best streak tracking
   - Goal prediction based on your current saving rate
+- **AI Assistant**:
+  - Ask questions about your savings progress
+  - Get personalized advice based on your current stats
+  - Receive encouragement and motivation from AI
+  - Powered by OpenAI's GPT models
+- **Dedicated Settings Page**:
+  - All configuration options in one organized location
+  - Clean, focused main interface for tracking
 - **Customization**:
   - Adjust total number of weeks in your tracking period
   - Adjust visible weeks in the interface
@@ -46,9 +62,11 @@ This application helps you track your weekly savings toward a Porsche GT3. It vi
 The application is built using:
 
 - React 18 with hooks for state management
+- React Router for page navigation
 - TailwindCSS for styling with dark mode support
 - Recharts for data visualization
 - Canvas confetti for celebration animations
+- OpenAI API for AI assistant functionality
 - Local storage for data persistence
 
 ## How to Use
@@ -59,8 +77,18 @@ The application is built using:
 4. Input your weekly savings/profits
 5. Track your progress with the visual charts and statistics
 6. Toggle between dark and light themes
-7. Export your data as CSV or JSON for backup
-8. Watch confetti celebrations when you hit milestones!
+7. Ask the AI Assistant for insights about your progress
+8. Export your data as CSV or JSON for backup
+9. Watch confetti celebrations when you hit milestones!
+
+## AI Assistant Setup
+
+The AI Assistant requires an OpenAI API key to function:
+
+1. Create an account on [OpenAI](https://openai.com/)
+2. Generate an API key in your OpenAI dashboard
+3. Enter the API key when prompted in the app
+4. Your key is stored locally on your device and never sent to our servers
 
 ## Installation
 
@@ -95,6 +123,7 @@ Potential future features:
 - Financial calculators (e.g., compound interest)
 - Notifications for weekly deposits
 - Mobile app version
+- Additional AI capabilities and insights
 
 ## About
 
