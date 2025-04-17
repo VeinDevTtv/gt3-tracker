@@ -23,7 +23,11 @@ export default function Settings({
   resetValues,
   exportAsCSV,
   exportAsJSON,
-  importJSON
+  importJSON,
+  themeColor,
+  onThemeColorChange,
+  generatePdfReport,
+  generateSharingImage
 }) {
   const navigate = useNavigate();
 
@@ -72,6 +76,10 @@ export default function Settings({
             exportAsCSV={exportAsCSV}
             exportAsJSON={exportAsJSON}
             importJSON={importJSON}
+            themeColor={themeColor}
+            onThemeColorChange={onThemeColorChange}
+            generatePdfReport={generatePdfReport}
+            generateSharingImage={generateSharingImage}
           />
         </div>
       </main>

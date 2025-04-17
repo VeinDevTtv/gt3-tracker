@@ -29,6 +29,9 @@ export default function Home({
   setToast
 }) {
   const navigate = useNavigate();
+  
+  // Use displayedWeeks if available, otherwise compute from weeks and visibleWeeks
+  const visibleWeeksData = displayedWeeks || (weeks ? weeks.slice(0, Math.min(visibleWeeks, weeks.length)) : []);
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50'} p-6 transition-colors duration-200`}>
@@ -101,7 +104,7 @@ export default function Home({
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="md:col-span-12">
             <ProfitGraph 
-              data={displayedWeeks}
+              data={visibleWeeksData}
               showCumulative={showCumulative}
               theme={theme}
             />
@@ -109,7 +112,7 @@ export default function Home({
 
           <div className="md:col-span-12">
             <WeekInput 
-              weeks={displayedWeeks}
+              weeks={visibleWeeksData}
               onProfitChange={handleProfitChange}
               weeklyTargetAverage={weeklyTargetAverage}
               theme={theme}

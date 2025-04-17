@@ -22,6 +22,12 @@ export default function GT3Tracker() {
     return savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   });
   
+  // Theme color scheme
+  const [themeColor, setThemeColor] = useState(() => {
+    const savedThemeColor = localStorage.getItem('savings-tracker-theme-color');
+    return savedThemeColor || 'blue';
+  });
+  
   // Toast notifications
   const [toast, setToast] = useState(null);
   
@@ -95,6 +101,22 @@ export default function GT3Tracker() {
   }, [theme]);
   
   useEffect(() => {
+    localStorage.setItem('savings-tracker-theme-color', themeColor);
+    
+    // Remove all other theme color classes
+    document.documentElement.classList.remove(
+      'theme-blue', 
+      'theme-green', 
+      'theme-red', 
+      'theme-purple', 
+      'theme-orange'
+    );
+    
+    // Add the current theme color class
+    document.documentElement.classList.add(`theme-${themeColor}`);
+  }, [themeColor]);
+  
+  useEffect(() => {
     localStorage.setItem('savings-tracker-goal-name', goalName);
   }, [goalName]);
   
@@ -105,6 +127,11 @@ export default function GT3Tracker() {
   // Handle theme toggle
   const toggleTheme = () => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+  };
+  
+  // Handle theme color change
+  const changeThemeColor = (color) => {
+    setThemeColor(color);
   };
 
   // Calculate streak information
@@ -390,36 +417,413 @@ export default function GT3Tracker() {
     };
   }, [weeks, remaining, totalProfit, currentWeek]);
 
+  // Generate PDF report
+  const generatePdfReport = useCallback(() => {
+    import('html2pdf.js').then(html2pdf => {
+      // Create a styled container for our report
+      const reportContainer = document.createElement('div');
+      reportContainer.style.padding = '20px';
+      reportContainer.style.fontFamily = 'Arial, sans-serif';
+      reportContainer.style.maxWidth = '800px';
+      reportContainer.style.margin = '0 auto';
+      
+      // Add report content
+      const reportDate = new Date().toLocaleDateString();
+      const totalSaved = weeks.reduce((sum, week) => sum + week.profit, 0);
+      const remainingAmount = target - totalSaved;
+      const percentComplete = (totalSaved / target) * 100;
+      
+      reportContainer.innerHTML = `
+        <div style="text-align:center; margin-bottom:20px;">
+          <h1 style="color:#1a73e8;">${goalName} Savings Report</h1>
+          <p style="color:#666;">Generated on ${reportDate}</p>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; margin-bottom:30px;">
+          <div style="flex:1; padding:15px; background:#f8f9fa; border-radius:8px; margin-right:10px;">
+            <h3 style="margin-top:0; color:#1a73e8;">Target Amount</h3>
+            <p style="font-size:24px; font-weight:bold;">${target.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+          </div>
+          <div style="flex:1; padding:15px; background:#f8f9fa; border-radius:8px; margin-right:10px;">
+            <h3 style="margin-top:0; color:#1a73e8;">Total Saved</h3>
+            <p style="font-size:24px; font-weight:bold;">${totalSaved.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+          </div>
+          <div style="flex:1; padding:15px; background:#f8f9fa; border-radius:8px;">
+            <h3 style="margin-top:0; color:#1a73e8;">Remaining</h3>
+            <p style="font-size:24px; font-weight:bold;">${remainingAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+          </div>
+        </div>
+        
+        <div style="margin-bottom:30px;">
+          <h2 style="color:#1a73e8;">Progress: ${percentComplete.toFixed(2)}%</h2>
+          <div style="background:#e0e0e0; height:24px; border-radius:12px; overflow:hidden;">
+            <div style="background:#1a73e8; width:${Math.min(100, percentComplete)}%; height:100%;"></div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom:30px;">
+          <h2 style="color:#1a73e8;">Savings Stats</h2>
+          <table style="width:100%; border-collapse:collapse;">
+            <tr style="background:#f8f9fa;">
+              <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Statistic</th>
+              <th style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">Value</th>
+            </tr>
+            <tr>
+              <td style="padding:10px; border-bottom:1px solid #ddd;">Weeks with Data</td>
+              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">${weeks.filter(w => w.profit > 0).length} of ${weeks.length}</td>
+            </tr>
+            <tr style="background:#f8f9fa;">
+              <td style="padding:10px; border-bottom:1px solid #ddd;">Average Weekly Saving</td>
+              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">
+                ${(weeks.filter(w => w.profit > 0).length > 0 
+                  ? (totalSaved / weeks.filter(w => w.profit > 0).length) 
+                  : 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px; border-bottom:1px solid #ddd;">Current Streak</td>
+              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">${streakInfo.currentStreak} weeks</td>
+            </tr>
+            <tr style="background:#f8f9fa;">
+              <td style="padding:10px; border-bottom:1px solid #ddd;">Best Streak</td>
+              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">${streakInfo.bestStreak} weeks</td>
+            </tr>
+            <tr>
+              <td style="padding:10px; border-bottom:1px solid #ddd;">Start Date</td>
+              <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">${startDate}</td>
+            </tr>
+          </table>
+        </div>
+        
+        <div style="margin-bottom:30px;">
+          <h2 style="color:#1a73e8;">Recent Weekly Savings</h2>
+          <table style="width:100%; border-collapse:collapse;">
+            <tr style="background:#f8f9fa;">
+              <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Week</th>
+              <th style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">Amount</th>
+              <th style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">Cumulative</th>
+            </tr>
+            ${weeks.slice(-10).map((week, i) => `
+              <tr ${i % 2 === 1 ? 'style="background:#f8f9fa;"' : ''}>
+                <td style="padding:10px; border-bottom:1px solid #ddd;">Week ${week.week}</td>
+                <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">
+                  ${week.profit.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                </td>
+                <td style="padding:10px; text-align:right; border-bottom:1px solid #ddd;">
+                  ${week.cumulative.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                </td>
+              </tr>
+            `).join('')}
+          </table>
+        </div>
+        
+        <div style="text-align:center; margin-top:40px; color:#666; font-size:12px;">
+          <p>This report was generated by the ${goalName} Savings Tracker</p>
+        </div>
+      `;
+      
+      // Append to document temporarily (needed for html2pdf)
+      document.body.appendChild(reportContainer);
+      
+      // Create PDF
+      const element = reportContainer;
+      const opt = {
+        margin: 10,
+        filename: `${goalName.replace(/\s+/g, '-')}-savings-report.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      
+      // Generate PDF and remove the temporary element when done
+      html2pdf.default()
+        .from(element)
+        .set(opt)
+        .save()
+        .then(() => {
+          document.body.removeChild(reportContainer);
+          showToast('PDF report generated successfully', '📄');
+        });
+    }).catch(error => {
+      console.error('Error generating PDF:', error);
+      showToast('Failed to generate PDF report', '❌');
+    });
+  }, [weeks, target, goalName, startDate, streakInfo]);
+  
+  // Generate social media sharing image
+  const generateSharingImage = useCallback(() => {
+    import('html2canvas').then(html2canvasModule => {
+      const html2canvas = html2canvasModule.default;
+      
+      // Create a styled container for our sharing image
+      const shareContainer = document.createElement('div');
+      shareContainer.style.padding = '30px';
+      shareContainer.style.fontFamily = 'Arial, sans-serif';
+      shareContainer.style.width = '1200px';
+      shareContainer.style.height = '630px';
+      shareContainer.style.position = 'fixed';
+      shareContainer.style.top = '-9999px';
+      shareContainer.style.left = '-9999px';
+      shareContainer.style.background = theme === 'dark' ? '#1a202c' : 'white';
+      shareContainer.style.color = theme === 'dark' ? 'white' : '#333';
+      shareContainer.style.borderRadius = '15px';
+      shareContainer.style.overflow = 'hidden';
+      shareContainer.style.boxSizing = 'border-box';
+      
+      // Add content
+      const totalSaved = weeks.reduce((sum, week) => sum + week.profit, 0);
+      const remainingAmount = target - totalSaved;
+      const percentComplete = (totalSaved / target) * 100;
+      
+      // Theme color map
+      const colorMap = {
+        blue: '#3b82f6',
+        green: '#10b981',
+        red: '#ef4444',
+        purple: '#8b5cf6',
+        orange: '#f97316'
+      };
+      
+      const accentColor = colorMap[themeColor] || colorMap.blue;
+      
+      shareContainer.innerHTML = `
+        <div style="height:100%; display:flex; flex-direction:column; padding:40px; box-sizing:border-box; position:relative; overflow:hidden;">
+          <div style="position:absolute; top:-100px; right:-100px; width:400px; height:400px; border-radius:50%; background:${accentColor}; opacity:0.1;"></div>
+          <div style="position:absolute; bottom:-150px; left:-150px; width:350px; height:350px; border-radius:50%; background:${accentColor}; opacity:0.05;"></div>
+          
+          <div style="flex:0; margin-bottom:30px;">
+            <h1 style="font-size:48px; margin:0; color:${accentColor};">My ${goalName} Journey</h1>
+            <p style="font-size:24px; margin:10px 0 0; opacity:0.7;">Progress Update</p>
+          </div>
+          
+          <div style="flex:1; display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
+            <div style="text-align:center; flex:1;">
+              <p style="font-size:24px; opacity:0.7; margin:0;">Target Amount</p>
+              <h2 style="font-size:46px; margin:10px 0; font-weight:bold;">${target.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</h2>
+            </div>
+            <div style="text-align:center; flex:1;">
+              <p style="font-size:24px; opacity:0.7; margin:0;">Progress</p>
+              <h2 style="font-size:60px; margin:0; color:${accentColor}; font-weight:bold;">${percentComplete.toFixed(1)}%</h2>
+            </div>
+            <div style="text-align:center; flex:1;">
+              <p style="font-size:24px; opacity:0.7; margin:0;">Total Saved</p>
+              <h2 style="font-size:46px; margin:10px 0; font-weight:bold;">${totalSaved.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</h2>
+            </div>
+          </div>
+          
+          <div style="flex:0; margin-bottom:40px;">
+            <div style="background:${theme === 'dark' ? '#374151' : '#e5e7eb'}; height:40px; border-radius:20px; overflow:hidden; width:100%;">
+              <div style="background:${accentColor}; width:${Math.min(100, percentComplete)}%; height:100%;"></div>
+            </div>
+          </div>
+          
+          <div style="flex:0; display:flex; justify-content:space-between;">
+            <div style="flex:1; padding:20px; background:${theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'}; border-radius:15px; margin-right:15px;">
+              <p style="font-size:20px; margin:0;">Current Streak</p>
+              <h3 style="font-size:36px; margin:5px 0; color:${accentColor};">${streakInfo.currentStreak} weeks</h3>
+            </div>
+            <div style="flex:1; padding:20px; background:${theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'}; border-radius:15px; margin-right:15px;">
+              <p style="font-size:20px; margin:0;">Weekly Average</p>
+              <h3 style="font-size:36px; margin:5px 0; color:${accentColor};">${
+                (weeks.filter(w => w.profit > 0).length > 0 
+                  ? (totalSaved / weeks.filter(w => w.profit > 0).length) 
+                  : 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+              }</h3>
+            </div>
+            <div style="flex:1; padding:20px; background:${theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'}; border-radius:15px;">
+              <p style="font-size:20px; margin:0;">Remaining</p>
+              <h3 style="font-size:36px; margin:5px 0; color:${accentColor};">${remainingAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</h3>
+            </div>
+          </div>
+          
+          <div style="margin-top:auto; opacity:0.5; text-align:center; font-size:18px;">
+            Generated with GT3 Savings Tracker
+          </div>
+        </div>
+      `;
+      
+      // Append to document temporarily
+      document.body.appendChild(shareContainer);
+      
+      // Convert to canvas
+      html2canvas(shareContainer, {
+        scale: 1,
+        logging: false,
+        useCORS: true
+      }).then(canvas => {
+        // Create sharing dialog
+        const dialog = document.createElement('div');
+        dialog.style.position = 'fixed';
+        dialog.style.top = '0';
+        dialog.style.left = '0';
+        dialog.style.right = '0';
+        dialog.style.bottom = '0';
+        dialog.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+        dialog.style.zIndex = '9999';
+        dialog.style.display = 'flex';
+        dialog.style.alignItems = 'center';
+        dialog.style.justifyContent = 'center';
+        dialog.style.padding = '20px';
+        
+        // Create dialog content
+        const content = document.createElement('div');
+        content.style.backgroundColor = theme === 'dark' ? '#1a202c' : 'white';
+        content.style.borderRadius = '10px';
+        content.style.padding = '20px';
+        content.style.width = '90%';
+        content.style.maxWidth = '800px';
+        content.style.maxHeight = '90vh';
+        content.style.overflow = 'auto';
+        content.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        
+        // Add dialog header
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.marginBottom = '20px';
+        
+        const title = document.createElement('h2');
+        title.textContent = 'Share Your Progress';
+        title.style.margin = '0';
+        title.style.color = theme === 'dark' ? 'white' : '#333';
+        
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '&times;';
+        closeButton.style.background = 'none';
+        closeButton.style.border = 'none';
+        closeButton.style.fontSize = '24px';
+        closeButton.style.cursor = 'pointer';
+        closeButton.style.color = theme === 'dark' ? 'white' : '#333';
+        closeButton.onclick = () => document.body.removeChild(dialog);
+        
+        header.appendChild(title);
+        header.appendChild(closeButton);
+        
+        // Add preview
+        const preview = document.createElement('div');
+        preview.style.textAlign = 'center';
+        preview.style.marginBottom = '20px';
+        
+        // Resize canvas for preview
+        const previewCanvas = document.createElement('canvas');
+        const ctx = previewCanvas.getContext('2d');
+        previewCanvas.width = 600;
+        previewCanvas.height = 315;
+        ctx.drawImage(canvas, 0, 0, 1200, 630, 0, 0, 600, 315);
+        previewCanvas.style.width = '100%';
+        previewCanvas.style.height = 'auto';
+        previewCanvas.style.borderRadius = '8px';
+        previewCanvas.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+        
+        preview.appendChild(previewCanvas);
+        
+        // Add action buttons
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.flexWrap = 'wrap';
+        actions.style.gap = '10px';
+        actions.style.justifyContent = 'center';
+        
+        // Download button
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = 'Download Image';
+        downloadBtn.style.padding = '10px 15px';
+        downloadBtn.style.background = accentColor;
+        downloadBtn.style.color = 'white';
+        downloadBtn.style.border = 'none';
+        downloadBtn.style.borderRadius = '5px';
+        downloadBtn.style.cursor = 'pointer';
+        downloadBtn.style.display = 'flex';
+        downloadBtn.style.alignItems = 'center';
+        downloadBtn.style.justifyContent = 'center';
+        downloadBtn.style.gap = '8px';
+        downloadBtn.style.fontSize = '14px';
+        downloadBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download Image';
+        
+        downloadBtn.onclick = () => {
+          const link = document.createElement('a');
+          link.download = `${goalName.replace(/\s+/g, '-')}-progress.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        };
+        
+        // Copy button
+        const copyBtn = document.createElement('button');
+        copyBtn.style.padding = '10px 15px';
+        copyBtn.style.background = theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+        copyBtn.style.color = theme === 'dark' ? 'white' : '#333';
+        copyBtn.style.border = 'none';
+        copyBtn.style.borderRadius = '5px';
+        copyBtn.style.cursor = 'pointer';
+        copyBtn.style.display = 'flex';
+        copyBtn.style.alignItems = 'center';
+        copyBtn.style.justifyContent = 'center';
+        copyBtn.style.gap = '8px';
+        copyBtn.style.fontSize = '14px';
+        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy to Clipboard';
+        
+        copyBtn.onclick = () => {
+          canvas.toBlob(blob => {
+            try {
+              // For modern browsers
+              const item = new ClipboardItem({ 'image/png': blob });
+              navigator.clipboard.write([item]).then(() => {
+                copyBtn.textContent = '✓ Copied!';
+                setTimeout(() => {
+                  copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy to Clipboard';
+                }, 2000);
+              }).catch(e => {
+                console.error('Failed to copy image to clipboard:', e);
+                showToast('Failed to copy image to clipboard. Try the download option.', '❌');
+              });
+            } catch (e) {
+              console.error('ClipboardItem not supported:', e);
+              showToast('Copying images not supported in your browser. Try the download option.', '❌');
+            }
+          });
+        };
+        
+        actions.appendChild(downloadBtn);
+        actions.appendChild(copyBtn);
+        
+        // Assemble and show dialog
+        content.appendChild(header);
+        content.appendChild(preview);
+        content.appendChild(actions);
+        dialog.appendChild(content);
+        
+        document.body.appendChild(dialog);
+        
+        // Remove the temporary container
+        document.body.removeChild(shareContainer);
+      }).catch(error => {
+        console.error('Error generating sharing image:', error);
+        document.body.removeChild(shareContainer);
+        showToast('Failed to generate sharing image', '❌');
+      });
+    }).catch(error => {
+      console.error('Error loading html2canvas:', error);
+      showToast('Failed to load sharing components', '❌');
+    });
+  }, [theme, themeColor, weeks, target, goalName, streakInfo, showToast]);
+
   return (
     <Router>
-      <Routes>
-        <Route 
-          path="/" 
-          element={
-            <Home 
-              theme={theme}
-              toggleTheme={toggleTheme}
-              goalName={goalName}
-              target={target}
-              totalProfit={totalProfit}
-              remaining={remaining}
-              progressPercentage={progressPercentage}
-              displayedWeeks={displayedWeeks}
-              weeklyTargetAverage={weeklyTargetAverage}
-              prediction={prediction}
-              showCumulative={showCumulative}
-              weeks={weeks}
-              streakInfo={streakInfo}
-              visibleWeeks={visibleWeeks}
-              handleProfitChange={handleProfitChange}
-              toast={toast}
-              setToast={setToast}
-            />
-          } 
-        />
-        <Route 
-          path="/settings" 
-          element={
+      <div className={`${theme}`}>
+        {toast && (
+          <div 
+            className={`fixed top-4 right-4 py-2 px-4 rounded-lg shadow-lg flex items-center gap-2 z-50 transform translate-x-0 transition-transform duration-300 ease-out ${
+              theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
+            }`}
+          >
+            {toast.emoji && <span className="text-xl">{toast.emoji}</span>}
+            <p>{toast.message}</p>
+          </div>
+        )}
+        
+        <Routes>
+          <Route path="/settings" element={
             <Settings 
               theme={theme}
               target={target}
@@ -440,10 +844,38 @@ export default function GT3Tracker() {
               exportAsCSV={exportAsCSV}
               exportAsJSON={exportAsJSON}
               importJSON={importJSON}
+              themeColor={themeColor}
+              onThemeColorChange={changeThemeColor}
+              generatePdfReport={generatePdfReport}
+              generateSharingImage={generateSharingImage}
             />
-          } 
-        />
-      </Routes>
+          } />
+          <Route path="/" element={
+            <Home 
+              theme={theme}
+              toggleTheme={toggleTheme}
+              target={target}
+              goalName={goalName}
+              weeks={weeks}
+              visibleWeeks={visibleWeeks}
+              showCumulative={showCumulative}
+              totalProfit={totalProfit}
+              remaining={remaining}
+              progressPercentage={progressPercentage}
+              handleProfitChange={handleProfitChange}
+              prediction={prediction}
+              streakInfo={streakInfo}
+              weeklyTarget={weeklyTargetAverage}
+              startDate={startDate}
+              toast={toast}
+              themeColor={themeColor}
+              displayedWeeks={displayedWeeks}
+              weeklyTargetAverage={weeklyTargetAverage}
+              setToast={showToast}
+            />
+          } />
+        </Routes>
+      </div>
     </Router>
   );
 }

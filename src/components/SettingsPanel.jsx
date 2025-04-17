@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download } from 'lucide-react';
+import { Download, FileText, Share2, Palette } from 'lucide-react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
@@ -25,7 +25,11 @@ const SettingsPanel = ({
   resetValues,
   exportAsCSV,
   exportAsJSON,
-  importJSON
+  importJSON,
+  themeColor,
+  onThemeColorChange,
+  generatePdfReport,
+  generateSharingImage
 }) => {
   const fileInputRef = React.useRef(null);
 
@@ -149,6 +153,36 @@ const SettingsPanel = ({
             </div>
           </div>
           
+          <div className="space-y-2">
+            <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
+              Theme Color
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {['blue', 'green', 'red', 'purple', 'orange'].map(color => (
+                <button
+                  key={color}
+                  onClick={() => onThemeColorChange(color)}
+                  className={`w-8 h-8 rounded-full transition-all ${
+                    themeColor === color ? 'ring-2 ring-offset-2 ring-opacity-50' : ''
+                  } ${theme === 'dark' ? 'ring-white ring-offset-gray-800' : 'ring-gray-800 ring-offset-white'}`}
+                  style={{ 
+                    background: 
+                      color === 'blue' ? '#3b82f6' : 
+                      color === 'green' ? '#10b981' : 
+                      color === 'red' ? '#ef4444' : 
+                      color === 'purple' ? '#8b5cf6' : 
+                      '#f97316',
+                    transform: themeColor === color ? 'scale(1.1)' : 'scale(1)'
+                  }}
+                  title={`${color.charAt(0).toUpperCase() + color.slice(1)} theme`}
+                />
+              ))}
+            </div>
+            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              Customize the app's accent color
+            </p>
+          </div>
+          
           <div className="pt-2 space-y-2">
             <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
               Data Management
@@ -199,6 +233,36 @@ const SettingsPanel = ({
                 className="hidden"
               />
             </div>
+          </div>
+          
+          <div className="pt-2 space-y-2">
+            <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
+              Reports & Sharing
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1" 
+                onClick={generatePdfReport}
+              >
+                <FileText size={16} className="mr-2" />
+                PDF Report
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1" 
+                onClick={generateSharingImage}
+              >
+                <Share2 size={16} className="mr-2" />
+                Share Progress
+              </Button>
+            </div>
+            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              Generate reports or share your progress on social media
+            </p>
           </div>
         </div>
       </CardContent>

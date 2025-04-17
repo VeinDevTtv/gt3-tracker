@@ -34,6 +34,8 @@
     --ring: 215 20.2% 65.1%;
 
     --radius: 0.5rem;
+
+    --primary-color: #3b82f6; /* Default blue */
   }
 
   .dark {
@@ -78,4 +80,46 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Add these theme-specific CSS variables */
+.theme-blue {
+  --primary-color: #3b82f6;
+}
+
+.theme-green {
+  --primary-color: #10b981;
+}
+
+.theme-red {
+  --primary-color: #ef4444;
+}
+
+.theme-purple {
+  --primary-color: #8b5cf6;
+}
+
+.theme-orange {
+  --primary-color: #f97316;
+}
+
+/* Apply the theming to components */
+.btn-primary, 
+.bg-primary,
+.progress-bar,
+.text-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.border-primary {
+  border-color: var(--primary-color);
+}
+
+.text-primary-color {
+  color: var(--primary-color);
+}
+
+.ring-primary {
+  --tw-ring-color: var(--primary-color);
 }
