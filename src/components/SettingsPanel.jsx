@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, FileText, Share2, Palette } from 'lucide-react';
+import { Download, FileText, Share2, Palette, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
@@ -32,6 +32,8 @@ const SettingsPanel = ({
   generateSharingImage
 }) => {
   const fileInputRef = React.useRef(null);
+  const [confirmText, setConfirmText] = useState('');
+  const [confirmError, setConfirmError] = useState(false);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -52,6 +54,16 @@ const SettingsPanel = ({
     };
     reader.readAsText(file);
     e.target.value = null; // Reset the input
+  };
+
+  const handleReset = () => {
+    if (confirmText.trim() === 'CONFIRM') {
+      resetValues();
+      setConfirmText('');
+      setConfirmError(false);
+    } else {
+      setConfirmError(true);
+    }
   };
 
   return (
@@ -188,30 +200,6 @@ const SettingsPanel = ({
               Data Management
             </Label>
             <div className="flex flex-wrap gap-2">
-              <Dialog open={showConfirmReset} onOpenChange={setShowConfirmReset}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Reset Values
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className={theme === 'dark' ? 'bg-gray-800 text-white border-gray-700' : ''}>
-                  <DialogHeader>
-                    <DialogTitle>Confirm Reset</DialogTitle>
-                    <DialogDescription className={theme === 'dark' ? 'text-gray-300' : ''}>
-                      Are you sure you want to reset all your progress data? This action cannot be undone.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter className="flex gap-2 justify-end">
-                    <Button variant="outline" onClick={() => setShowConfirmReset(false)}>
-                      Cancel
-                    </Button>
-                    <Button variant="destructive" onClick={resetValues}>
-                      Yes, Reset All Data
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              
               <Button variant="outline" size="sm" className="flex-1" onClick={exportAsCSV}>
                 <Download size={16} className="mr-2" />
                 Export CSV
@@ -263,6 +251,76 @@ const SettingsPanel = ({
             <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               Generate reports or share your progress on social media
             </p>
+          </div>
+          
+          <div className="pt-2 space-y-2 border-t border-dashed border-gray-200 dark:border-gray-700 mt-4">
+            <Label className={`${theme === 'dark' ? 'text-red-300' : 'text-red-600'} flex items-center gap-2`}>
+              <AlertTriangle size={16} />
+              Danger Zone
+            </Label>
+            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-3`}>
+              These actions are destructive and cannot be undone. Be careful!
+            </p>
+            
+            <Button 
+              variant="destructive" 
+              className="w-full"
+              onClick={() => setShowConfirmReset(true)}
+            >
+              <AlertTriangle className="mr-2" size={16} />
+              Delete All Savings Data
+            </Button>
+            
+            <Dialog open={showConfirmReset} onOpenChange={setShowConfirmReset}>
+              <DialogContent className={theme === 'dark' ? 'bg-gray-800 text-white border-gray-700' : ''}>
+                <DialogHeader>
+                  <DialogTitle className="text-red-500 flex items-center gap-2">
+                    <AlertTriangle size={18} />
+                    Warning: Data Deletion
+                  </DialogTitle>
+                  <DialogDescription className={theme === 'dark' ? 'text-gray-300' : ''}>
+                    <div className="py-3">
+                      <p>You are about to delete <strong>ALL</strong> of your savings data. This action <strong>cannot</strong> be undone.</p>
+                      <div className={`mt-4 p-3 border border-red-200 rounded-md ${theme === 'dark' ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                        <p className="text-sm font-medium mb-2">To confirm deletion, type "CONFIRM" below:</p>
+                        <Input
+                          type="text"
+                          value={confirmText}
+                          onChange={(e) => {
+                            setConfirmText(e.target.value);
+                            setConfirmError(false);
+                          }}
+                          placeholder="Type CONFIRM here"
+                          className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''} ${confirmError ? 'border-red-500' : ''}`}
+                        />
+                        {confirmError && (
+                          <p className="text-xs text-red-500 mt-1">Please type CONFIRM exactly as shown</p>
+                        )}
+                      </div>
+                      <p className="text-xs mt-4">
+                        <strong>Pro tip:</strong> Consider exporting a backup of your data before resetting.
+                      </p>
+                    </div>
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => {
+                    setShowConfirmReset(false);
+                    setConfirmText('');
+                    setConfirmError(false);
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleReset}
+                    disabled={confirmText !== 'CONFIRM'}
+                  >
+                    Delete All Data
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </CardContent>
