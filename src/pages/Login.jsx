@@ -1,210 +1,131 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Button, Input, Stack, Typography, Checkbox, FormControlLabel, Box, Divider, Alert } from '@mui/material';
-import { Google as GoogleIcon } from '@mui/icons-material';
-import { Discord as DiscordIcon } from '@mui/icons-material/Language'; // Using Language as placeholder for Discord
-import porscheLogo from '../assets/porsche-logo.png';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Checkbox } from '../components/ui/checkbox';
+import { AlertCircle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login, googleSignIn, discordSignIn, error, setError } = useAuth();
+  const [error, setError] = useState('');
+  
+  const { login, currentUser } = useAuth();
   const navigate = useNavigate();
-
+  const location = useLocation();
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/');
+    }
+  }, [currentUser, navigate]);
+  
+  const from = location.state?.from?.pathname || '/';
+  
   async function handleSubmit(e) {
     e.preventDefault();
     
     if (!email || !password) {
-      return setError('Please enter both email and password');
+      setError('Please enter both email and password');
+      return;
     }
     
     try {
       setError('');
       setLoading(true);
       await login(email, password, rememberMe);
-      navigate('/dashboard');
+      toast.success('Logged in successfully');
+      navigate(from, { replace: true });
     } catch (error) {
       console.error('Login error:', error);
-      // Don't need to setError here as the login function already does it
-    } finally {
-      setLoading(false);
-    }
-  }
-  
-  async function handleGoogleSignIn() {
-    try {
-      setError('');
-      setLoading(true);
-      await googleSignIn();
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Google sign in error:', error);
-      // Don't need to setError here as the googleSignIn function already does it
-    } finally {
-      setLoading(false);
-    }
-  }
-  
-  async function handleDiscordSignIn() {
-    try {
-      setError('');
-      setLoading(true);
-      await discordSignIn();
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Discord sign in error:', error);
-      // Don't need to setError here as the discordSignIn function already does it
+      setError(error.message || 'Failed to log in');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        padding: 3,
-        backgroundColor: 'background.default'
-      }}
-    >
-      <Box
-        sx={{
-          maxWidth: 400,
-          width: '100%',
-          p: 4,
-          borderRadius: 2,
-          boxShadow: 3,
-          bgcolor: 'background.paper'
-        }}
-      >
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-          <img src={porscheLogo} alt="Porsche Logo" style={{ height: 60 }} />
-        </Box>
+    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
+      <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-lg shadow-lg">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Sign in</h1>
+          <p className="text-muted-foreground">Track your savings journey</p>
+        </div>
         
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Sign in
-        </Typography>
+        {error && (
+          <div className="bg-destructive/10 p-3 rounded-md flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
         
-        <Typography variant="body2" color="textSecondary" align="center" sx={{ mb: 3 }}>
-          Track your journey to your dream Porsche
-        </Typography>
-
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        
-        <form onSubmit={handleSubmit}>
-          <Stack spacing={2}>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email address</Label>
             <Input
               id="email"
               type="email"
-              placeholder="Email address"
-              fullWidth
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
               required
-              disableUnderline
-              sx={{ 
-                p: 1.5, 
-                bgcolor: 'action.hover', 
-                borderRadius: 1 
-              }}
             />
-            
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link to="/forgot-password" className="text-sm font-medium text-primary-color hover:underline">
+                Forgot password?
+              </Link>
+            </div>
             <Input
               id="password"
               type="password"
-              placeholder="Password"
-              fullWidth
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
               required
-              disableUnderline
-              sx={{ 
-                p: 1.5, 
-                bgcolor: 'action.hover', 
-                borderRadius: 1 
-              }}
             />
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    name="rememberMe"
-                    color="primary"
-                  />
-                }
-                label="Remember me"
-              />
-              <Link to="/forgot-password" style={{ textDecoration: 'none' }}>
-                <Typography variant="body2" color="primary">
-                  Forgot password?
-                </Typography>
-              </Link>
-            </Box>
-            
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              disabled={loading}
-              sx={{ py: 1.5 }}
-            >
-              Sign In
-            </Button>
-          </Stack>
-        </form>
-        
-        <Divider sx={{ my: 3 }}>
-          <Typography variant="body2" color="textSecondary">
-            OR
-          </Typography>
-        </Divider>
-        
-        <Stack spacing={2}>
-          <Button
-            variant="outlined"
-            startIcon={<GoogleIcon />}
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            fullWidth
-            sx={{ py: 1.5 }}
-          >
-            Continue with Google
-          </Button>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="rememberMe" 
+              checked={rememberMe} 
+              onCheckedChange={(checked) => setRememberMe(checked)}
+            />
+            <Label htmlFor="rememberMe" className="text-sm font-medium leading-none cursor-pointer">
+              Remember me
+            </Label>
+          </div>
           
           <Button
-            variant="outlined"
-            startIcon={<DiscordIcon />}
-            onClick={handleDiscordSignIn}
+            type="submit"
+            className="w-full"
             disabled={loading}
-            fullWidth
-            sx={{ py: 1.5 }}
           >
-            Continue with Discord
+            {loading ? 'Signing in...' : 'Sign in'}
           </Button>
-        </Stack>
+        </form>
         
-        <Box sx={{ mt: 3, textAlign: 'center' }}>
-          <Typography variant="body2">
+        <div className="mt-4 text-center text-sm">
+          <p>
             Don't have an account?{' '}
-            <Link to="/signup" style={{ textDecoration: 'none' }}>
-              <Typography component="span" variant="body2" color="primary">
-                Sign up
-              </Typography>
+            <Link to="/signup" className="font-medium text-primary-color hover:underline">
+              Sign up
             </Link>
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 } 

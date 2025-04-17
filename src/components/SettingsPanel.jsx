@@ -29,11 +29,18 @@ const SettingsPanel = ({
   themeColor,
   onThemeColorChange,
   generatePdfReport,
-  generateSharingImage
+  generateSharingImage,
+  customTarget,
+  setCustomTarget,
+  weeklyTarget,
+  setWeeklyTarget,
 }) => {
   const fileInputRef = React.useRef(null);
   const [confirmText, setConfirmText] = useState('');
   const [confirmError, setConfirmError] = useState(false);
+  
+  // Debug check
+  console.log("resetValues function available:", !!resetValues);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -253,23 +260,26 @@ const SettingsPanel = ({
             </p>
           </div>
           
-          <div className="pt-2 space-y-2 border-t border-dashed border-gray-200 dark:border-gray-700 mt-4">
-            <Label className={`${theme === 'dark' ? 'text-red-300' : 'text-red-600'} flex items-center gap-2`}>
-              <AlertTriangle size={16} />
-              Danger Zone
-            </Label>
-            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-3`}>
-              These actions are destructive and cannot be undone. Be careful!
-            </p>
-            
-            <Button 
-              variant="destructive" 
-              className="w-full"
-              onClick={() => setShowConfirmReset(true)}
-            >
-              <AlertTriangle className="mr-2" size={16} />
-              Delete All Savings Data
-            </Button>
+          <div className={`pt-2 space-y-2 border-t border-dashed border-gray-200 dark:border-gray-700 mt-4`}>
+            <div className={`p-4 rounded-md border-2 border-red-500 ${theme === 'dark' ? 'bg-red-900/20' : 'bg-red-50'}`}>
+              <Label className={`text-lg ${theme === 'dark' ? 'text-red-300' : 'text-red-600'} flex items-center gap-2`}>
+                <AlertTriangle size={20} />
+                Danger Zone
+              </Label>
+              <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} my-3`}>
+                These actions are destructive and cannot be undone. Be careful!
+              </p>
+              
+              <Button 
+                variant="destructive" 
+                size="lg"
+                className="w-full text-base py-6 font-bold"
+                onClick={() => setShowConfirmReset(true)}
+              >
+                <AlertTriangle className="mr-2" size={20} />
+                Delete All Savings Data
+              </Button>
+            </div>
             
             <Dialog open={showConfirmReset} onOpenChange={setShowConfirmReset}>
               <DialogContent className={theme === 'dark' ? 'bg-gray-800 text-white border-gray-700' : ''}>

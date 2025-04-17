@@ -4,15 +4,15 @@
 
 A React application designed to track your savings progress toward purchasing your dream Porsche GT3.
 
-## Recent Updates
-- Added user authentication system with secure local storage
-- Added Community Leaderboard with privacy-focused anonymous comparison
-- Enhanced chart visualization with multiple graph types and analytics
-- Added AI Assistant powered by OpenAI's API, Ollama, or other providers
-- PDF report generation with shareable screenshots
-- Dedicated settings page with theme options
-- Social media sharing functionality
-- Weekly profit tracking with graphical visualization
+## 🚀 Recent Updates
+
+- **Authentication System**: Added a complete authentication system with login, signup, password reset, and profile management.
+- **User Profiles**: Users can now create profiles, update their username, and add profile pictures.
+- **Theme Enhancements**: Improved theme system with better color variables and selector classes.
+- **AI Assistant**: Added support for Ollama in addition to OpenAI for the AI Assistant feature.
+- **PDF Reports**: Generate detailed PDF reports of your savings progress.
+- **Social Media Sharing**: Share your progress on social media with beautiful, customized images.
+- **Settings Enhancement**: Added a more secure data reset confirmation that requires typing "CONFIRM".
 
 ## Features
 - **User Authentication:** Secure signup, login, and profile management system.
@@ -47,6 +47,42 @@ A React application designed to track your savings progress toward purchasing yo
 - **Responsive Design:** Optimized for both desktop and mobile devices.
 - **AI Assistant:** Get help with using the app or planning your savings strategy.
 
+## 🤖 AI Assistant Setup
+
+The GT3 Tracker includes an AI assistant to help you with your savings journey. This assistant can provide advice, answer questions about the application, and help you stay motivated.
+
+### OpenAI Integration
+To use the OpenAI-powered assistant:
+
+1. Get an API key from [OpenAI](https://platform.openai.com/account/api-keys)
+2. Enter the API key in the assistant's settings panel
+3. Choose your preferred model (GPT-4 recommended for best results)
+
+### Ollama Integration
+For users who prefer a local, privacy-focused approach, the GT3 Tracker now supports Ollama:
+
+1. Install [Ollama](https://ollama.ai/) on your local machine
+2. Run the Ollama server (typically runs on http://localhost:11434)
+3. Select "Ollama" as your AI provider in the assistant's settings
+4. Choose from available models like Llama 3, Mistral, or other compatible models
+
+The AI Assistant can help with:
+- Setting realistic savings goals
+- Analyzing your savings patterns
+- Suggesting strategies to increase your weekly savings
+- Providing motivation during your savings journey
+
+## 🔐 Authentication
+
+GT3 Tracker now includes a complete authentication system for a more personalized experience:
+
+- **User Accounts**: Create and manage your personal account
+- **Profile Management**: Customize your profile with a username and profile picture
+- **Secure Storage**: Your savings data is now linked to your account
+- **Privacy**: Data is stored locally in your browser
+
+Note: While the authentication system provides a personalized experience, all data is still stored locally in your browser for privacy. This is a simulation of a full authentication system for demonstration purposes.
+
 ## Technical Implementation
 The application is built using:
 - React with React Router for navigation
@@ -75,29 +111,6 @@ The app includes a secure authentication system:
 - Implements form validation for all auth forms
 - Provides clear error feedback to users
 - Includes "remember me" functionality for persistent sessions
-
-## AI Assistant Setup
-The app includes an AI-powered assistant with support for multiple providers:
-
-### OpenAI Configuration
-1. Obtain an API key from OpenAI: [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-2. In the app, navigate to the AI Assistant panel
-3. Click on "Configure API Key"
-4. Enter your OpenAI API key
-5. Click "Save Key"
-
-### Ollama Configuration (Local AI)
-1. Download and install Ollama from [ollama.com](https://ollama.com)
-2. Run Ollama after installation
-3. Open a terminal/command prompt and pull a model: `ollama pull llama3`
-4. In the app, navigate to the AI Assistant panel
-5. Select "Ollama (Local AI)" as the provider
-6. Configure the server address (default: http://localhost:11434)
-7. Select your desired model (default: llama3)
-8. Click "Save Settings"
-
-### Other Providers
-The app also supports Poe and Replicate as AI providers, with similar configuration steps.
 
 ## Installation and Usage
 ```bash

@@ -1,185 +1,146 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ChevronDown, LogIn, LogOut, Menu, User, Settings, Home } from 'lucide-react';
+import { Button } from './ui/button';
+import { Home, Settings, User, Menu, X, LogOut } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
-export default function NavMenu() {
+const NavMenu = () => {
   const { currentUser, logout } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
+  const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Logged out successfully');
+      navigate('/login');
+      setIsOpen(false);
+    } catch (error) {
+      toast.error('Failed to log out');
+      console.error('Failed to log out', error);
+    }
   };
-  
-  const closeMenu = () => {
-    setIsOpen(false);
-  };
-  
+
+  // Don't show nav on auth pages
+  if (location.pathname === '/login' || 
+      location.pathname === '/signup' || 
+      location.pathname === '/forgot-password') {
+    return null;
+  }
+
   return (
-    <div className="relative">
-      <nav className="px-4 py-3 bg-background border-b border-border flex justify-between items-center">
-        <Link to="/" className="text-xl font-bold text-primary-color">GT3 Tracker</Link>
+    <header className="sticky top-0 z-30 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <Link to="/" className="font-bold text-xl text-primary-color">GT3 Tracker</Link>
         
-        {/* Mobile menu button */}
-        <button 
-          onClick={toggleMenu} 
-          className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none"
-          aria-label="Toggle navigation menu"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        
-        {/* Desktop navigation */}
-        <div className="hidden md:flex items-center space-x-4">
-          {/* Always visible links */}
-          <Link 
-            to="/" 
-            className={`px-3 py-2 rounded-md ${location.pathname === '/' ? 'bg-primary-500/10 text-primary-color' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-          >
-            <div className="flex items-center gap-2">
-              <Home className="h-4 w-4" />
-              <span>Home</span>
-            </div>
-          </Link>
-          
-          {currentUser ? (
-            <>
+        {currentUser ? (
+          <>
+            {/* Desktop navigation */}
+            <nav className="hidden md:flex items-center space-x-4">
+              <Link 
+                to="/" 
+                className={`flex items-center gap-1 px-2 py-1 rounded-md ${
+                  location.pathname === '/' ? 'text-primary-color' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Home size={18} />
+                <span>Dashboard</span>
+              </Link>
               <Link 
                 to="/settings" 
-                className={`px-3 py-2 rounded-md ${location.pathname === '/settings' ? 'bg-primary-500/10 text-primary-color' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md ${
+                  location.pathname === '/settings' ? 'text-primary-color' : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
-                <div className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  <span>Settings</span>
-                </div>
+                <Settings size={18} />
+                <span>Settings</span>
               </Link>
-              
-              <div className="relative group">
-                <button className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
-                  <User className="h-4 w-4" />
-                  <span>{currentUser.username || 'Account'}</span>
-                  <ChevronDown className="h-4 w-4" />
-                </button>
-                
-                <div className="absolute right-0 mt-2 w-48 bg-background border border-border rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                  <div className="p-2">
-                    <Link 
-                      to="/profile" 
-                      className="block px-4 py-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
-                      onClick={closeMenu}
-                    >
-                      Profile Settings
-                    </Link>
-                    
-                    <button 
-                      onClick={() => {
-                        logout();
-                        closeMenu();
-                      }} 
-                      className="w-full text-left px-4 py-2 rounded-md text-red-500 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center gap-2"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      <span>Sign out</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
               <Link 
-                to="/login" 
-                className={`px-3 py-2 rounded-md ${location.pathname === '/login' ? 'bg-primary-500/10 text-primary-color' : 'hover:bg-gray-200 dark:hover:bg-gray-700'} flex items-center gap-2`}
+                to="/profile" 
+                className={`flex items-center gap-1 px-2 py-1 rounded-md ${
+                  location.pathname === '/profile' ? 'text-primary-color' : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
-                <LogIn className="h-4 w-4" />
-                <span>Sign in</span>
+                <User size={18} />
+                <span>Profile</span>
               </Link>
-              
-              <Link 
-                to="/signup" 
-                className="px-3 py-2 rounded-md bg-primary text-white hover:bg-primary/90"
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleLogout}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
               >
-                Sign up
-              </Link>
-            </>
-          )}
-        </div>
-      </nav>
-      
-      {/* Mobile navigation menu */}
-      {isOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-background border-b border-border shadow-lg z-10">
-          <div className="p-4 space-y-2">
-            <Link 
-              to="/" 
-              className={`block px-4 py-2 rounded-md ${location.pathname === '/' ? 'bg-primary-500/10 text-primary-color' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-              onClick={closeMenu}
-            >
-              <div className="flex items-center gap-2">
-                <Home className="h-4 w-4" />
-                <span>Home</span>
-              </div>
-            </Link>
+                <LogOut size={18} />
+                <span>Logout</span>
+              </Button>
+            </nav>
             
-            {currentUser ? (
-              <>
-                <Link 
-                  to="/settings" 
-                  className={`block px-4 py-2 rounded-md ${location.pathname === '/settings' ? 'bg-primary-500/10 text-primary-color' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                  onClick={closeMenu}
-                >
-                  <div className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
-                  </div>
-                </Link>
-                
-                <Link 
-                  to="/profile" 
-                  className={`block px-4 py-2 rounded-md ${location.pathname === '/profile' ? 'bg-primary-500/10 text-primary-color' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                  onClick={closeMenu}
-                >
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span>Profile Settings</span>
-                  </div>
-                </Link>
-                
-                <button 
-                  onClick={() => {
-                    logout();
-                    closeMenu();
-                  }} 
-                  className="w-full text-left px-4 py-2 rounded-md text-red-500 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center gap-2"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Sign out</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <Link 
-                  to="/login" 
-                  className={`block px-4 py-2 rounded-md ${location.pathname === '/login' ? 'bg-primary-500/10 text-primary-color' : 'hover:bg-gray-200 dark:hover:bg-gray-700'} flex items-center gap-2`}
-                  onClick={closeMenu}
-                >
-                  <LogIn className="h-4 w-4" />
-                  <span>Sign in</span>
-                </Link>
-                
-                <Link 
-                  to="/signup" 
-                  className="block px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90"
-                  onClick={closeMenu}
-                >
-                  Sign up
-                </Link>
-              </>
-            )}
+            {/* Mobile menu button */}
+            <button 
+              className="block md:hidden p-2 rounded-md hover:bg-muted"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </>
+        ) : (
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/login">Sign in</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link to="/signup">Sign up</Link>
+            </Button>
           </div>
+        )}
+      </div>
+      
+      {/* Mobile menu */}
+      {isOpen && currentUser && (
+        <div className="md:hidden container mx-auto px-4 pb-4 flex flex-col">
+          <Link 
+            to="/" 
+            className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+              location.pathname === '/' ? 'bg-muted text-primary-color' : 'hover:bg-muted'
+            }`}
+            onClick={() => setIsOpen(false)}
+          >
+            <Home size={18} />
+            <span>Dashboard</span>
+          </Link>
+          <Link 
+            to="/settings" 
+            className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+              location.pathname === '/settings' ? 'bg-muted text-primary-color' : 'hover:bg-muted'
+            }`}
+            onClick={() => setIsOpen(false)}
+          >
+            <Settings size={18} />
+            <span>Settings</span>
+          </Link>
+          <Link 
+            to="/profile" 
+            className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+              location.pathname === '/profile' ? 'bg-muted text-primary-color' : 'hover:bg-muted'
+            }`}
+            onClick={() => setIsOpen(false)}
+          >
+            <User size={18} />
+            <span>Profile</span>
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-left hover:bg-muted"
+          >
+            <LogOut size={18} />
+            <span>Logout</span>
+          </button>
         </div>
       )}
-    </div>
+    </header>
   );
-} 
+};
+
+export default NavMenu; 

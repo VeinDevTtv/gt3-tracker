@@ -3,12 +3,12 @@ import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
+import Profile from './pages/Profile';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/auth/PrivateRoute';
-import Login from './components/auth/Login';
-import Signup from './components/auth/Signup';
-import ForgotPassword from './components/auth/ForgotPassword';
-import Profile from './components/auth/Profile';
 import NavMenu from './components/NavMenu';
 import { Toaster } from 'react-hot-toast';
 
@@ -127,6 +127,14 @@ export default function GT3Tracker() {
   
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [lastMilestone, setLastMilestone] = useState(0);
+  
+  // AI Assistant settings
+  const [openAIKey, setOpenAIKey] = useState(() => localStorage.getItem('openai-api-key') || '');
+  const [poeKey, setPoeKey] = useState(() => localStorage.getItem('poe-api-key') || '');
+  const [replicateKey, setReplicateKey] = useState(() => localStorage.getItem('replicate-api-key') || '');
+  const [ollamaUrl, setOllamaUrl] = useState(() => localStorage.getItem('ollama-url') || 'http://localhost:11434');
+  const [ollamaModel, setOllamaModel] = useState(() => localStorage.getItem('ollama-model') || 'llama3');
+  const [aiProvider, setAiProvider] = useState(() => localStorage.getItem('ai-provider') || 'openai');
 
   // Save to localStorage when state changes
   useEffect(() => {
@@ -1225,6 +1233,23 @@ export default function GT3Tracker() {
                       onThemeColorChange={changeThemeColor}
                       generatePdfReport={generatePdfReport}
                       generateSharingImage={generateSharingImage}
+                      setTheme={setTheme}
+                      customTarget={target}
+                      setCustomTarget={setTarget}
+                      weeklyTarget={weeklyTargetAverage}
+                      setWeeklyTarget={() => {}}
+                      openAIKey={openAIKey}
+                      setOpenAIKey={setOpenAIKey}
+                      poeKey={poeKey}
+                      setPoeKey={setPoeKey}
+                      replicateKey={replicateKey}
+                      setReplicateKey={setReplicateKey}
+                      ollamaUrl={ollamaUrl}
+                      setOllamaUrl={setOllamaUrl}
+                      ollamaModel={ollamaModel}
+                      setOllamaModel={setOllamaModel}
+                      aiProvider={aiProvider}
+                      setAiProvider={setAiProvider}
                     />
                   } />
                   <Route path="/" element={

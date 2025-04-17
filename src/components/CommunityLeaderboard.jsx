@@ -88,7 +88,7 @@ const generateRealisticSaverData = () => {
   return savers.sort((a, b) => b.totalSavings - a.totalSavings);
 };
 
-const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
+const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme, username }) => {
   const [optedIn, setOptedIn] = useState(() => {
     return localStorage.getItem('savings-tracker-leaderboard-opt-in') === 'true';
   });
@@ -168,7 +168,8 @@ const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
           carChoice: totalProfit > 220000 ? "GT3 RS" : "GT3",
           region: "Your Location",
           savingDuration: `${Math.round(savingWeeks / 4)} months`,
-          consistency: savingWeeks > 0 ? Math.round((weeks.filter(w => w.profit > 0).length / savingWeeks) * 100) : 100
+          consistency: savingWeeks > 0 ? Math.round((weeks.filter(w => w.profit > 0).length / savingWeeks) * 100) : 100,
+          username: username || null // Store the username if available
         }
       };
       
@@ -311,7 +312,9 @@ const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center">
                                 <span className={`text-sm ${isCurrentUser ? 'font-bold text-primary-color' : ''}`}>
-                                  {isCurrentUser ? 'You' : `Anonymous GT3 ${user.metadata.carChoice.includes('RS') ? 'RS' : ''} Fan`}
+                                  {isCurrentUser 
+                                    ? (user.metadata.username ? user.metadata.username : 'You') 
+                                    : `Anonymous GT3 ${user.metadata.carChoice.includes('RS') ? 'RS' : ''} Fan`}
                                 </span>
                                 {isCurrentUser && (
                                   <span className="ml-2 text-xs px-2 py-0.5 rounded-full border border-gray-300 dark:border-gray-600">You</span>

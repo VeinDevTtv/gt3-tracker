@@ -48,6 +48,7 @@ export function AuthProvider({ children }) {
             username,
             email,
             password, // In a real app, this would be hashed
+            profilePicture: null, // Default profile picture is null
             createdAt: new Date().toISOString()
           };
           
@@ -57,6 +58,8 @@ export function AuthProvider({ children }) {
           
           // Don't include password in returned user object
           const { password: _, ...userWithoutPassword } = newUser;
+          setCurrentUser(userWithoutPassword);
+          localStorage.setItem('gt3_user', JSON.stringify(userWithoutPassword));
           resolve(userWithoutPassword);
         } catch (error) {
           reject(new Error('Failed to create account'));
@@ -176,6 +179,86 @@ export function AuthProvider({ children }) {
     });
   }
   
+  // Update profile picture
+  async function updateProfilePicture(fileOrBase64) {
+    return new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        try {
+          if (!currentUser) {
+            reject(new Error('No user is logged in'));
+            return;
+          }
+          
+          // Get all users and update the current one
+          const users = JSON.parse(localStorage.getItem('gt3_users') || '[]');
+          const userIndex = users.findIndex(user => user.id === currentUser.id);
+          
+          if (userIndex === -1) {
+            reject(new Error('User not found'));
+            return;
+          }
+          
+          let imageData;
+          
+          // Handle different input types: File object or base64 string
+          if (typeof fileOrBase64 === 'string' && fileOrBase64.startsWith('data:image/')) {
+            // Input is already a base64 string
+            imageData = fileOrBase64;
+          } else if (fileOrBase64 instanceof File) {
+            // Input is a File object - convert to base64
+            if (!fileOrBase64.type.startsWith('image/')) {
+              reject(new Error('Please select a valid image file'));
+              return;
+            }
+            
+            // Max size check (2MB)
+            if (fileOrBase64.size > 2 * 1024 * 1024) {
+              reject(new Error('Image size must be less than 2MB'));
+              return;
+            }
+            
+            // Convert to base64
+            imageData = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => reject(new Error('Failed to read image file'));
+              reader.readAsDataURL(fileOrBase64);
+            });
+          } else {
+            reject(new Error('Invalid image format'));
+            return;
+          }
+          
+          // Update user with profile picture
+          const updatedUser = {
+            ...users[userIndex],
+            profilePicture: imageData,
+            updatedAt: new Date().toISOString()
+          };
+          
+          // Save updated user back to storage
+          users[userIndex] = updatedUser;
+          localStorage.setItem('gt3_users', JSON.stringify(users));
+          
+          // Don't include password in updated user data
+          const { password: _, ...userWithoutPassword } = updatedUser;
+          setCurrentUser(userWithoutPassword);
+          
+          // Update current user in localStorage if they're remembered
+          if (localStorage.getItem('gt3_user')) {
+            localStorage.setItem('gt3_user', JSON.stringify(userWithoutPassword));
+          }
+          
+          toast.success('Profile picture updated successfully');
+          resolve(userWithoutPassword);
+        } catch (error) {
+          console.error('Error updating profile picture:', error);
+          reject(new Error('Failed to update profile picture'));
+        }
+      }, 500); // Simulate API delay
+    });
+  }
+  
   // Update password
   async function updatePassword(currentPassword, newPassword) {
     return new Promise((resolve, reject) => {
@@ -221,6 +304,7 @@ export function AuthProvider({ children }) {
     logout,
     resetPassword,
     updateProfile,
+    updateProfilePicture,
     updatePassword,
     isAuthenticated: !!currentUser
   };

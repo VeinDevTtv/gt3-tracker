@@ -1,232 +1,148 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Button, Input, Stack, Typography, Box, Divider, Alert } from '@mui/material';
-import { Google as GoogleIcon } from '@mui/icons-material';
-import { Discord as DiscordIcon } from '@mui/icons-material/Language'; // Using Language as placeholder for Discord
-import porscheLogo from '../assets/porsche-logo.png';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { AlertCircle } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function Signup() {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signup, googleSignIn, discordSignIn, error, setError } = useAuth();
+  const [error, setError] = useState('');
+  
+  const { signup, currentUser } = useAuth();
   const navigate = useNavigate();
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/');
+    }
+  }, [currentUser, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     
-    if (!email || !password || !username) {
-      return setError('Please fill in all fields');
+    if (!username || !email || !password || !passwordConfirm) {
+      setError('Please fill in all fields');
+      return;
     }
     
     if (password !== passwordConfirm) {
-      return setError('Passwords do not match');
+      setError('Passwords do not match');
+      return;
     }
     
     if (password.length < 6) {
-      return setError('Password must be at least 6 characters long');
+      setError('Password must be at least 6 characters');
+      return;
     }
     
     try {
       setError('');
       setLoading(true);
       await signup(email, password, username);
-      navigate('/dashboard');
+      toast.success('Account created successfully!');
+      navigate('/');
     } catch (error) {
       console.error('Signup error:', error);
-      // Don't need to setError here as the signup function already does it
-    } finally {
-      setLoading(false);
-    }
-  }
-  
-  async function handleGoogleSignIn() {
-    try {
-      setError('');
-      setLoading(true);
-      await googleSignIn();
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Google sign in error:', error);
-      // Don't need to setError here as the googleSignIn function already does it
-    } finally {
-      setLoading(false);
-    }
-  }
-  
-  async function handleDiscordSignIn() {
-    try {
-      setError('');
-      setLoading(true);
-      await discordSignIn();
-      navigate('/dashboard');
-    } catch (error) {
-      console.error('Discord sign in error:', error);
-      // Don't need to setError here as the discordSignIn function already does it
+      setError(error.message || 'Failed to create account');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        padding: 3,
-        backgroundColor: 'background.default'
-      }}
-    >
-      <Box
-        sx={{
-          maxWidth: 400,
-          width: '100%',
-          p: 4,
-          borderRadius: 2,
-          boxShadow: 3,
-          bgcolor: 'background.paper'
-        }}
-      >
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-          <img src={porscheLogo} alt="Porsche Logo" style={{ height: 60 }} />
-        </Box>
+    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
+      <div className="w-full max-w-md space-y-8 bg-card p-8 rounded-lg shadow-lg">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Create Account</h1>
+          <p className="text-muted-foreground">Start tracking your savings journey</p>
+        </div>
         
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Create Account
-        </Typography>
+        {error && (
+          <div className="bg-destructive/10 p-3 rounded-md flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
         
-        <Typography variant="body2" color="textSecondary" align="center" sx={{ mb: 3 }}>
-          Start tracking your journey to your dream Porsche
-        </Typography>
-
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        
-        <form onSubmit={handleSubmit}>
-          <Stack spacing={2}>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
             <Input
               id="username"
               type="text"
-              placeholder="Username"
-              fullWidth
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              placeholder="Your preferred username"
+              autoComplete="username"
               required
-              disableUnderline
-              sx={{ 
-                p: 1.5, 
-                bgcolor: 'action.hover', 
-                borderRadius: 1 
-              }}
             />
-            
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="email">Email address</Label>
             <Input
               id="email"
               type="email"
-              placeholder="Email address"
-              fullWidth
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
               required
-              disableUnderline
-              sx={{ 
-                p: 1.5, 
-                bgcolor: 'action.hover', 
-                borderRadius: 1 
-              }}
             />
-            
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
-              placeholder="Password"
-              fullWidth
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
               required
-              disableUnderline
-              sx={{ 
-                p: 1.5, 
-                bgcolor: 'action.hover', 
-                borderRadius: 1 
-              }}
             />
-            
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="passwordConfirm">Confirm Password</Label>
             <Input
               id="passwordConfirm"
               type="password"
-              placeholder="Confirm password"
-              fullWidth
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
               required
-              disableUnderline
-              sx={{ 
-                p: 1.5, 
-                bgcolor: 'action.hover', 
-                borderRadius: 1 
-              }}
             />
-            
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              disabled={loading}
-              sx={{ py: 1.5 }}
-            >
-              Sign Up
-            </Button>
-          </Stack>
-        </form>
-        
-        <Divider sx={{ my: 3 }}>
-          <Typography variant="body2" color="textSecondary">
-            OR
-          </Typography>
-        </Divider>
-        
-        <Stack spacing={2}>
-          <Button
-            variant="outlined"
-            startIcon={<GoogleIcon />}
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            fullWidth
-            sx={{ py: 1.5 }}
-          >
-            Continue with Google
-          </Button>
+          </div>
           
           <Button
-            variant="outlined"
-            startIcon={<DiscordIcon />}
-            onClick={handleDiscordSignIn}
+            type="submit"
+            className="w-full"
             disabled={loading}
-            fullWidth
-            sx={{ py: 1.5 }}
           >
-            Continue with Discord
+            {loading ? 'Creating account...' : 'Create Account'}
           </Button>
-        </Stack>
+        </form>
         
-        <Box sx={{ mt: 3, textAlign: 'center' }}>
-          <Typography variant="body2">
+        <div className="mt-4 text-center text-sm">
+          <p>
             Already have an account?{' '}
-            <Link to="/login" style={{ textDecoration: 'none' }}>
-              <Typography component="span" variant="body2" color="primary">
-                Sign in
-              </Typography>
+            <Link to="/login" className="font-medium text-primary-color hover:underline">
+              Sign in
             </Link>
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
+          </p>
+        </div>
+      </div>
+    </div>
   );
 } 

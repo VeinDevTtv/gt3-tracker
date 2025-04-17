@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
-import { Moon, Sun, Settings } from 'lucide-react';
+import { Moon, Sun, Settings, User } from 'lucide-react';
 import ProgressBar from '../components/ProgressBar';
 import GoalStats from '../components/GoalStats';
 import ProfitGraph from '../components/ProfitGraph';
@@ -32,6 +33,7 @@ export default function Home({
   toggleAI,
   showAIAssistant
 }) {
+  const { currentUser } = useAuth();
   const visibleWeeksData = visibleWeeks || 12;
   
   // Ensure weeks is valid and create a safe version for components
@@ -51,10 +53,17 @@ export default function Home({
             {goalName} Tracker
           </h1>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            {currentUser ? `Hello, ${currentUser.username}! ` : ''}
             Track your progress towards your {goalName} goal
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {currentUser && (
+            <Link to="/profile" className="flex items-center text-primary-color hover:underline font-medium mr-2">
+              <User className="mr-1 h-4 w-4" />
+              <span>Profile</span>
+            </Link>
+          )}
           <Link to="/settings" className="flex items-center text-primary-color hover:underline font-medium">
             <span>Settings</span>
             <Settings className="ml-1 h-4 w-4" />
@@ -113,6 +122,7 @@ export default function Home({
               weeklyAverage={weeklyTargetAverage}
               weeks={weeks}
               theme={theme}
+              username={currentUser?.username}
             />
           </div>
           
