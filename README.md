@@ -45,7 +45,7 @@ The application is built using:
 
 ```bash
 # Clone the repository (if applicable)
-git clone <repository-url>
+git clone https://github.com/VeinDevTtv/gt3-tracker
 
 # Navigate to the project directory
 cd gt3-tracker
