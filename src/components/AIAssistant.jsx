@@ -31,7 +31,7 @@ export default function AIAssistant({
   const [isLoading, setIsLoading] = useState(false);
   
   const [apiProvider, setApiProvider] = useState(
-    localStorage.getItem('ai-assistant-provider') || API_PROVIDERS.POE
+    localStorage.getItem('ai-assistant-provider') || API_PROVIDERS.OPENAI
   );
   
   // OpenAI specific state
@@ -50,6 +50,7 @@ export default function AIAssistant({
   
   const [debugMode, setDebugMode] = useState(false);
   const [errorDetails, setErrorDetails] = useState('');
+  const [showFreeAlternatives, setShowFreeAlternatives] = useState(false);
 
   // Save API key to local storage
   const handleApiKeySave = () => {
@@ -239,7 +240,8 @@ User question: ${userMessage}`;
         if (error.message?.includes('401')) {
           errorMessage = 'Invalid OpenAI API key. Please check that you\'ve entered a valid key.';
         } else if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('insufficient_quota')) {
-          errorMessage = 'OpenAI rate limit exceeded or insufficient quota. This likely means you need to set up billing for your OpenAI account. Consider switching to the free Poe API option.';
+          errorMessage = 'OpenAI rate limit exceeded or insufficient quota. This likely means you need to set up billing for your OpenAI account.';
+          setShowFreeAlternatives(true);
         } else if (error.message?.includes('CORS')) {
           errorMessage = 'CORS error detected. This may be due to browser security restrictions.';
         } else if (error.message?.includes('Failed to fetch') || error.message?.includes('Network')) {
@@ -250,7 +252,7 @@ User question: ${userMessage}`;
         if (error.message?.includes('401') || error.message?.includes('403')) {
           errorMessage = 'Invalid Poe API key. Please check that you\'ve entered a valid key.';
         } else if (error.message?.includes('429')) {
-          errorMessage = 'Poe API rate limit exceeded. Free accounts are limited to approximately 1000 messages per month.';
+          errorMessage = 'Poe API rate limit exceeded.';
         }
       }
       
@@ -288,10 +290,10 @@ User question: ${userMessage}`;
           <button 
             onClick={handleSwitchProvider} 
             className={`text-xs p-1 rounded flex items-center gap-1 ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'}`}
-            title={`Switch to ${apiProvider === API_PROVIDERS.OPENAI ? 'Poe API (Free)' : 'OpenAI API'}`}
+            title={`Switch to ${apiProvider === API_PROVIDERS.OPENAI ? 'Poe API (Claude)' : 'OpenAI API'}`}
           >
             <RefreshCw size={14} />
-            <span>{apiProvider === API_PROVIDERS.OPENAI ? 'Use Poe (Free)' : 'Use OpenAI'}</span>
+            <span>{apiProvider === API_PROVIDERS.OPENAI ? 'Use Poe' : 'Use OpenAI'}</span>
           </button>
           <button 
             onClick={() => setDebugMode(!debugMode)} 
@@ -308,7 +310,7 @@ User question: ${userMessage}`;
           <p className="text-sm mb-2">
             {apiProvider === API_PROVIDERS.OPENAI 
               ? 'Enter your OpenAI API key (requires billing setup):' 
-              : 'Enter your Poe API key (free tier available):'}
+              : 'Enter your Poe API key (requires subscription):'}
           </p>
           <div className="flex gap-2">
             <input
@@ -329,31 +331,63 @@ User question: ${userMessage}`;
               Save
             </Button>
           </div>
-          {apiProvider === API_PROVIDERS.OPENAI ? (
-            <div className="mt-2 text-xs space-y-1">
-              <p className="text-gray-500">Your key is stored locally and never sent to our servers.</p>
-              <p className="text-yellow-600">⚠️ OpenAI API requires billing setup to use.</p>
-              <button 
-                onClick={handleSwitchProvider} 
-                className="text-blue-500 hover:underline"
-              >
-                Switch to Poe API (free tier available)
-              </button>
-            </div>
-          ) : (
-            <div className="mt-2 text-xs space-y-1">
-              <p className="text-gray-500">Your key is stored locally and never sent to our servers.</p>
-              <p className="text-green-600">✓ Poe offers a free tier with approximately 1000 messages/month.</p>
-              <p className="text-gray-500">
-                <a 
-                  href="https://poe.com/api_settings" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
-                >
-                  Get your Poe API key here
-                </a>
-              </p>
+          
+          <div className="mt-3 text-xs space-y-1">
+            <p className="text-gray-500">Your key is stored locally and never sent to our servers.</p>
+            <p className="text-yellow-600">⚠️ Both OpenAI and Poe APIs require paid subscriptions.</p>
+            <button 
+              onClick={() => setShowFreeAlternatives(!showFreeAlternatives)} 
+              className="text-blue-500 hover:underline"
+            >
+              {showFreeAlternatives ? 'Hide free alternatives' : 'Show free alternatives'}
+            </button>
+          </div>
+          
+          {showFreeAlternatives && (
+            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-xs">
+              <h3 className="font-bold mb-1">Free Alternatives:</h3>
+              <ul className="list-disc pl-4 space-y-2">
+                <li>
+                  <strong>Ollama:</strong> Run local AI models on your own computer
+                  <div>
+                    <a 
+                      href="https://ollama.com/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      Download Ollama
+                    </a>
+                  </div>
+                </li>
+                <li>
+                  <strong>Hugging Face Chat:</strong> Free web interface for various models
+                  <div>
+                    <a 
+                      href="https://huggingface.co/chat/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      Use Hugging Face Chat
+                    </a>
+                  </div>
+                </li>
+                <li>
+                  <strong>ChatGPT Free Tier:</strong> Use the free version of ChatGPT
+                  <div>
+                    <a 
+                      href="https://chat.openai.com/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      Use ChatGPT (Free Version)
+                    </a>
+                  </div>
+                </li>
+              </ul>
+              <p className="mt-2">These options require manual copy/paste of your data, but don't need API keys or paid subscriptions.</p>
             </div>
           )}
         </div>
