@@ -16,6 +16,10 @@ The application has been enhanced with several major new features:
 
 2. **Dedicated Settings Page**: All configuration options have been moved to a separate settings page, giving the main tracking interface a cleaner, more focused design.
 
+3. **PDF Reports**: Generate and download comprehensive PDF reports of your savings progress, including all statistics and visualizations.
+
+4. **Social Media Sharing**: Easily share your progress as images on social media platforms.
+
 ## Overview
 
 This application helps you track your weekly savings toward a Porsche GT3. It visually represents your progress with charts and indicators, making it easier to stay motivated and on track with your savings goal.
@@ -42,14 +46,24 @@ This application helps you track your weekly savings toward a Porsche GT3. It vi
   - Ask questions about your savings progress
   - Get personalized advice based on your current stats
   - Receive encouragement and motivation from AI
-  - Powered by OpenAI's GPT models
+  - Powered by multiple AI providers (OpenAI, Azure, Claude, Ollama)
+- **PDF Reports**:
+  - Generate detailed PDF reports of your savings journey
+  - Include all statistics, progress data, and predictions
+  - Professionally formatted documents for record-keeping
+  - Download and save reports locally
+- **Social Sharing**:
+  - Generate images of your progress for social media
+  - Share your savings milestones with friends and family
+  - Customizable sharing options
 - **Dedicated Settings Page**:
   - All configuration options in one organized location
   - Clean, focused main interface for tracking
 - **Customization**:
   - Adjust total number of weeks in your tracking period
   - Adjust visible weeks in the interface
-  - Dark/Light theme toggle for comfortable viewing
+  - Dark/Light theme toggle with customizable theme colors
+  - Select primary color scheme to personalize your experience
 - **Data Management**:
   - Auto-save to local storage so your data persists
   - Export data as CSV for spreadsheet analysis
@@ -60,6 +74,7 @@ This application helps you track your weekly savings toward a Porsche GT3. It vi
   - Confetti celebrations when hitting savings milestones
   - Toast notifications for important actions
   - Responsive design for all devices
+  - Intuitive and modern user interface
 
 ## Technical Implementation
 
@@ -69,8 +84,10 @@ The application is built using:
 - React Router for page navigation
 - TailwindCSS for styling with dark mode support
 - Recharts for data visualization
+- jsPDF for PDF report generation
+- html2canvas for capturing screenshots and social shares
 - Canvas confetti for celebration animations
-- OpenAI API for AI assistant functionality
+- Multiple AI provider integrations (OpenAI, Azure, Claude, Ollama)
 - Local storage for data persistence
 
 ## How to Use
@@ -80,10 +97,12 @@ The application is built using:
 3. Set your start date and adjust the total tracking period
 4. Input your weekly savings/profits
 5. Track your progress with the visual charts and statistics
-6. Toggle between dark and light themes
+6. Toggle between dark and light themes and customize your theme colors
 7. Ask the AI Assistant for insights about your progress
-8. Export your data as CSV or JSON for backup
-9. Watch confetti celebrations when you hit milestones!
+8. Generate PDF reports for your records
+9. Share your progress on social media
+10. Export your data as CSV or JSON for backup
+11. Watch confetti celebrations when you hit milestones!
 
 ## AI Assistant Setup
 

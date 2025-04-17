@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
@@ -9,10 +9,10 @@ const MILESTONES = [10000, 25000, 50000, 75000, 100000, 150000, 200000, 250000];
 // Initialize with configurable number of weeks
 const createInitialWeeks = (numberOfWeeks) => {
   return Array.from({ length: numberOfWeeks }, (_, i) => ({
-    week: i + 1,
-    profit: 0,
-    cumulative: 0,
-  }));
+  week: i + 1,
+  profit: 0,
+  cumulative: 0,
+}));
 };
 
 export default function GT3Tracker() {
@@ -1115,7 +1115,7 @@ export default function GT3Tracker() {
           >
             {toast.emoji && <span className="text-xl">{toast.emoji}</span>}
             <p>{toast.message}</p>
-          </div>
+      </div>
         )}
         
         <Routes>
