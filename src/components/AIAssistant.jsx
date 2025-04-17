@@ -150,6 +150,17 @@ export default function AIAssistant({
 
   // Format data for the AI
   const createAIContext = useCallback(() => {
+    // Format the prediction data for the AI
+    let predictionInfo = "Not enough data yet";
+    
+    if (prediction) {
+      if (prediction.insufficient) {
+        predictionInfo = prediction.message || "Insufficient data";
+      } else {
+        predictionInfo = `${prediction.targetDate} (${prediction.confidence} confidence, based on ${prediction.dataPoints} weeks of data)`;
+      }
+    }
+    
     return {
       goalName,
       target: target.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
@@ -163,7 +174,7 @@ export default function AIAssistant({
         : '$0',
       currentStreak: streakInfo.currentStreak,
       bestStreak: streakInfo.bestStreak,
-      predictedCompletion: prediction ? prediction.targetDate : 'Not enough data',
+      predictedCompletion: predictionInfo,
       recentPerformance: weeks.slice(-4).map(week => ({ 
         week: week.week, 
         amount: week.profit.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) 
@@ -186,11 +197,12 @@ The user is saving for a ${context.goalName}. Here's their current data:
 - Average weekly saving: ${context.weeklyAverage}
 - Current streak: ${context.currentStreak} weeks
 - Best streak: ${context.bestStreak} weeks
-- Estimated completion date: ${context.predictedCompletion}
+- Estimated completion: ${context.predictedCompletion}
 - Recent 4 weeks: ${JSON.stringify(context.recentPerformance)}
 
 Please provide concise, helpful advice about their savings journey based on this data. 
-Be encouraging and practical.
+Be encouraging but realistic, and offer practical suggestions to help them reach their goal.
+If they don't have enough data yet, encourage them to input their weekly savings consistently.
 
 User question: ${userMessage}`;
 

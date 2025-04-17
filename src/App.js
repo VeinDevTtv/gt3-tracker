@@ -389,14 +389,31 @@ export default function GT3Tracker() {
   
   // Prediction calculation - when will goal be reached
   const prediction = useMemo(() => {
-    if (totalProfit === 0 || currentWeek <= 1) return null;
-    
-    // Calculate average weekly profit from weeks with data
+    // Calculate weeks with any profit data
     const weeksWithProfit = weeks.filter(week => week.profit > 0);
-    if (weeksWithProfit.length < 2) return null;
     
+    // Return early with a different type of prediction if no profit data at all
+    if (weeksWithProfit.length === 0) {
+      return {
+        insufficient: true,
+        message: "No savings data yet",
+        reason: "start_saving"
+      };
+    }
+    
+    // If only one week of data, we can still make a very rough estimate
+    // but we'll flag it as very preliminary
     const avgWeeklyProfit = weeksWithProfit.reduce((sum, week) => sum + week.profit, 0) / weeksWithProfit.length;
-    if (avgWeeklyProfit <= 0) return null;
+    
+    // If average profit is zero or negative, we can't make a prediction
+    if (avgWeeklyProfit <= 0) {
+      return {
+        insufficient: true,
+        message: "Unable to calculate",
+        reason: "negative_profit",
+        data: { avgWeeklyProfit }
+      };
+    }
     
     // Calculate how many more weeks needed
     const weeksNeeded = Math.ceil(remaining / avgWeeklyProfit);
@@ -406,16 +423,22 @@ export default function GT3Tracker() {
     const targetDate = new Date(today);
     targetDate.setDate(today.getDate() + (weeksNeeded * 7));
     
+    const formattedDate = targetDate.toLocaleDateString(undefined, { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    // Return a prediction with confidence level
     return {
       weeksNeeded,
-      targetDate: targetDate.toLocaleDateString(undefined, { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      }),
-      avgWeeklyProfit
+      targetDate: formattedDate,
+      avgWeeklyProfit,
+      confidence: weeksWithProfit.length === 1 ? "low" : 
+                 weeksWithProfit.length < 4 ? "medium" : "high",
+      dataPoints: weeksWithProfit.length
     };
-  }, [weeks, remaining, totalProfit, currentWeek]);
+  }, [weeks, remaining]);
 
   // Generate PDF report
   const generatePdfReport = useCallback(() => {
