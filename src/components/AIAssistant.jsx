@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from './ui/button';
-import { SendHorizontal, BrainCircuit } from 'lucide-react';
+import { SendHorizontal, BrainCircuit, Bug } from 'lucide-react';
 import { OpenAI } from 'openai';
 
 // Create a configurable OpenAI client
@@ -25,6 +25,8 @@ export default function AIAssistant({
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState(localStorage.getItem('openai-api-key') || '');
   const [showApiKeyInput, setShowApiKeyInput] = useState(!localStorage.getItem('openai-api-key'));
+  const [debugMode, setDebugMode] = useState(false);
+  const [errorDetails, setErrorDetails] = useState('');
 
   // Save API key to local storage
   const handleApiKeySave = () => {
@@ -65,6 +67,7 @@ export default function AIAssistant({
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
+    setErrorDetails('');
     
     try {
       // Get context data
@@ -92,6 +95,8 @@ export default function AIAssistant({
         Keep responses concise and focused on their savings journey. Offer encouragement and practical advice.`
       };
       
+      if (debugMode) console.log('Sending request to OpenAI with messages:', [systemMessage, ...messages, userMessage]);
+
       // Send to OpenAI
       const response = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
@@ -99,6 +104,8 @@ export default function AIAssistant({
         temperature: 0.7,
         max_tokens: 250
       });
+      
+      if (debugMode) console.log('Received response from OpenAI:', response);
       
       // Add OpenAI's response
       const assistantMessage = { 
@@ -108,20 +115,50 @@ export default function AIAssistant({
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error getting OpenAI response:', error);
+      
+      // Store detailed error for debug mode
+      setErrorDetails(JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      
+      // Provide more specific error messages
+      let errorMessage = 'Sorry, I encountered an error. Please check your API key or try again later.';
+      
+      if (error.message?.includes('401')) {
+        errorMessage = 'Invalid API key. Please check that you\'ve entered a valid OpenAI API key.';
+      } else if (error.message?.includes('429')) {
+        errorMessage = 'Rate limit exceeded. Your account has reached its API request limit or has insufficient quota.';
+      } else if (error.message?.includes('CORS')) {
+        errorMessage = 'CORS error detected. This may be due to browser security restrictions.';
+      } else if (error.message?.includes('Failed to fetch') || error.message?.includes('Network')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+      
+      if (debugMode) {
+        errorMessage += ` (Error: ${error.message})`;
+      }
+      
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please check your API key or try again later.' 
+        content: errorMessage
       }]);
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, apiKey, messages, createAIContext, goalName]);
+  }, [inputValue, apiKey, messages, createAIContext, goalName, debugMode]);
 
   return (
     <div className={`rounded-lg p-5 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
-      <div className="flex items-center gap-2 mb-4">
-        <BrainCircuit className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} />
-        <h2 className="text-xl font-bold">AI Assistant</h2>
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <BrainCircuit className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} />
+          <h2 className="text-xl font-bold">AI Assistant</h2>
+        </div>
+        <button 
+          onClick={() => setDebugMode(!debugMode)} 
+          className={`text-xs p-1 rounded ${debugMode ? 'bg-yellow-200 text-yellow-800' : 'text-gray-400 hover:text-gray-600'}`}
+          title="Toggle debug mode"
+        >
+          <Bug size={16} />
+        </button>
       </div>
       
       {showApiKeyInput ? (
@@ -176,6 +213,12 @@ export default function AIAssistant({
                   <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'} animation-delay-200`}></div>
                   <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'} animation-delay-400`}></div>
                 </div>
+              </div>
+            )}
+            {debugMode && errorDetails && (
+              <div className="mt-3 p-2 text-xs bg-red-100 text-red-800 rounded overflow-auto max-h-24">
+                <strong>Debug Error:</strong>
+                <pre>{errorDetails}</pre>
               </div>
             )}
           </div>
