@@ -1,70 +1,84 @@
-# Getting Started with Create React App
+# Porsche GT3 Savings Tracker
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React application to track your savings progress towards purchasing a Porsche GT3.
 
-## Available Scripts
+![Porsche GT3](https://files.porsche.com/filestore/image/multimedia/none/992-gt3-modelimage-sideshot/model/765dfc51-51bc-11eb-80d1-005056bbdc38/porsche-model.png)
 
-In the project directory, you can run:
+## Overview
 
-### `npm start`
+This application helps you track your weekly savings toward a Porsche GT3. It visually represents your progress with charts and indicators, making it easier to stay motivated and on track with your savings goal.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Features
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **Target Setting**: Set your savings target for the Porsche GT3
+- **Weekly Profit Tracking**: Input your weekly savings/profits
+- **Progress Visualization**: 
+  - Visual progress bar showing percentage toward goal
+  - Interactive chart showing weekly and cumulative savings
+  - Dynamic weekly target calculation to reach your goal
+- **Data Analysis**:
+  - Automatically calculates remaining amount
+  - Shows weekly average needed to reach target
+- **Customization**:
+  - Adjust number of visible weeks
+  - Reset all values with a single click
 
-### `npm test`
+## Technical Implementation
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+The application is built using:
 
-### `npm run build`
+- React 18
+- TailwindCSS for styling
+- Recharts for data visualization
+- Custom UI components (Card, Button, Input)
+- Responsive design for all devices
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## How to Use
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Set your target amount for the Porsche GT3
+2. Input your weekly savings/profits
+3. Track your progress with the visual charts and indicators
+4. Adjust visible weeks as needed
+5. Reset values if you want to start over
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Installation
 
-### `npm run eject`
+```bash
+# Clone the repository (if applicable)
+git clone <repository-url>
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+# Navigate to the project directory
+cd gt3-tracker
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# Install dependencies
+npm install
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+# Start the development server
+npm start
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Build for Production
 
-## Learn More
+```bash
+# Create a production build
+npm run build
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+# The build files will be in the 'build' directory
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Future Enhancements
 
-### Code Splitting
+Potential future features:
+- Data persistence with local storage or a backend
+- Multiple saving goals
+- Dark mode toggle
+- Export/import functionality for data backup
+- Email reminders for weekly deposits
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## About
 
-### Analyzing the Bundle Size
+This Porsche GT3 Tracker was developed by Abdelkarim to help track savings progress toward purchasing a Porsche GT3, making the journey toward this dream car more manageable and motivating.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## License
 
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This project is for personal use.
