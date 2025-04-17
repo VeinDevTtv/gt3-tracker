@@ -1,148 +1,72 @@
 # Porsche GT3 Savings Tracker
 
-A React application to track your savings progress towards purchasing a Porsche GT3.
+![Porsche GT3 Savings Tracker](gt3-tracker-demo.png)
 
-![Porsche GT3](https://files.porsche.com/filestore/image/multimedia/none/992-gt3-modelimage-sideshot/model/765dfc51-51bc-11eb-80d1-005056bbdc38/porsche-model.png)
+A React application designed to track your savings progress toward purchasing your dream Porsche GT3.
 
 ## Recent Updates
-
-The application has been enhanced with several major new features:
-
-1. **AI Assistant**: Now supporting multiple providers:
-   - OpenAI's API for GPT models
-   - Microsoft Azure OpenAI API
-   - Anthropic Claude API
-   - Ollama for local AI model hosting
-
-2. **Dedicated Settings Page**: All configuration options have been moved to a separate settings page, giving the main tracking interface a cleaner, more focused design.
-
-3. **PDF Reports**: Generate and download comprehensive PDF reports of your savings progress, including all statistics and visualizations.
-
-4. **Social Media Sharing**: Easily share your progress as images on social media platforms.
-
-## Overview
-
-This application helps you track your weekly savings toward a Porsche GT3. It visually represents your progress with charts and indicators, making it easier to stay motivated and on track with your savings goal.
+- Added AI Assistant powered by OpenAI's API, Ollama, or other providers
+- PDF report generation with shareable screenshots
+- Dedicated settings page with theme options
+- Social media sharing functionality
+- Weekly profit tracking with graphical visualization
 
 ## Features
-
-- **Customizable Goal Settings**:
-  - Set your savings target amount
-  - Customize the goal name (default is "Porsche GT3")
-  - Set a start date for your savings journey
-- **Weekly Profit Tracking**: 
-  - Input your weekly savings/profits
-  - Track consistent saving with streak counter
-- **Progress Visualization**: 
-  - Visual progress bar showing percentage toward goal with animation
-  - Interactive chart showing weekly and cumulative savings
-  - Toggle between cumulative and weekly chart views
-- **Advanced Statistics**:
-  - Total saved and remaining amount
-  - Weekly target calculation to reach your goal
-  - Current saving streak and best streak tracking
-  - Goal prediction based on your current saving rate
-- **AI Assistant**:
-  - Ask questions about your savings progress
-  - Get personalized advice based on your current stats
-  - Receive encouragement and motivation from AI
-  - Powered by multiple AI providers (OpenAI, Azure, Claude, Ollama)
-- **PDF Reports**:
-  - Generate detailed PDF reports of your savings journey
-  - Include all statistics, progress data, and predictions
-  - Professionally formatted documents for record-keeping
-  - Download and save reports locally
-- **Social Sharing**:
-  - Generate images of your progress for social media
-  - Share your savings milestones with friends and family
-  - Customizable sharing options
-- **Dedicated Settings Page**:
-  - All configuration options in one organized location
-  - Clean, focused main interface for tracking
-- **Customization**:
-  - Adjust total number of weeks in your tracking period
-  - Adjust visible weeks in the interface
-  - Dark/Light theme toggle with customizable theme colors
-  - Select primary color scheme to personalize your experience
-- **Data Management**:
-  - Auto-save to local storage so your data persists
-  - Export data as CSV for spreadsheet analysis
-  - Create JSON backups of your complete saving history
-  - Import from JSON backups to restore your data
-  - Reset data with confirmation dialog
-- **Enhanced Experience**:
-  - Confetti celebrations when hitting savings milestones
-  - Toast notifications for important actions
-  - Responsive design for all devices
-  - Intuitive and modern user interface
+- **Customizable Goal Settings:** Set your target amount, goal name, and weekly savings target.
+- **Weekly Profit Tracking:** Record your weekly earnings toward your goal.
+- **Progress Visualization:** View your progress with a responsive progress bar and interactive chart.
+- **Advanced Statistics:** Access detailed insights including:
+  - Total saved
+  - Amount remaining
+  - Current week
+  - Weeks remaining
+  - Weekly target average
+  - Predicted completion date
+- **Data Management:** Save progress locally with options to reset or export data.
+- **Theme Selection:** Choose between light, dark, and various accent color themes to customize your experience.
+- **PDF Reports:** Generate detailed PDF reports of your savings progress.
+- **Social Media Sharing:** Create and share screenshots of your progress on social media.
+- **Confetti Celebration:** Enjoy a confetti animation when adding a profitable week.
+- **Toast Notifications:** Receive feedback through elegant toast notifications.
+- **Responsive Design:** Optimized for both desktop and mobile devices.
+- **AI Assistant:** Get help with using the app or planning your savings strategy.
 
 ## Technical Implementation
-
 The application is built using:
-
-- React 18 with hooks for state management
-- React Router for page navigation
-- TailwindCSS for styling with dark mode support
+- React
+- TailwindCSS
 - Recharts for data visualization
-- jsPDF for PDF report generation
-- html2canvas for capturing screenshots and social shares
-- Canvas confetti for celebration animations
-- Multiple AI provider integrations (OpenAI, Azure, Claude, Ollama)
-- Local storage for data persistence
-
-## How to Use
-
-1. Set your target amount for the Porsche GT3
-2. Customize the goal name if desired
-3. Set your start date and adjust the total tracking period
-4. Input your weekly savings/profits
-5. Track your progress with the visual charts and statistics
-6. Toggle between dark and light themes and customize your theme colors
-7. Ask the AI Assistant for insights about your progress
-8. Generate PDF reports for your records
-9. Share your progress on social media
-10. Export your data as CSV or JSON for backup
-11. Watch confetti celebrations when you hit milestones!
+- HTML2PDF for PDF report generation
+- HTML2Canvas for image sharing
+- Local Storage for data persistence
 
 ## AI Assistant Setup
+The app includes an AI-powered assistant with support for multiple providers:
 
-The AI Assistant supports multiple providers:
+### OpenAI Configuration
+1. Obtain an API key from OpenAI: [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+2. In the app, navigate to the AI Assistant panel
+3. Click on "Configure API Key"
+4. Enter your OpenAI API key
+5. Click "Save Key"
 
-### OpenAI
-1. Create an account on [OpenAI](https://openai.com/)
-2. Generate an API key in your OpenAI dashboard
-3. Select OpenAI as your provider in the AI Assistant settings
-4. Enter the API key when prompted
-5. Choose your preferred model (e.g., gpt-4, gpt-3.5-turbo)
+### Ollama Configuration (Local AI)
+1. Download and install Ollama from [ollama.com](https://ollama.com)
+2. Run Ollama after installation
+3. Open a terminal/command prompt and pull a model: `ollama pull llama3`
+4. In the app, navigate to the AI Assistant panel
+5. Select "Ollama (Local AI)" as the provider
+6. Configure the server address (default: http://localhost:11434)
+7. Select your desired model (default: llama3)
+8. Click "Save Settings"
 
-### Azure OpenAI
-1. Set up Azure OpenAI service in your Azure account
-2. Obtain your API key, endpoint, and deployment name
-3. Select Azure OpenAI as your provider in the AI Assistant settings
-4. Enter your Azure API details when prompted
+### Other Providers
+The app also supports Poe and Replicate as AI providers, with similar configuration steps.
 
-### Anthropic Claude
-1. Create an account on [Anthropic](https://www.anthropic.com/)
-2. Generate an API key in your Anthropic dashboard
-3. Select Anthropic as your provider in the AI Assistant settings
-4. Enter the API key when prompted
-5. Choose your preferred Claude model
-
-### Ollama (Local AI)
-1. Install [Ollama](https://ollama.ai/) on your computer
-2. Pull your preferred model using Ollama CLI (e.g., `ollama pull llama3`)
-3. Ensure the Ollama server is running (typically on http://localhost:11434)
-4. Select Ollama as your provider in the AI Assistant settings
-5. Enter the host URL (default: http://localhost:11434)
-6. Specify which model to use (e.g., llama3, codellama, mistral)
-
-Your API keys are stored locally on your device and never sent to our servers.
-
-## Installation
-
+## Installation and Usage
 ```bash
 # Clone the repository
-git clone https://github.com/VeinDevTtv/gt3-tracker
+git clone https://github.com/your-username/gt3-tracker.git
 
 # Navigate to the project directory
 cd gt3-tracker
@@ -152,31 +76,21 @@ npm install
 
 # Start the development server
 npm start
-```
 
-## Build for Production
-
-```bash
-# Create a production build
+# Build for production
 npm run build
-
-# The build files will be in the 'build' directory
 ```
 
-## Future Enhancements
-
-Potential future features:
-- Multiple saving goals
-- Sharable progress links
-- Financial calculators (e.g., compound interest)
-- Notifications for weekly deposits
+## Potential Future Enhancements
+- More comprehensive statistics
+- Multiple goal tracking
+- Sharing goals with friends
 - Mobile app version
-- Additional AI capabilities and insights
-
-## About
-
-This Porsche GT3 Tracker was developed to help track savings progress toward purchasing a Porsche GT3, making the journey toward this dream car more manageable and motivating.
+- Import/export functionality
+- Cloud synchronization
+- Historical data comparison
+- Goal revision history
+- AI-powered savings recommendations
 
 ## License
-
-This project is for personal use.
+This project is licensed under the MIT License - see the LICENSE file for details.
