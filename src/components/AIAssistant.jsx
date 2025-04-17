@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from './ui/button';
-import { SendHorizontal, BrainCircuit, Bug } from 'lucide-react';
+import { SendHorizontal, BrainCircuit, Bug, RefreshCw } from 'lucide-react';
 import { OpenAI } from 'openai';
 
 // Create a configurable OpenAI client
@@ -8,6 +8,12 @@ const openai = new OpenAI({
   apiKey: '', // The user will need to provide their own API key
   dangerouslyAllowBrowser: true // This is for client-side usage
 });
+
+// API providers
+const API_PROVIDERS = {
+  OPENAI: 'openai',
+  POE: 'poe',
+};
 
 export default function AIAssistant({ 
   theme, 
@@ -23,17 +29,49 @@ export default function AIAssistant({
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [apiKey, setApiKey] = useState(localStorage.getItem('openai-api-key') || '');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(!localStorage.getItem('openai-api-key'));
+  
+  const [apiProvider, setApiProvider] = useState(
+    localStorage.getItem('ai-assistant-provider') || API_PROVIDERS.POE
+  );
+  
+  // OpenAI specific state
+  const [openaiApiKey, setOpenaiApiKey] = useState(
+    localStorage.getItem('openai-api-key') || ''
+  );
+  
+  // Poe specific state
+  const [poeApiKey, setPoeApiKey] = useState(
+    localStorage.getItem('poe-api-key') || ''
+  );
+  
+  const [showApiKeyInput, setShowApiKeyInput] = useState(
+    apiProvider === API_PROVIDERS.OPENAI ? !localStorage.getItem('openai-api-key') : !localStorage.getItem('poe-api-key')
+  );
+  
   const [debugMode, setDebugMode] = useState(false);
   const [errorDetails, setErrorDetails] = useState('');
 
   // Save API key to local storage
   const handleApiKeySave = () => {
-    if (apiKey.trim()) {
-      localStorage.setItem('openai-api-key', apiKey.trim());
+    if (apiProvider === API_PROVIDERS.OPENAI && openaiApiKey.trim()) {
+      localStorage.setItem('openai-api-key', openaiApiKey.trim());
+      setShowApiKeyInput(false);
+    } else if (apiProvider === API_PROVIDERS.POE && poeApiKey.trim()) {
+      localStorage.setItem('poe-api-key', poeApiKey.trim());
       setShowApiKeyInput(false);
     }
+  };
+
+  // Switch API provider
+  const handleSwitchProvider = () => {
+    const newProvider = apiProvider === API_PROVIDERS.OPENAI ? API_PROVIDERS.POE : API_PROVIDERS.OPENAI;
+    setApiProvider(newProvider);
+    localStorage.setItem('ai-assistant-provider', newProvider);
+    setShowApiKeyInput(
+      newProvider === API_PROVIDERS.OPENAI 
+        ? !localStorage.getItem('openai-api-key') 
+        : !localStorage.getItem('poe-api-key')
+    );
   };
 
   // Format data for the AI
@@ -59,9 +97,110 @@ export default function AIAssistant({
     };
   }, [goalName, target, totalProfit, progressPercentage, remaining, weeks, streakInfo, prediction]);
 
+  // Make a request to Poe API
+  const sendMessageToPoe = async (userMessage, context) => {
+    const apiKey = poeApiKey.trim();
+    if (!apiKey) throw new Error('Poe API key is required');
+
+    // Create a context message for Claude
+    const prompt = `You are a helpful financial assistant for a savings tracker app. 
+The user is saving for a ${context.goalName}. Here's their current data:
+- Target: ${context.target}
+- Total Saved: ${context.totalSaved} (${context.percentComplete} complete)
+- Remaining: ${context.remaining}
+- Tracking for ${context.weeksWithData} out of ${context.totalWeeks} weeks
+- Average weekly saving: ${context.weeklyAverage}
+- Current streak: ${context.currentStreak} weeks
+- Best streak: ${context.bestStreak} weeks
+- Estimated completion date: ${context.predictedCompletion}
+- Recent 4 weeks: ${JSON.stringify(context.recentPerformance)}
+
+Please provide concise, helpful advice about their savings journey based on this data. 
+Be encouraging and practical.
+
+User question: ${userMessage}`;
+
+    if (debugMode) console.log('Sending request to Poe with prompt:', prompt);
+
+    // Using Poe API
+    const response = await fetch('https://api.poe.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'claude-instant', // Using Claude Instant model
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 250,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Poe API error: ${response.status} ${response.statusText} - ${errorData.error?.message || JSON.stringify(errorData)}`);
+    }
+
+    const data = await response.json();
+    if (debugMode) console.log('Received response from Poe:', data);
+    
+    return data.choices[0].message.content;
+  };
+
   // Send message to OpenAI
+  const sendMessageToOpenAI = async (userMessage, context, previousMessages) => {
+    const apiKey = openaiApiKey.trim();
+    if (!apiKey) throw new Error('OpenAI API key is required');
+    
+    // Initialize OpenAI with user's API key
+    openai.apiKey = apiKey;
+    
+    // Create system message with context
+    const systemMessage = {
+      role: 'system',
+      content: `You are a helpful financial assistant for a savings tracker app. 
+      The user is saving for a ${goalName}. Use this data to give personalized advice:
+      Target: ${context.target}
+      Total Saved: ${context.totalSaved}
+      Progress: ${context.percentComplete}
+      Remaining: ${context.remaining}
+      Weeks with data: ${context.weeksWithData} out of ${context.totalWeeks}
+      Weekly Average: ${context.weeklyAverage}
+      Current Streak: ${context.currentStreak} weeks
+      Best Streak: ${context.bestStreak} weeks
+      Predicted goal completion: ${context.predictedCompletion}
+      Recent performance (last 4 weeks): ${JSON.stringify(context.recentPerformance)}
+      
+      Keep responses concise and focused on their savings journey. Offer encouragement and practical advice.`
+    };
+    
+    if (debugMode) console.log('Sending request to OpenAI with messages:', [systemMessage, ...previousMessages, { role: 'user', content: userMessage }]);
+
+    // Send to OpenAI
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [systemMessage, ...previousMessages, { role: 'user', content: userMessage }],
+      temperature: 0.7,
+      max_tokens: 250
+    });
+    
+    if (debugMode) console.log('Received response from OpenAI:', response);
+    
+    return response.choices[0].message.content;
+  };
+
+  // Send message to selected API provider
   const sendMessage = useCallback(async () => {
-    if (!inputValue.trim() || !apiKey) return;
+    if (!inputValue.trim()) return;
+    
+    // Check API key based on provider
+    if (apiProvider === API_PROVIDERS.OPENAI && !openaiApiKey) {
+      setShowApiKeyInput(true);
+      return;
+    } else if (apiProvider === API_PROVIDERS.POE && !poeApiKey) {
+      setShowApiKeyInput(true);
+      return;
+    }
     
     const userMessage = { role: 'user', content: inputValue };
     setMessages(prev => [...prev, userMessage]);
@@ -73,63 +212,46 @@ export default function AIAssistant({
       // Get context data
       const context = createAIContext();
       
-      // Initialize OpenAI with user's API key
-      openai.apiKey = apiKey;
+      // Send message to selected provider
+      let responseContent;
+      if (apiProvider === API_PROVIDERS.OPENAI) {
+        responseContent = await sendMessageToOpenAI(inputValue, context, messages);
+      } else {
+        responseContent = await sendMessageToPoe(inputValue, context);
+      }
       
-      // Create system message with context
-      const systemMessage = {
-        role: 'system',
-        content: `You are a helpful financial assistant for a savings tracker app. 
-        The user is saving for a ${goalName}. Use this data to give personalized advice:
-        Target: ${context.target}
-        Total Saved: ${context.totalSaved}
-        Progress: ${context.percentComplete}
-        Remaining: ${context.remaining}
-        Weeks with data: ${context.weeksWithData} out of ${context.totalWeeks}
-        Weekly Average: ${context.weeklyAverage}
-        Current Streak: ${context.currentStreak} weeks
-        Best Streak: ${context.bestStreak} weeks
-        Predicted goal completion: ${context.predictedCompletion}
-        Recent performance (last 4 weeks): ${JSON.stringify(context.recentPerformance)}
-        
-        Keep responses concise and focused on their savings journey. Offer encouragement and practical advice.`
-      };
-      
-      if (debugMode) console.log('Sending request to OpenAI with messages:', [systemMessage, ...messages, userMessage]);
-
-      // Send to OpenAI
-      const response = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [systemMessage, ...messages, userMessage],
-        temperature: 0.7,
-        max_tokens: 250
-      });
-      
-      if (debugMode) console.log('Received response from OpenAI:', response);
-      
-      // Add OpenAI's response
+      // Add response to messages
       const assistantMessage = { 
         role: 'assistant', 
-        content: response.choices[0].message.content 
+        content: responseContent
       };
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error getting OpenAI response:', error);
+      console.error(`Error getting ${apiProvider} response:`, error);
       
       // Store detailed error for debug mode
       setErrorDetails(JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
       
       // Provide more specific error messages
-      let errorMessage = 'Sorry, I encountered an error. Please check your API key or try again later.';
+      let errorMessage = `Sorry, I encountered an error with the ${apiProvider === API_PROVIDERS.OPENAI ? 'OpenAI' : 'Poe'} API. Please check your API key or try again later.`;
       
-      if (error.message?.includes('401')) {
-        errorMessage = 'Invalid API key. Please check that you\'ve entered a valid OpenAI API key.';
-      } else if (error.message?.includes('429')) {
-        errorMessage = 'Rate limit exceeded. Your account has reached its API request limit or has insufficient quota.';
-      } else if (error.message?.includes('CORS')) {
-        errorMessage = 'CORS error detected. This may be due to browser security restrictions.';
-      } else if (error.message?.includes('Failed to fetch') || error.message?.includes('Network')) {
-        errorMessage = 'Network error. Please check your internet connection.';
+      if (apiProvider === API_PROVIDERS.OPENAI) {
+        if (error.message?.includes('401')) {
+          errorMessage = 'Invalid OpenAI API key. Please check that you\'ve entered a valid key.';
+        } else if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('insufficient_quota')) {
+          errorMessage = 'OpenAI rate limit exceeded or insufficient quota. This likely means you need to set up billing for your OpenAI account. Consider switching to the free Poe API option.';
+        } else if (error.message?.includes('CORS')) {
+          errorMessage = 'CORS error detected. This may be due to browser security restrictions.';
+        } else if (error.message?.includes('Failed to fetch') || error.message?.includes('Network')) {
+          errorMessage = 'Network error. Please check your internet connection.';
+        }
+      } else {
+        // Poe API specific errors
+        if (error.message?.includes('401') || error.message?.includes('403')) {
+          errorMessage = 'Invalid Poe API key. Please check that you\'ve entered a valid key.';
+        } else if (error.message?.includes('429')) {
+          errorMessage = 'Poe API rate limit exceeded. Free accounts are limited to approximately 1000 messages per month.';
+        }
       }
       
       if (debugMode) {
@@ -143,7 +265,17 @@ export default function AIAssistant({
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, apiKey, messages, createAIContext, goalName, debugMode]);
+  }, [
+    inputValue, 
+    apiProvider, 
+    openaiApiKey, 
+    poeApiKey, 
+    messages, 
+    createAIContext, 
+    debugMode, 
+    sendMessageToOpenAI, 
+    sendMessageToPoe
+  ]);
 
   return (
     <div className={`rounded-lg p-5 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
@@ -152,29 +284,78 @@ export default function AIAssistant({
           <BrainCircuit className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} />
           <h2 className="text-xl font-bold">AI Assistant</h2>
         </div>
-        <button 
-          onClick={() => setDebugMode(!debugMode)} 
-          className={`text-xs p-1 rounded ${debugMode ? 'bg-yellow-200 text-yellow-800' : 'text-gray-400 hover:text-gray-600'}`}
-          title="Toggle debug mode"
-        >
-          <Bug size={16} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleSwitchProvider} 
+            className={`text-xs p-1 rounded flex items-center gap-1 ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'}`}
+            title={`Switch to ${apiProvider === API_PROVIDERS.OPENAI ? 'Poe API (Free)' : 'OpenAI API'}`}
+          >
+            <RefreshCw size={14} />
+            <span>{apiProvider === API_PROVIDERS.OPENAI ? 'Use Poe (Free)' : 'Use OpenAI'}</span>
+          </button>
+          <button 
+            onClick={() => setDebugMode(!debugMode)} 
+            className={`text-xs p-1 rounded ${debugMode ? 'bg-yellow-200 text-yellow-800' : 'text-gray-400 hover:text-gray-600'}`}
+            title="Toggle debug mode"
+          >
+            <Bug size={16} />
+          </button>
+        </div>
       </div>
       
       {showApiKeyInput ? (
         <div className="mb-4">
-          <p className="text-sm mb-2">Enter your OpenAI API key to enable the AI assistant:</p>
+          <p className="text-sm mb-2">
+            {apiProvider === API_PROVIDERS.OPENAI 
+              ? 'Enter your OpenAI API key (requires billing setup):' 
+              : 'Enter your Poe API key (free tier available):'}
+          </p>
           <div className="flex gap-2">
             <input
               type="password"
               className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
+              value={apiProvider === API_PROVIDERS.OPENAI ? openaiApiKey : poeApiKey}
+              onChange={(e) => 
+                apiProvider === API_PROVIDERS.OPENAI 
+                  ? setOpenaiApiKey(e.target.value) 
+                  : setPoeApiKey(e.target.value)
+              }
+              placeholder={apiProvider === API_PROVIDERS.OPENAI ? 'sk-...' : 'poe-...'}
             />
-            <Button onClick={handleApiKeySave} disabled={!apiKey.trim()}>Save</Button>
+            <Button 
+              onClick={handleApiKeySave} 
+              disabled={(apiProvider === API_PROVIDERS.OPENAI ? !openaiApiKey.trim() : !poeApiKey.trim())}
+            >
+              Save
+            </Button>
           </div>
-          <p className="text-xs mt-2 text-gray-500">Your key is stored locally and never sent to our servers.</p>
+          {apiProvider === API_PROVIDERS.OPENAI ? (
+            <div className="mt-2 text-xs space-y-1">
+              <p className="text-gray-500">Your key is stored locally and never sent to our servers.</p>
+              <p className="text-yellow-600">⚠️ OpenAI API requires billing setup to use.</p>
+              <button 
+                onClick={handleSwitchProvider} 
+                className="text-blue-500 hover:underline"
+              >
+                Switch to Poe API (free tier available)
+              </button>
+            </div>
+          ) : (
+            <div className="mt-2 text-xs space-y-1">
+              <p className="text-gray-500">Your key is stored locally and never sent to our servers.</p>
+              <p className="text-green-600">✓ Poe offers a free tier with approximately 1000 messages/month.</p>
+              <p className="text-gray-500">
+                <a 
+                  href="https://poe.com/api_settings" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline"
+                >
+                  Get your Poe API key here
+                </a>
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -191,6 +372,9 @@ export default function AIAssistant({
                   <li>"When will I reach my goal?"</li>
                   <li>"What should my weekly target be?"</li>
                 </ul>
+                <p className="text-xs mt-3">
+                  Using: <span className="font-semibold">{apiProvider === API_PROVIDERS.OPENAI ? 'OpenAI API' : 'Poe API (Claude)'}</span>
+                </p>
               </div>
             ) : (
               messages.map((msg, index) => (
@@ -230,11 +414,11 @@ export default function AIAssistant({
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Ask about your savings..."
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              disabled={isLoading || !apiKey}
+              disabled={isLoading}
             />
             <Button 
               onClick={sendMessage} 
-              disabled={!inputValue.trim() || isLoading || !apiKey}
+              disabled={!inputValue.trim() || isLoading}
               title="Send message"
             >
               <SendHorizontal size={18} />
@@ -242,13 +426,23 @@ export default function AIAssistant({
           </div>
           
           <div className="mt-3 flex justify-between items-center">
-            <button 
-              onClick={() => setShowApiKeyInput(true)}
-              className="text-xs text-blue-500 hover:underline"
-            >
-              Change API key
-            </button>
-            <span className="text-xs text-gray-500">Powered by OpenAI</span>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowApiKeyInput(true)}
+                className="text-xs text-blue-500 hover:underline"
+              >
+                Change API key
+              </button>
+              <button 
+                onClick={handleSwitchProvider}
+                className="text-xs text-blue-500 hover:underline"
+              >
+                Switch to {apiProvider === API_PROVIDERS.OPENAI ? 'Poe API' : 'OpenAI API'}
+              </button>
+            </div>
+            <span className="text-xs text-gray-500">
+              Powered by {apiProvider === API_PROVIDERS.OPENAI ? 'OpenAI' : 'Poe (Claude)'}
+            </span>
           </div>
         </>
       )}
