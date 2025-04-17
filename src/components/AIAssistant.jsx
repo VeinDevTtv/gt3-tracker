@@ -92,28 +92,123 @@ export default function AIAssistant({
         Keep responses concise and focused on their savings journey. Offer encouragement and practical advice.`
       };
       
-      // Send message to OpenAI
+      // Send to OpenAI
       const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [systemMessage, userMessage],
-        max_tokens: 1000,
-        n: 1,
-        stop: null,
+        model: 'gpt-3.5-turbo',
+        messages: [systemMessage, ...messages, userMessage],
         temperature: 0.7,
+        max_tokens: 250
       });
       
-      // Update messages
-      setMessages(prev => [...prev, response.choices[0].message]);
+      // Add OpenAI's response
+      const assistantMessage = { 
+        role: 'assistant', 
+        content: response.choices[0].message.content 
+      };
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error sending message to OpenAI:', error);
+      console.error('Error getting OpenAI response:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Sorry, I encountered an error. Please check your API key or try again later.' 
+      }]);
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, apiKey, createAIContext]);
+  }, [inputValue, apiKey, messages, createAIContext, goalName]);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Rest of the component code remains unchanged */}
+    <div className={`rounded-lg p-5 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
+      <div className="flex items-center gap-2 mb-4">
+        <BrainCircuit className={theme === 'dark' ? 'text-blue-400' : 'text-blue-600'} />
+        <h2 className="text-xl font-bold">AI Assistant</h2>
+      </div>
+      
+      {showApiKeyInput ? (
+        <div className="mb-4">
+          <p className="text-sm mb-2">Enter your OpenAI API key to enable the AI assistant:</p>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-..."
+            />
+            <Button onClick={handleApiKeySave} disabled={!apiKey.trim()}>Save</Button>
+          </div>
+          <p className="text-xs mt-2 text-gray-500">Your key is stored locally and never sent to our servers.</p>
+        </div>
+      ) : (
+        <>
+          <div 
+            className={`h-64 overflow-y-auto mb-4 p-3 rounded ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}
+          >
+            {messages.length === 0 ? (
+              <div className="text-center py-10 text-gray-500">
+                <p>Ask me anything about your savings!</p>
+                <p className="text-sm mt-2">Examples:</p>
+                <ul className="text-xs mt-1 space-y-1">
+                  <li>"How am I doing with my savings?"</li>
+                  <li>"What's my current streak?"</li>
+                  <li>"When will I reach my goal?"</li>
+                  <li>"What should my weekly target be?"</li>
+                </ul>
+              </div>
+            ) : (
+              messages.map((msg, index) => (
+                <div 
+                  key={index} 
+                  className={`mb-3 p-2 rounded ${
+                    msg.role === 'user' 
+                      ? theme === 'dark' ? 'bg-blue-800 ml-8' : 'bg-blue-100 ml-8' 
+                      : theme === 'dark' ? 'bg-gray-600 mr-8' : 'bg-white mr-8 shadow-sm'
+                  }`}
+                >
+                  <p className="text-sm">{msg.content}</p>
+                </div>
+              ))
+            )}
+            {isLoading && (
+              <div className={`p-2 rounded ${theme === 'dark' ? 'bg-gray-600 mr-8' : 'bg-white mr-8 shadow-sm'}`}>
+                <div className="flex space-x-2 justify-center items-center h-6">
+                  <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'}`}></div>
+                  <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'} animation-delay-200`}></div>
+                  <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'} animation-delay-400`}></div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex gap-2">
+            <input
+              className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Ask about your savings..."
+              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+              disabled={isLoading || !apiKey}
+            />
+            <Button 
+              onClick={sendMessage} 
+              disabled={!inputValue.trim() || isLoading || !apiKey}
+              title="Send message"
+            >
+              <SendHorizontal size={18} />
+            </Button>
+          </div>
+          
+          <div className="mt-3 flex justify-between items-center">
+            <button 
+              onClick={() => setShowApiKeyInput(true)}
+              className="text-xs text-blue-500 hover:underline"
+            >
+              Change API key
+            </button>
+            <span className="text-xs text-gray-500">Powered by OpenAI</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
