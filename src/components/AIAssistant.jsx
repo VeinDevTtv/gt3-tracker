@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from './ui/button';
-import { SendHorizontal, BrainCircuit, Bug, RefreshCw } from 'lucide-react';
+import { SendHorizontal, BrainCircuit, Bug, RefreshCw, Cpu } from 'lucide-react';
 import { OpenAI } from 'openai';
 
 // Create a configurable OpenAI client
@@ -13,7 +13,8 @@ const openai = new OpenAI({
 const API_PROVIDERS = {
   OPENAI: 'openai',
   POE: 'poe',
-  REPLICATE: 'replicate'
+  REPLICATE: 'replicate',
+  OLLAMA: 'ollama'
 };
 
 export default function AIAssistant({ 
@@ -32,7 +33,7 @@ export default function AIAssistant({
   const [isLoading, setIsLoading] = useState(false);
   
   const [apiProvider, setApiProvider] = useState(
-    localStorage.getItem('ai-assistant-provider') || API_PROVIDERS.REPLICATE
+    localStorage.getItem('ai-assistant-provider') || API_PROVIDERS.OLLAMA
   );
   
   // OpenAI specific state
@@ -50,19 +51,56 @@ export default function AIAssistant({
     localStorage.getItem('replicate-api-key') || ''
   );
   
+  // Ollama specific state
+  const [ollamaHost, setOllamaHost] = useState(
+    localStorage.getItem('ollama-host') || 'http://localhost:11434'
+  );
+  
+  const [ollamaModel, setOllamaModel] = useState(
+    localStorage.getItem('ollama-model') || 'llama3'
+  );
+  
   const [showApiKeyInput, setShowApiKeyInput] = useState(
     apiProvider === API_PROVIDERS.OPENAI 
       ? !localStorage.getItem('openai-api-key') 
       : apiProvider === API_PROVIDERS.POE 
         ? !localStorage.getItem('poe-api-key')
-        : !localStorage.getItem('replicate-api-key')
+        : apiProvider === API_PROVIDERS.REPLICATE
+          ? !localStorage.getItem('replicate-api-key')
+          : !localStorage.getItem('ollama-host')
   );
   
+  const [ollamaStatus, setOllamaStatus] = useState('unknown'); // 'unknown', 'running', 'error'
   const [debugMode, setDebugMode] = useState(false);
   const [errorDetails, setErrorDetails] = useState('');
   const [showFreeAlternatives, setShowFreeAlternatives] = useState(false);
 
-  // Save API key to local storage
+  // Check Ollama status when it's selected
+  useEffect(() => {
+    if (apiProvider === API_PROVIDERS.OLLAMA) {
+      checkOllamaStatus();
+    }
+  }, [apiProvider, ollamaHost]);
+
+  // Check if Ollama is running
+  const checkOllamaStatus = async () => {
+    try {
+      const response = await fetch(`${ollamaHost}/api/tags`);
+      if (response.ok) {
+        setOllamaStatus('running');
+        return true;
+      } else {
+        setOllamaStatus('error');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking Ollama status:', error);
+      setOllamaStatus('error');
+      return false;
+    }
+  };
+
+  // Save API key/settings to local storage
   const handleApiKeySave = () => {
     if (apiProvider === API_PROVIDERS.OPENAI && openaiApiKey.trim()) {
       localStorage.setItem('openai-api-key', openaiApiKey.trim());
@@ -73,6 +111,11 @@ export default function AIAssistant({
     } else if (apiProvider === API_PROVIDERS.REPLICATE && replicateApiKey.trim()) {
       localStorage.setItem('replicate-api-key', replicateApiKey.trim());
       setShowApiKeyInput(false);
+    } else if (apiProvider === API_PROVIDERS.OLLAMA) {
+      localStorage.setItem('ollama-host', ollamaHost.trim());
+      localStorage.setItem('ollama-model', ollamaModel.trim());
+      setShowApiKeyInput(false);
+      checkOllamaStatus();
     }
   };
 
@@ -85,8 +128,14 @@ export default function AIAssistant({
         ? !localStorage.getItem('openai-api-key') 
         : newProvider === API_PROVIDERS.POE
           ? !localStorage.getItem('poe-api-key')
-          : !localStorage.getItem('replicate-api-key')
+          : newProvider === API_PROVIDERS.REPLICATE
+            ? !localStorage.getItem('replicate-api-key')
+            : !localStorage.getItem('ollama-host')
     );
+    
+    if (newProvider === API_PROVIDERS.OLLAMA) {
+      checkOllamaStatus();
+    }
   };
 
   // Format data for the AI
@@ -111,6 +160,56 @@ export default function AIAssistant({
       }))
     };
   }, [goalName, target, totalProfit, progressPercentage, remaining, weeks, streakInfo, prediction]);
+
+  // Send message to Ollama
+  const sendMessageToOllama = async (userMessage, context) => {
+    if (!ollamaHost.trim()) throw new Error('Ollama host is required');
+    if (!ollamaModel.trim()) throw new Error('Ollama model is required');
+
+    // Create a context message
+    const prompt = `You are a helpful financial assistant for a savings tracker app. 
+The user is saving for a ${context.goalName}. Here's their current data:
+- Target: ${context.target}
+- Total Saved: ${context.totalSaved} (${context.percentComplete} complete)
+- Remaining: ${context.remaining}
+- Tracking for ${context.weeksWithData} out of ${context.totalWeeks} weeks
+- Average weekly saving: ${context.weeklyAverage}
+- Current streak: ${context.currentStreak} weeks
+- Best streak: ${context.bestStreak} weeks
+- Estimated completion date: ${context.predictedCompletion}
+- Recent 4 weeks: ${JSON.stringify(context.recentPerformance)}
+
+Please provide concise, helpful advice about their savings journey based on this data. 
+Be encouraging and practical.
+
+User question: ${userMessage}`;
+
+    if (debugMode) console.log('Sending request to Ollama with prompt:', prompt);
+
+    // Using Ollama API
+    const response = await fetch(`${ollamaHost}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: ollamaModel,
+        prompt: prompt,
+        stream: false
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Ollama API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    if (debugMode) console.log('Received response from Ollama:', data);
+    
+    // Extract just the response text
+    return data.response;
+  };
 
   // Make a request to Replicate API
   const sendMessageToReplicate = async (userMessage, context) => {
@@ -294,7 +393,7 @@ User question: ${userMessage}`;
   const sendMessage = useCallback(async () => {
     if (!inputValue.trim()) return;
     
-    // Check API key based on provider
+    // Check API key/settings based on provider
     if (apiProvider === API_PROVIDERS.OPENAI && !openaiApiKey) {
       setShowApiKeyInput(true);
       return;
@@ -304,6 +403,16 @@ User question: ${userMessage}`;
     } else if (apiProvider === API_PROVIDERS.REPLICATE && !replicateApiKey) {
       setShowApiKeyInput(true);
       return;
+    } else if (apiProvider === API_PROVIDERS.OLLAMA) {
+      // Check if Ollama is running
+      const isRunning = await checkOllamaStatus();
+      if (!isRunning) {
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: 'Ollama server is not running. Make sure Ollama is installed and running on your computer. If you just installed it, you may need to restart your browser.'
+        }]);
+        return;
+      }
     }
     
     const userMessage = { role: 'user', content: inputValue };
@@ -322,8 +431,10 @@ User question: ${userMessage}`;
         responseContent = await sendMessageToOpenAI(inputValue, context, messages);
       } else if (apiProvider === API_PROVIDERS.POE) {
         responseContent = await sendMessageToPoe(inputValue, context);
-      } else {
+      } else if (apiProvider === API_PROVIDERS.REPLICATE) {
         responseContent = await sendMessageToReplicate(inputValue, context);
+      } else if (apiProvider === API_PROVIDERS.OLLAMA) {
+        responseContent = await sendMessageToOllama(inputValue, context);
       }
       
       // Add response to messages
@@ -344,8 +455,10 @@ User question: ${userMessage}`;
           ? 'OpenAI' 
           : apiProvider === API_PROVIDERS.POE 
             ? 'Poe' 
-            : 'Replicate'
-      } API. Please check your API key or try again later.`;
+            : apiProvider === API_PROVIDERS.REPLICATE
+              ? 'Replicate'
+              : 'Ollama'
+      } API. Please check your settings or try again later.`;
       
       if (apiProvider === API_PROVIDERS.OPENAI) {
         if (error.message?.includes('401')) {
@@ -365,8 +478,7 @@ User question: ${userMessage}`;
         } else if (error.message?.includes('429')) {
           errorMessage = 'Poe API rate limit exceeded.';
         }
-      } else {
-        // Replicate API specific errors
+      } else if (apiProvider === API_PROVIDERS.REPLICATE) {
         if (error.message?.includes('401') || error.message?.includes('403')) {
           errorMessage = 'Invalid Replicate API key. Please check that you\'ve entered a valid key.';
         } else if (error.message?.includes('429')) {
@@ -380,6 +492,12 @@ User question: ${userMessage}`;
             errorMessage += ' Switching to OpenAI API for now.';
             handleSwitchProvider(API_PROVIDERS.OPENAI);
           }
+        }
+      } else if (apiProvider === API_PROVIDERS.OLLAMA) {
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('Network Error')) {
+          errorMessage = 'Unable to connect to Ollama server. Make sure Ollama is installed and running on your computer.';
+        } else if (error.message?.includes('not found')) {
+          errorMessage = `Model "${ollamaModel}" not found. You may need to run "ollama pull ${ollamaModel}" in your terminal first.`;
         }
       }
       
@@ -400,9 +518,13 @@ User question: ${userMessage}`;
     openaiApiKey, 
     poeApiKey,
     replicateApiKey,
+    ollamaHost,
+    ollamaModel,
+    ollamaStatus,
     messages, 
     createAIContext, 
     debugMode,
+    checkOllamaStatus,
     handleSwitchProvider
   ]);
 
@@ -419,7 +541,8 @@ User question: ${userMessage}`;
             onChange={(e) => handleSwitchProvider(e.target.value)}
             className={`text-xs py-1 px-2 rounded ${theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100'}`}
           >
-            <option value={API_PROVIDERS.REPLICATE}>Replicate (Free)</option>
+            <option value={API_PROVIDERS.OLLAMA}>Ollama (Local AI)</option>
+            <option value={API_PROVIDERS.REPLICATE}>Replicate (Free Credits)</option>
             <option value={API_PROVIDERS.OPENAI}>OpenAI (Paid)</option>
             <option value={API_PROVIDERS.POE}>Poe (Paid)</option>
           </select>
@@ -440,52 +563,105 @@ User question: ${userMessage}`;
               ? 'Enter your OpenAI API key (requires billing setup):' 
               : apiProvider === API_PROVIDERS.POE
                 ? 'Enter your Poe API key (requires subscription):'
-                : 'Enter your Replicate API key (free credits available):'}
+                : apiProvider === API_PROVIDERS.REPLICATE
+                  ? 'Enter your Replicate API key (free credits available):'
+                  : 'Configure Ollama settings:'}
           </p>
-          <div className="flex gap-2">
-            <input
-              type="password"
-              className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              value={
-                apiProvider === API_PROVIDERS.OPENAI 
-                  ? openaiApiKey 
-                  : apiProvider === API_PROVIDERS.POE
-                    ? poeApiKey
-                    : replicateApiKey
-              }
-              onChange={(e) => {
-                if (apiProvider === API_PROVIDERS.OPENAI) {
-                  setOpenaiApiKey(e.target.value);
-                } else if (apiProvider === API_PROVIDERS.POE) {
-                  setPoeApiKey(e.target.value);
-                } else {
-                  setReplicateApiKey(e.target.value);
+          
+          {apiProvider === API_PROVIDERS.OLLAMA ? (
+            <div className="space-y-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs">Ollama Server Address</label>
+                <input
+                  type="text"
+                  className={`p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                  value={ollamaHost}
+                  onChange={(e) => setOllamaHost(e.target.value)}
+                  placeholder="http://localhost:11434"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs">Model Name</label>
+                <input
+                  type="text"
+                  className={`p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                  value={ollamaModel}
+                  onChange={(e) => setOllamaModel(e.target.value)}
+                  placeholder="llama3"
+                />
+                <p className="text-xs text-gray-500 mt-1">Common models: llama3, mistral, gemma, phi</p>
+              </div>
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleApiKeySave} 
+                  disabled={!ollamaHost.trim() || !ollamaModel.trim()}
+                >
+                  Save &amp; Test Connection
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="password"
+                className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                value={
+                  apiProvider === API_PROVIDERS.OPENAI 
+                    ? openaiApiKey 
+                    : apiProvider === API_PROVIDERS.POE
+                      ? poeApiKey
+                      : replicateApiKey
                 }
-              }}
-              placeholder={
-                apiProvider === API_PROVIDERS.OPENAI 
-                  ? 'sk-...' 
-                  : apiProvider === API_PROVIDERS.POE
-                    ? 'poe-...'
-                    : 'r8_...'
-              }
-            />
-            <Button 
-              onClick={handleApiKeySave} 
-              disabled={
-                (apiProvider === API_PROVIDERS.OPENAI && !openaiApiKey.trim()) || 
-                (apiProvider === API_PROVIDERS.POE && !poeApiKey.trim()) ||
-                (apiProvider === API_PROVIDERS.REPLICATE && !replicateApiKey.trim())
-              }
-            >
-              Save
-            </Button>
-          </div>
+                onChange={(e) => {
+                  if (apiProvider === API_PROVIDERS.OPENAI) {
+                    setOpenaiApiKey(e.target.value);
+                  } else if (apiProvider === API_PROVIDERS.POE) {
+                    setPoeApiKey(e.target.value);
+                  } else {
+                    setReplicateApiKey(e.target.value);
+                  }
+                }}
+                placeholder={
+                  apiProvider === API_PROVIDERS.OPENAI 
+                    ? 'sk-...' 
+                    : apiProvider === API_PROVIDERS.POE
+                      ? 'poe-...'
+                      : 'r8_...'
+                }
+              />
+              <Button 
+                onClick={handleApiKeySave} 
+                disabled={
+                  (apiProvider === API_PROVIDERS.OPENAI && !openaiApiKey.trim()) || 
+                  (apiProvider === API_PROVIDERS.POE && !poeApiKey.trim()) ||
+                  (apiProvider === API_PROVIDERS.REPLICATE && !replicateApiKey.trim())
+                }
+              >
+                Save
+              </Button>
+            </div>
+          )}
           
           <div className="mt-3 text-xs space-y-1">
-            <p className="text-gray-500">Your key is stored locally and never sent to our servers.</p>
+            <p className="text-gray-500">Your settings are stored locally and never sent to our servers.</p>
             
-            {apiProvider === API_PROVIDERS.REPLICATE ? (
+            {apiProvider === API_PROVIDERS.OLLAMA && (
+              <>
+                <p className="text-green-600">✓ Runs completely locally - no API keys or payments needed!</p>
+                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded text-xs">
+                  <h3 className="font-bold mb-1">Ollama Setup Guide:</h3>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>Download and install Ollama from <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">ollama.com</a></li>
+                    <li>Run Ollama after installation</li>
+                    <li>Open a terminal/command prompt and run: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">ollama pull llama3</code></li>
+                    <li>Wait for the model to download (one-time setup)</li>
+                    <li>Make sure Ollama is running in the background</li>
+                  </ol>
+                </div>
+              </>
+            )}
+            
+            {apiProvider === API_PROVIDERS.REPLICATE && (
               <>
                 <p className="text-green-600">✓ Replicate offers free credits for new users!</p>
                 <p className="text-gray-500">
@@ -499,82 +675,20 @@ User question: ${userMessage}`;
                   </a>
                 </p>
               </>
-            ) : (
+            )}
+            
+            {(apiProvider === API_PROVIDERS.OPENAI || apiProvider === API_PROVIDERS.POE) && (
               <>
                 <p className="text-yellow-600">⚠️ Both OpenAI and Poe APIs require paid subscriptions.</p>
                 <button 
-                  onClick={() => handleSwitchProvider(API_PROVIDERS.REPLICATE)} 
+                  onClick={() => handleSwitchProvider(API_PROVIDERS.OLLAMA)} 
                   className="text-blue-500 hover:underline"
                 >
-                  Switch to Replicate (free credits available)
+                  Switch to Ollama (completely free, local AI)
                 </button>
               </>
             )}
-            
-            {apiProvider !== API_PROVIDERS.REPLICATE && (
-              <button 
-                onClick={() => setShowFreeAlternatives(!showFreeAlternatives)} 
-                className="block mt-2 text-blue-500 hover:underline"
-              >
-                {showFreeAlternatives ? 'Hide other free alternatives' : 'Show other free alternatives'}
-              </button>
-            )}
           </div>
-          
-          {showFreeAlternatives && apiProvider !== API_PROVIDERS.REPLICATE && (
-            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-xs">
-              <h3 className="font-bold mb-1">Other Free Alternatives:</h3>
-              <ul className="list-disc pl-4 space-y-2">
-                <li>
-                  <strong>Ollama:</strong> Run local AI models on your own computer
-                  <div>
-                    <a 
-                      href="https://ollama.com/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline"
-                    >
-                      Download Ollama
-                    </a>
-                  </div>
-                </li>
-                <li>
-                  <strong>Hugging Face Chat:</strong> Free web interface for various models
-                  <div>
-                    <a 
-                      href="https://huggingface.co/chat/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline"
-                    >
-                      Use Hugging Face Chat
-                    </a>
-                  </div>
-                </li>
-                <li>
-                  <strong>ChatGPT Free Tier:</strong> Use the free version of ChatGPT
-                  <div>
-                    <a 
-                      href="https://chat.openai.com/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline"
-                    >
-                      Use ChatGPT (Free Version)
-                    </a>
-                  </div>
-                </li>
-              </ul>
-              <p className="mt-2">These options require manual copy/paste of your data, but don't need API keys or paid subscriptions.</p>
-              
-              {apiProvider === API_PROVIDERS.REPLICATE && (
-                <div className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded">
-                  <p className="font-semibold">Note about Replicate:</p>
-                  <p>Replicate requires a backend server to work from a browser due to CORS restrictions. For direct browser use, try the other alternatives.</p>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       ) : (
         <>
@@ -597,10 +711,26 @@ User question: ${userMessage}`;
                       ? 'OpenAI API' 
                       : apiProvider === API_PROVIDERS.POE
                         ? 'Poe API (Claude)'
-                        : 'Replicate API (Llama 4)'
+                        : apiProvider === API_PROVIDERS.REPLICATE
+                          ? 'Replicate API (Llama 4)'
+                          : `Ollama (${ollamaModel})`
                     }
                   </span>
                 </p>
+                {apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'running' && (
+                  <p className="text-xs text-green-600 mt-1">✓ Ollama server running locally</p>
+                )}
+                {apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'error' && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center justify-center gap-1">
+                    <span>⚠ Ollama not running</span>
+                    <button 
+                      onClick={() => setShowApiKeyInput(true)} 
+                      className="underline"
+                    >
+                      Setup
+                    </button>
+                  </p>
+                )}
                 {apiProvider === API_PROVIDERS.REPLICATE && (
                   <p className="text-xs text-green-600 mt-1">✓ Free credits available with new Replicate account</p>
                 )}
@@ -643,11 +773,11 @@ User question: ${userMessage}`;
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Ask about your savings..."
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              disabled={isLoading}
+              disabled={isLoading || (apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'error')}
             />
             <Button 
               onClick={sendMessage} 
-              disabled={!inputValue.trim() || isLoading}
+              disabled={!inputValue.trim() || isLoading || (apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'error')}
               title="Send message"
             >
               <SendHorizontal size={18} />
@@ -660,7 +790,7 @@ User question: ${userMessage}`;
                 onClick={() => setShowApiKeyInput(true)}
                 className="text-xs text-blue-500 hover:underline"
               >
-                Change API key
+                {apiProvider === API_PROVIDERS.OLLAMA ? 'Ollama Settings' : 'Change API Key'}
               </button>
             </div>
             <span className="text-xs text-gray-500">
@@ -669,7 +799,9 @@ User question: ${userMessage}`;
                   ? 'OpenAI' 
                   : apiProvider === API_PROVIDERS.POE 
                     ? 'Poe (Claude)' 
-                    : 'Replicate (Llama 4)'
+                    : apiProvider === API_PROVIDERS.REPLICATE
+                      ? 'Replicate (Llama 4)'
+                      : `Ollama (${ollamaModel})`
               }
             </span>
           </div>

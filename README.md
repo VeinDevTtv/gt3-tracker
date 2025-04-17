@@ -6,9 +6,13 @@ A React application to track your savings progress towards purchasing a Porsche 
 
 ## Recent Updates
 
-The application has been enhanced with two major new features:
+The application has been enhanced with several major new features:
 
-1. **AI Assistant**: Using OpenAI's API, you can now ask questions about your savings progress and receive personalized insights, advice, and encouragement based on your current stats.
+1. **AI Assistant**: Now supporting multiple providers:
+   - OpenAI's API for GPT models
+   - Microsoft Azure OpenAI API
+   - Anthropic Claude API
+   - Ollama for local AI model hosting
 
 2. **Dedicated Settings Page**: All configuration options have been moved to a separate settings page, giving the main tracking interface a cleaner, more focused design.
 
@@ -83,12 +87,37 @@ The application is built using:
 
 ## AI Assistant Setup
 
-The AI Assistant requires an OpenAI API key to function:
+The AI Assistant supports multiple providers:
 
+### OpenAI
 1. Create an account on [OpenAI](https://openai.com/)
 2. Generate an API key in your OpenAI dashboard
-3. Enter the API key when prompted in the app
-4. Your key is stored locally on your device and never sent to our servers
+3. Select OpenAI as your provider in the AI Assistant settings
+4. Enter the API key when prompted
+5. Choose your preferred model (e.g., gpt-4, gpt-3.5-turbo)
+
+### Azure OpenAI
+1. Set up Azure OpenAI service in your Azure account
+2. Obtain your API key, endpoint, and deployment name
+3. Select Azure OpenAI as your provider in the AI Assistant settings
+4. Enter your Azure API details when prompted
+
+### Anthropic Claude
+1. Create an account on [Anthropic](https://www.anthropic.com/)
+2. Generate an API key in your Anthropic dashboard
+3. Select Anthropic as your provider in the AI Assistant settings
+4. Enter the API key when prompted
+5. Choose your preferred Claude model
+
+### Ollama (Local AI)
+1. Install [Ollama](https://ollama.ai/) on your computer
+2. Pull your preferred model using Ollama CLI (e.g., `ollama pull llama3`)
+3. Ensure the Ollama server is running (typically on http://localhost:11434)
+4. Select Ollama as your provider in the AI Assistant settings
+5. Enter the host URL (default: http://localhost:11434)
+6. Specify which model to use (e.g., llama3, codellama, mistral)
+
+Your API keys are stored locally on your device and never sent to our servers.
 
 ## Installation
 
