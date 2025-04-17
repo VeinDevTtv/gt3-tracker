@@ -94,7 +94,7 @@ The AI Assistant requires an OpenAI API key to function:
 
 ```bash
 # Clone the repository
-git clone https://github.com/YourUsername/gt3-tracker
+git clone https://github.com/VeinDevTtv/gt3-tracker
 
 # Navigate to the project directory
 cd gt3-tracker

@@ -13,6 +13,7 @@ const openai = new OpenAI({
 const API_PROVIDERS = {
   OPENAI: 'openai',
   POE: 'poe',
+  REPLICATE: 'replicate'
 };
 
 export default function AIAssistant({ 
@@ -31,7 +32,7 @@ export default function AIAssistant({
   const [isLoading, setIsLoading] = useState(false);
   
   const [apiProvider, setApiProvider] = useState(
-    localStorage.getItem('ai-assistant-provider') || API_PROVIDERS.OPENAI
+    localStorage.getItem('ai-assistant-provider') || API_PROVIDERS.REPLICATE
   );
   
   // OpenAI specific state
@@ -43,9 +44,18 @@ export default function AIAssistant({
   const [poeApiKey, setPoeApiKey] = useState(
     localStorage.getItem('poe-api-key') || ''
   );
+
+  // Replicate specific state  
+  const [replicateApiKey, setReplicateApiKey] = useState(
+    localStorage.getItem('replicate-api-key') || ''
+  );
   
   const [showApiKeyInput, setShowApiKeyInput] = useState(
-    apiProvider === API_PROVIDERS.OPENAI ? !localStorage.getItem('openai-api-key') : !localStorage.getItem('poe-api-key')
+    apiProvider === API_PROVIDERS.OPENAI 
+      ? !localStorage.getItem('openai-api-key') 
+      : apiProvider === API_PROVIDERS.POE 
+        ? !localStorage.getItem('poe-api-key')
+        : !localStorage.getItem('replicate-api-key')
   );
   
   const [debugMode, setDebugMode] = useState(false);
@@ -60,18 +70,22 @@ export default function AIAssistant({
     } else if (apiProvider === API_PROVIDERS.POE && poeApiKey.trim()) {
       localStorage.setItem('poe-api-key', poeApiKey.trim());
       setShowApiKeyInput(false);
+    } else if (apiProvider === API_PROVIDERS.REPLICATE && replicateApiKey.trim()) {
+      localStorage.setItem('replicate-api-key', replicateApiKey.trim());
+      setShowApiKeyInput(false);
     }
   };
 
   // Switch API provider
-  const handleSwitchProvider = () => {
-    const newProvider = apiProvider === API_PROVIDERS.OPENAI ? API_PROVIDERS.POE : API_PROVIDERS.OPENAI;
+  const handleSwitchProvider = (newProvider) => {
     setApiProvider(newProvider);
     localStorage.setItem('ai-assistant-provider', newProvider);
     setShowApiKeyInput(
       newProvider === API_PROVIDERS.OPENAI 
         ? !localStorage.getItem('openai-api-key') 
-        : !localStorage.getItem('poe-api-key')
+        : newProvider === API_PROVIDERS.POE
+          ? !localStorage.getItem('poe-api-key')
+          : !localStorage.getItem('replicate-api-key')
     );
   };
 
@@ -97,6 +111,92 @@ export default function AIAssistant({
       }))
     };
   }, [goalName, target, totalProfit, progressPercentage, remaining, weeks, streakInfo, prediction]);
+
+  // Make a request to Replicate API
+  const sendMessageToReplicate = async (userMessage, context) => {
+    const apiKey = replicateApiKey.trim();
+    if (!apiKey) throw new Error('Replicate API key is required');
+
+    // Create a context message
+    const prompt = `You are a helpful financial assistant for a savings tracker app. 
+The user is saving for a ${context.goalName}. Here's their current data:
+- Target: ${context.target}
+- Total Saved: ${context.totalSaved} (${context.percentComplete} complete)
+- Remaining: ${context.remaining}
+- Tracking for ${context.weeksWithData} out of ${context.totalWeeks} weeks
+- Average weekly saving: ${context.weeklyAverage}
+- Current streak: ${context.currentStreak} weeks
+- Best streak: ${context.bestStreak} weeks
+- Estimated completion date: ${context.predictedCompletion}
+- Recent 4 weeks: ${JSON.stringify(context.recentPerformance)}
+
+Please provide concise, helpful advice about their savings journey based on this data. 
+Be encouraging and practical.
+
+User question: ${userMessage}`;
+
+    if (debugMode) console.log('Sending request to Replicate with prompt:', prompt);
+
+    // Using Replicate API
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${apiKey}`,
+      },
+      body: JSON.stringify({
+        version: "meta/llama-4-scout-instruct",
+        input: {
+          prompt: prompt,
+          max_tokens: 250,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Replicate API error: ${response.status} ${response.statusText} - ${errorData.error?.message || JSON.stringify(errorData)}`);
+    }
+
+    // Get the prediction ID from the response
+    const prediction = await response.json();
+    
+    if (debugMode) console.log('Prediction created:', prediction);
+    
+    // Poll for the prediction result
+    let result = null;
+    while (!result || result.status === 'processing' || result.status === 'starting') {
+      const pollResponse = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
+        headers: {
+          'Authorization': `Token ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!pollResponse.ok) {
+        const errorData = await pollResponse.json().catch(() => ({}));
+        throw new Error(`Replicate API polling error: ${pollResponse.status} ${pollResponse.statusText} - ${errorData.error?.message || JSON.stringify(errorData)}`);
+      }
+      
+      result = await pollResponse.json();
+      
+      if (result.status === 'succeeded') {
+        break;
+      } else if (result.status === 'failed') {
+        throw new Error(`Replicate model execution failed: ${result.error || 'Unknown error'}`);
+      }
+      
+      // Wait for 1 second before polling again
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    if (debugMode) console.log('Received response from Replicate:', result);
+    
+    // Extract the output from the result
+    // Replicate returns an array of strings for streaming outputs
+    const output = Array.isArray(result.output) ? result.output.join('') : result.output;
+    return output;
+  };
 
   // Make a request to Poe API
   const sendMessageToPoe = async (userMessage, context) => {
@@ -201,6 +301,9 @@ User question: ${userMessage}`;
     } else if (apiProvider === API_PROVIDERS.POE && !poeApiKey) {
       setShowApiKeyInput(true);
       return;
+    } else if (apiProvider === API_PROVIDERS.REPLICATE && !replicateApiKey) {
+      setShowApiKeyInput(true);
+      return;
     }
     
     const userMessage = { role: 'user', content: inputValue };
@@ -217,8 +320,10 @@ User question: ${userMessage}`;
       let responseContent;
       if (apiProvider === API_PROVIDERS.OPENAI) {
         responseContent = await sendMessageToOpenAI(inputValue, context, messages);
-      } else {
+      } else if (apiProvider === API_PROVIDERS.POE) {
         responseContent = await sendMessageToPoe(inputValue, context);
+      } else {
+        responseContent = await sendMessageToReplicate(inputValue, context);
       }
       
       // Add response to messages
@@ -234,7 +339,13 @@ User question: ${userMessage}`;
       setErrorDetails(JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
       
       // Provide more specific error messages
-      let errorMessage = `Sorry, I encountered an error with the ${apiProvider === API_PROVIDERS.OPENAI ? 'OpenAI' : 'Poe'} API. Please check your API key or try again later.`;
+      let errorMessage = `Sorry, I encountered an error with the ${
+        apiProvider === API_PROVIDERS.OPENAI 
+          ? 'OpenAI' 
+          : apiProvider === API_PROVIDERS.POE 
+            ? 'Poe' 
+            : 'Replicate'
+      } API. Please check your API key or try again later.`;
       
       if (apiProvider === API_PROVIDERS.OPENAI) {
         if (error.message?.includes('401')) {
@@ -247,12 +358,19 @@ User question: ${userMessage}`;
         } else if (error.message?.includes('Failed to fetch') || error.message?.includes('Network')) {
           errorMessage = 'Network error. Please check your internet connection.';
         }
-      } else {
+      } else if (apiProvider === API_PROVIDERS.POE) {
         // Poe API specific errors
         if (error.message?.includes('401') || error.message?.includes('403')) {
           errorMessage = 'Invalid Poe API key. Please check that you\'ve entered a valid key.';
         } else if (error.message?.includes('429')) {
           errorMessage = 'Poe API rate limit exceeded.';
+        }
+      } else {
+        // Replicate API specific errors
+        if (error.message?.includes('401') || error.message?.includes('403')) {
+          errorMessage = 'Invalid Replicate API key. Please check that you\'ve entered a valid key.';
+        } else if (error.message?.includes('429')) {
+          errorMessage = 'Replicate API rate limit exceeded.';
         }
       }
       
@@ -271,12 +389,11 @@ User question: ${userMessage}`;
     inputValue, 
     apiProvider, 
     openaiApiKey, 
-    poeApiKey, 
+    poeApiKey,
+    replicateApiKey,
     messages, 
     createAIContext, 
-    debugMode, 
-    sendMessageToOpenAI, 
-    sendMessageToPoe
+    debugMode
   ]);
 
   return (
@@ -287,14 +404,15 @@ User question: ${userMessage}`;
           <h2 className="text-xl font-bold">AI Assistant</h2>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={handleSwitchProvider} 
-            className={`text-xs p-1 rounded flex items-center gap-1 ${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'}`}
-            title={`Switch to ${apiProvider === API_PROVIDERS.OPENAI ? 'Poe API (Claude)' : 'OpenAI API'}`}
+          <select
+            value={apiProvider}
+            onChange={(e) => handleSwitchProvider(e.target.value)}
+            className={`text-xs py-1 px-2 rounded ${theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100'}`}
           >
-            <RefreshCw size={14} />
-            <span>{apiProvider === API_PROVIDERS.OPENAI ? 'Use Poe' : 'Use OpenAI'}</span>
-          </button>
+            <option value={API_PROVIDERS.REPLICATE}>Replicate (Free)</option>
+            <option value={API_PROVIDERS.OPENAI}>OpenAI (Paid)</option>
+            <option value={API_PROVIDERS.POE}>Poe (Paid)</option>
+          </select>
           <button 
             onClick={() => setDebugMode(!debugMode)} 
             className={`text-xs p-1 rounded ${debugMode ? 'bg-yellow-200 text-yellow-800' : 'text-gray-400 hover:text-gray-600'}`}
@@ -310,23 +428,45 @@ User question: ${userMessage}`;
           <p className="text-sm mb-2">
             {apiProvider === API_PROVIDERS.OPENAI 
               ? 'Enter your OpenAI API key (requires billing setup):' 
-              : 'Enter your Poe API key (requires subscription):'}
+              : apiProvider === API_PROVIDERS.POE
+                ? 'Enter your Poe API key (requires subscription):'
+                : 'Enter your Replicate API key (free credits available):'}
           </p>
           <div className="flex gap-2">
             <input
               type="password"
               className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              value={apiProvider === API_PROVIDERS.OPENAI ? openaiApiKey : poeApiKey}
-              onChange={(e) => 
+              value={
                 apiProvider === API_PROVIDERS.OPENAI 
-                  ? setOpenaiApiKey(e.target.value) 
-                  : setPoeApiKey(e.target.value)
+                  ? openaiApiKey 
+                  : apiProvider === API_PROVIDERS.POE
+                    ? poeApiKey
+                    : replicateApiKey
               }
-              placeholder={apiProvider === API_PROVIDERS.OPENAI ? 'sk-...' : 'poe-...'}
+              onChange={(e) => {
+                if (apiProvider === API_PROVIDERS.OPENAI) {
+                  setOpenaiApiKey(e.target.value);
+                } else if (apiProvider === API_PROVIDERS.POE) {
+                  setPoeApiKey(e.target.value);
+                } else {
+                  setReplicateApiKey(e.target.value);
+                }
+              }}
+              placeholder={
+                apiProvider === API_PROVIDERS.OPENAI 
+                  ? 'sk-...' 
+                  : apiProvider === API_PROVIDERS.POE
+                    ? 'poe-...'
+                    : 'r8_...'
+              }
             />
             <Button 
               onClick={handleApiKeySave} 
-              disabled={(apiProvider === API_PROVIDERS.OPENAI ? !openaiApiKey.trim() : !poeApiKey.trim())}
+              disabled={
+                (apiProvider === API_PROVIDERS.OPENAI && !openaiApiKey.trim()) || 
+                (apiProvider === API_PROVIDERS.POE && !poeApiKey.trim()) ||
+                (apiProvider === API_PROVIDERS.REPLICATE && !replicateApiKey.trim())
+              }
             >
               Save
             </Button>
@@ -334,18 +474,46 @@ User question: ${userMessage}`;
           
           <div className="mt-3 text-xs space-y-1">
             <p className="text-gray-500">Your key is stored locally and never sent to our servers.</p>
-            <p className="text-yellow-600">⚠️ Both OpenAI and Poe APIs require paid subscriptions.</p>
-            <button 
-              onClick={() => setShowFreeAlternatives(!showFreeAlternatives)} 
-              className="text-blue-500 hover:underline"
-            >
-              {showFreeAlternatives ? 'Hide free alternatives' : 'Show free alternatives'}
-            </button>
+            
+            {apiProvider === API_PROVIDERS.REPLICATE ? (
+              <>
+                <p className="text-green-600">✓ Replicate offers free credits for new users!</p>
+                <p className="text-gray-500">
+                  <a 
+                    href="https://replicate.com/signin" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline"
+                  >
+                    Sign up for Replicate to get free credits
+                  </a>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-yellow-600">⚠️ Both OpenAI and Poe APIs require paid subscriptions.</p>
+                <button 
+                  onClick={() => handleSwitchProvider(API_PROVIDERS.REPLICATE)} 
+                  className="text-blue-500 hover:underline"
+                >
+                  Switch to Replicate (free credits available)
+                </button>
+              </>
+            )}
+            
+            {apiProvider !== API_PROVIDERS.REPLICATE && (
+              <button 
+                onClick={() => setShowFreeAlternatives(!showFreeAlternatives)} 
+                className="block mt-2 text-blue-500 hover:underline"
+              >
+                {showFreeAlternatives ? 'Hide other free alternatives' : 'Show other free alternatives'}
+              </button>
+            )}
           </div>
           
-          {showFreeAlternatives && (
+          {showFreeAlternatives && apiProvider !== API_PROVIDERS.REPLICATE && (
             <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded text-xs">
-              <h3 className="font-bold mb-1">Free Alternatives:</h3>
+              <h3 className="font-bold mb-1">Other Free Alternatives:</h3>
               <ul className="list-disc pl-4 space-y-2">
                 <li>
                   <strong>Ollama:</strong> Run local AI models on your own computer
@@ -407,8 +575,18 @@ User question: ${userMessage}`;
                   <li>"What should my weekly target be?"</li>
                 </ul>
                 <p className="text-xs mt-3">
-                  Using: <span className="font-semibold">{apiProvider === API_PROVIDERS.OPENAI ? 'OpenAI API' : 'Poe API (Claude)'}</span>
+                  Using: <span className="font-semibold">
+                    {apiProvider === API_PROVIDERS.OPENAI 
+                      ? 'OpenAI API' 
+                      : apiProvider === API_PROVIDERS.POE
+                        ? 'Poe API (Claude)'
+                        : 'Replicate API (Llama 4)'
+                    }
+                  </span>
                 </p>
+                {apiProvider === API_PROVIDERS.REPLICATE && (
+                  <p className="text-xs text-green-600 mt-1">✓ Free credits available with new Replicate account</p>
+                )}
               </div>
             ) : (
               messages.map((msg, index) => (
@@ -467,15 +645,15 @@ User question: ${userMessage}`;
               >
                 Change API key
               </button>
-              <button 
-                onClick={handleSwitchProvider}
-                className="text-xs text-blue-500 hover:underline"
-              >
-                Switch to {apiProvider === API_PROVIDERS.OPENAI ? 'Poe API' : 'OpenAI API'}
-              </button>
             </div>
             <span className="text-xs text-gray-500">
-              Powered by {apiProvider === API_PROVIDERS.OPENAI ? 'OpenAI' : 'Poe (Claude)'}
+              Powered by {
+                apiProvider === API_PROVIDERS.OPENAI 
+                  ? 'OpenAI' 
+                  : apiProvider === API_PROVIDERS.POE 
+                    ? 'Poe (Claude)' 
+                    : 'Replicate (Llama 4)'
+              }
             </span>
           </div>
         </>
