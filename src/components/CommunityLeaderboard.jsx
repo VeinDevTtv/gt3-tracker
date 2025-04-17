@@ -4,6 +4,90 @@ import { Button } from '../components/ui/button';
 import { AlertCircle, Shield, Trophy, Users, Lock } from 'lucide-react';
 import { Dialog } from '../components/ui/dialog';
 
+// Add this line at the top of the file after imports to ensure fresh data on each load
+// This forces every page load to generate new random data
+const FORCE_REFRESH_KEY = Date.now();
+
+// Add this function outside the component to generate realistic saver data
+const generateRealisticSaverData = () => {
+  // GT3 price range is roughly $160,000-$300,000 depending on options and market
+  const GT3_MIN_PRICE = 160000;
+  const GT3_MAX_PRICE = 300000;
+  
+  // Saving patterns and profiles
+  const savingProfiles = [
+    { name: "High Earner", minWeekly: 1800, maxWeekly: 5000, progressMin: 0.4, progressMax: 0.9 },
+    { name: "Dedicated Saver", minWeekly: 1200, maxWeekly: 2800, progressMin: 0.3, progressMax: 0.8 },
+    { name: "Balanced Approach", minWeekly: 800, maxWeekly: 2000, progressMin: 0.15, progressMax: 0.6 },
+    { name: "Steady Progress", minWeekly: 600, maxWeekly: 1400, progressMin: 0.1, progressMax: 0.5 },
+    { name: "Starting Journey", minWeekly: 400, maxWeekly: 1200, progressMin: 0.05, progressMax: 0.3 },
+  ];
+  
+  // Random car preference (affects target price)
+  const carConfigs = [
+    { trim: "Base GT3", priceRange: [160000, 200000] },
+    { trim: "GT3 Touring", priceRange: [170000, 210000] },
+    { trim: "GT3 with Options", priceRange: [190000, 240000] },
+    { trim: "GT3 RS", priceRange: [220000, 300000] }
+  ];
+  
+  // Generate location (anonymized by using only general regions)
+  const regions = ["West Coast", "East Coast", "Midwest", "South", "Northeast", "Southwest", "Pacific Northwest", "International"];
+  
+  // Generate data for 15-20 random savers
+  const numberOfSavers = Math.floor(Math.random() * 6) + 15; // 15-20 savers
+  const savers = [];
+  
+  for (let i = 0; i < numberOfSavers; i++) {
+    // Select random profiles and configs
+    const profile = savingProfiles[Math.floor(Math.random() * savingProfiles.length)];
+    const carConfig = carConfigs[Math.floor(Math.random() * carConfigs.length)];
+    const region = regions[Math.floor(Math.random() * regions.length)];
+    
+    // Generate target price within the configured range
+    const targetPrice = Math.floor(Math.random() * (carConfig.priceRange[1] - carConfig.priceRange[0])) + carConfig.priceRange[0];
+    
+    // Calculate progress percentage based on profile
+    const progressPct = Math.random() * (profile.progressMax - profile.progressMin) + profile.progressMin;
+    
+    // Calculate total saved based on progress
+    const totalSaved = Math.floor(targetPrice * progressPct);
+    
+    // Calculate weekly average based on profile
+    const weeklyAverage = Math.floor(Math.random() * (profile.maxWeekly - profile.minWeekly)) + profile.minWeekly;
+    
+    // Calculate weeks saved based on total and weekly average
+    const weeksSaved = Math.max(5, Math.round(totalSaved / weeklyAverage));
+    
+    // Calculate saving streak (typically 20-100% of weeks saved)
+    const streakPercentage = 0.2 + Math.random() * 0.8;
+    const savingStreak = Math.round(weeksSaved * streakPercentage);
+    
+    // Generate unique anonymous ID
+    const anonymousId = `user_${Math.random().toString(36).substring(2, 10)}`;
+    
+    // Add metadata for richer display but still anonymous
+    const metadata = {
+      carChoice: carConfig.trim,
+      region: region,
+      savingDuration: `${Math.round(weeksSaved / 4)} months`,
+      consistency: Math.round(streakPercentage * 100)
+    };
+    
+    savers.push({
+      anonymousId,
+      totalSavings: totalSaved,
+      weeklyAverage,
+      savingStreak,
+      targetPrice,
+      metadata
+    });
+  }
+  
+  // Sort by total savings (descending)
+  return savers.sort((a, b) => b.totalSavings - a.totalSavings);
+};
+
 const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
   const [optedIn, setOptedIn] = useState(() => {
     return localStorage.getItem('savings-tracker-leaderboard-opt-in') === 'true';
@@ -14,10 +98,16 @@ const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
   const [error, setError] = useState(null);
   const [userRank, setUserRank] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  // Add a refresh trigger state
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   // Save opt-in preference to localStorage
   useEffect(() => {
     localStorage.setItem('savings-tracker-leaderboard-opt-in', optedIn.toString());
+    // Force refresh when opting in
+    if (optedIn) {
+      setRefreshTrigger(prev => prev + 1);
+    }
   }, [optedIn]);
   
   // Generate anonymous user ID if needed (only if opted in)
@@ -33,10 +123,17 @@ const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
   // Fetch leaderboard data when opted in
   useEffect(() => {
     if (optedIn) {
+      // Clear any cached data first
+      setLeaderboardData([]);
       fetchLeaderboardData();
     }
-  }, [optedIn, totalProfit]);
+  }, [optedIn, totalProfit, refreshTrigger, FORCE_REFRESH_KEY]);
   
+  // Add a manual refresh function
+  const refreshLeaderboard = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   // Simulated fetch function for the leaderboard
   // In a real application, this would be an API call to a secure backend
   const fetchLeaderboardData = async () => {
@@ -47,26 +144,39 @@ const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Mock data - in a real app this would come from a secure API
-      const mockData = [
-        { anonymousId: 'user_234987', totalSavings: 155000, weeklyAverage: 3200, savingStreak: 12 },
-        { anonymousId: 'user_187654', totalSavings: 230000, weeklyAverage: 4100, savingStreak: 18 },
-        { anonymousId: 'user_398712', totalSavings: 95000, weeklyAverage: 2100, savingStreak: 9 },
-        { anonymousId: 'user_451278', totalSavings: 180000, weeklyAverage: 3600, savingStreak: 14 },
-        { anonymousId: 'user_762145', totalSavings: 125000, weeklyAverage: 2800, savingStreak: 10 },
-      ];
+      // Generate realistic data - in a real app this would come from a secure API
+      // Use the refresh key to ensure new data each time
+      const generatedData = generateRealisticSaverData();
       
       // Add the current user's data
       const userId = localStorage.getItem('savings-tracker-anonymous-id') || 'user_current';
+      
+      // Calculate saving duration in weeks
+      const savingWeeks = weeks.filter(w => w.profit > 0).length;
+      
+      // Target price (use the target from app or estimate based on weekly average)
+      const estimatedTarget = weeklyAverage * 52 * 3; // ~3 years of saving at current rate
+      const targetPrice = Math.max(estimatedTarget, 160000); // Ensure minimum GT3 price
+      
       const userData = {
         anonymousId: userId,
         totalSavings: totalProfit,
         weeklyAverage: weeklyAverage,
         savingStreak: weeks.filter(w => w.profit > 0).length,
+        targetPrice: targetPrice,
+        metadata: {
+          carChoice: totalProfit > 220000 ? "GT3 RS" : "GT3",
+          region: "Your Location",
+          savingDuration: `${Math.round(savingWeeks / 4)} months`,
+          consistency: savingWeeks > 0 ? Math.round((weeks.filter(w => w.profit > 0).length / savingWeeks) * 100) : 100
+        }
       };
       
       // Combine and sort leaderboard data
-      const combinedData = [...mockData, userData].sort((a, b) => b.totalSavings - a.totalSavings);
+      const combinedData = [...generatedData, userData].sort((a, b) => b.totalSavings - a.totalSavings);
+      
+      // Clear cache and set new data
+      window.localStorage.removeItem('leaderboard-data-cache');
       setLeaderboardData(combinedData);
       
       // Find user's rank
@@ -107,6 +217,18 @@ const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
             </h3>
           </div>
           <div className="flex items-center gap-2">
+            {optedIn && (
+              <button 
+                onClick={refreshLeaderboard}
+                className="text-xs flex items-center gap-1 text-primary-color hover:underline"
+                title="Refresh leaderboard data"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+                Refresh
+              </button>
+            )}
             <Lock className={`h-4 w-4 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
             <span className={`text-xs ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>100% Secure</span>
           </div>
@@ -161,15 +283,23 @@ const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-primary-color uppercase tracking-wider">Rank</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-primary-color uppercase tracking-wider">Saver</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-primary-color uppercase tracking-wider">Total Savings</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-primary-color uppercase tracking-wider">Total Saved</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-primary-color uppercase tracking-wider">Weekly Avg</th>
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${theme === 'dark' ? 'divide-gray-600' : 'divide-gray-200'}`}>
-                      {leaderboardData.slice(0, 5).map((user, index) => {
+                      {leaderboardData.slice(0, 10).map((user, index) => {
                         const isCurrentUser = user.anonymousId === localStorage.getItem('savings-tracker-anonymous-id');
+                        const progressPercent = Math.round((user.totalSavings / user.targetPrice) * 100);
+                        
                         return (
-                          <tr key={user.anonymousId} className={isCurrentUser ? `${theme === 'dark' ? 'bg-gray-600' : 'bg-blue-50'}` : ''}>
+                          <tr 
+                            key={user.anonymousId} 
+                            className={`${isCurrentUser ? 
+                              `${theme === 'dark' ? 'bg-gray-600' : 'bg-blue-50'}` : 
+                              'hover:bg-gray-50 dark:hover:bg-gray-600'}`}
+                            title={`${user.metadata.carChoice} saver | ${progressPercent}% to goal | ${user.metadata.region}`}
+                          >
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center">
                                 {index === 0 && <Trophy className="h-4 w-4 text-yellow-500 mr-1" />}
@@ -181,22 +311,34 @@ const CommunityLeaderboard = ({ totalProfit, weeklyAverage, weeks, theme }) => {
                             <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center">
                                 <span className={`text-sm ${isCurrentUser ? 'font-bold text-primary-color' : ''}`}>
-                                  {isCurrentUser ? 'You' : `Anonymous GT3 Fan`}
+                                  {isCurrentUser ? 'You' : `Anonymous GT3 ${user.metadata.carChoice.includes('RS') ? 'RS' : ''} Fan`}
                                 </span>
                                 {isCurrentUser && (
                                   <span className="ml-2 text-xs px-2 py-0.5 rounded-full border border-gray-300 dark:border-gray-600">You</span>
                                 )}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {progressPercent}% to goal • {user.metadata.savingDuration}
                               </div>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className={`${isCurrentUser ? 'font-semibold' : ''}`}>
                                 ${user.totalSavings.toLocaleString()}
                               </span>
+                              <div className="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-full mt-1">
+                                <div 
+                                  className="h-1 bg-primary-color rounded-full" 
+                                  style={{width: `${progressPercent}%`}}
+                                ></div>
+                              </div>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className={`${isCurrentUser ? 'font-semibold' : ''}`}>
                                 ${user.weeklyAverage.toLocaleString()}/week
                               </span>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {user.savingStreak} week streak
+                              </div>
                             </td>
                           </tr>
                         );
