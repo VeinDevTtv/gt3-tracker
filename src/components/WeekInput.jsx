@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Info } from 'lucide-react';
+import { Info, Flame } from 'lucide-react';
 import { Tooltip } from '@/components/ui/tooltip';
 
 const getEmojiForProfit = (profit, previousProfit = 0) => {
@@ -29,26 +29,51 @@ const WeekInput = ({
 }) => {
   return (
     <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className={theme === 'dark' ? 'text-white' : ''}>
-          Weekly Input {currentStreak > 0 && <span className="text-sm">🔥 {currentStreak} week streak</span>}
+          Weekly Input
         </CardTitle>
+        {currentStreak > 0 && (
+          <div className={`flex items-center gap-2 text-primary-color px-3 py-1 rounded-full ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            <Flame className="h-4 w-4 text-primary-color" />
+            <span className="font-bold">{currentStreak}</span>
+            <span className="text-sm font-medium">week streak</span>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
+        {currentStreak > 0 && (
+          <div className="mb-4 text-center">
+            <div className={`py-2 px-3 rounded-md ${theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-100'}`}>
+              <p className="text-sm">
+                <span className="text-primary-color font-medium">Keep it up!</span> You've been saving consistently for {currentStreak} {currentStreak === 1 ? 'week' : 'weeks'}.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {weeks.map((week, index) => {
             const previousWeek = index > 0 ? weeks[index - 1] : null;
             const emoji = getEmojiForProfit(week.profit, previousWeek?.profit);
             const colorClass = getColorClass(week.profit, theme);
+            const isPartOfCurrentStreak = currentStreak > 0 && 
+                                       index >= weeks.length - currentStreak && 
+                                       week.profit > 0;
             
             return (
               <div 
                 key={index} 
-                className={`p-3 border rounded-lg transition-all ${theme === 'dark' ? 'border-gray-700 bg-gray-700/50' : ''} ${colorClass}`}
+                className={`p-3 border rounded-lg transition-all 
+                  ${theme === 'dark' ? 'border-gray-700 bg-gray-700/50' : ''} 
+                  ${colorClass} 
+                  ${isPartOfCurrentStreak ? 'border-primary-color' : ''}`}
               >
                 <div className={`font-medium mb-2 flex justify-between ${theme === 'dark' ? 'text-white' : ''}`}>
                   <span>Week {week.week}</span>
-                  {emoji && <span>{emoji}</span>}
+                  <div className="flex items-center">
+                    {isPartOfCurrentStreak && <Flame size={14} className="mr-1 text-primary-color" />}
+                    {emoji && <span>{emoji}</span>}
+                  </div>
                 </div>
                 <div className="flex flex-col space-y-2">
                   <div className="relative">

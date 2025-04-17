@@ -140,6 +140,15 @@ export default function GT3Tracker() {
     let bestStreak = 0;
     let tempStreak = 0;
     
+    // Check if there's any week with profit
+    const hasAnyProfit = weeks.some(week => week.profit > 0);
+    
+    // If no entries with profit, return zero streaks
+    if (!hasAnyProfit) {
+      return { currentStreak: 0, bestStreak: 0 };
+    }
+    
+    // Calculate best streak across all weeks
     for (const week of weeks) {
       if (week.profit > 0) {
         tempStreak++;
@@ -152,10 +161,18 @@ export default function GT3Tracker() {
     }
     
     // Calculate current streak (must be at the end)
+    // Start from the end and count consecutive weeks with profit
+    let foundProfit = false;
+    
     for (let i = weeks.length - 1; i >= 0; i--) {
+      // If we find a profitable week
       if (weeks[i].profit > 0) {
+        foundProfit = true;
         currentStreak++;
-      } else {
+      } 
+      // Only break on zero profit if we've already found at least one profit entry
+      // This prevents empty weeks at the end from breaking the streak
+      else if (foundProfit) {
         break;
       }
     }
