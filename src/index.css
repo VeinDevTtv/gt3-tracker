@@ -82,7 +82,11 @@
   }
 }
 
-/* Add these theme-specific CSS variables */
+/* Theme color definitions */
+:root {
+  --primary-color: #3b82f6; /* Default blue */
+}
+
 .theme-blue {
   --primary-color: #3b82f6;
 }
@@ -104,22 +108,46 @@
 }
 
 /* Apply the theming to components */
-.btn-primary, 
-.bg-primary,
-.progress-bar,
-.text-primary {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.border-primary {
-  border-color: var(--primary-color);
+.bg-primary {
+  background-color: var(--primary-color) !important;
 }
 
 .text-primary-color {
-  color: var(--primary-color);
+  color: var(--primary-color) !important;
+}
+
+.border-primary {
+  border-color: var(--primary-color) !important;
+}
+
+.progress-bar {
+  background-color: var(--primary-color) !important;
 }
 
 .ring-primary {
-  --tw-ring-color: var(--primary-color);
+  --tw-ring-color: var(--primary-color) !important;
+}
+
+/* Additional theme color styles to ensure visibility */
+button[class*="bg-primary"],
+button.bg-primary {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+button.bg-primary:hover {
+  filter: brightness(90%);
+}
+
+.text-accent-color {
+  color: var(--primary-color) !important;
+  font-weight: 500;
+}
+
+.border-accent {
+  border-color: var(--primary-color) !important;
+}
+
+.hover\:bg-primary:hover {
+  background-color: var(--primary-color) !important;
 }

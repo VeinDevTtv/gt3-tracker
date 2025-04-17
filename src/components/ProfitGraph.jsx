@@ -1,8 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const ProfitGraph = ({ data, showCumulative, theme }) => {
+  // Get theme color from CSS variable
+  const [themeColor, setThemeColor] = useState('#3b82f6'); // default blue
+  
+  useEffect(() => {
+    // Get the current theme color from CSS variables
+    const color = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+    if (color) {
+      setThemeColor(color);
+    }
+  }, []);
+  
   return (
     <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
       <CardHeader>
@@ -38,10 +49,10 @@ const ProfitGraph = ({ data, showCumulative, theme }) => {
                   type="monotone" 
                   dataKey="profit" 
                   name="Weekly Profit" 
-                  stroke="#D5001C" 
+                  stroke={themeColor} 
                   strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 6, fill: theme === 'dark' ? '#f87171' : '#D5001C' }}
+                  dot={{ r: 4, fill: themeColor }} 
+                  activeDot={{ r: 6, fill: themeColor }}
                 />
               )}
               {showCumulative && (
@@ -49,10 +60,10 @@ const ProfitGraph = ({ data, showCumulative, theme }) => {
                   type="monotone" 
                   dataKey="cumulative" 
                   name="Cumulative Progress" 
-                  stroke={theme === 'dark' ? '#CFB87C' : '#191F22'} 
+                  stroke={themeColor} 
                   strokeWidth={2} 
-                  dot={{ r: 4 }} 
-                  activeDot={{ r: 6 }}
+                  dot={{ r: 4, fill: themeColor }} 
+                  activeDot={{ r: 6, fill: themeColor }}
                 />
               )}
             </LineChart>
