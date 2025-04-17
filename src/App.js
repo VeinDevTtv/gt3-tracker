@@ -1,17 +1,16 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
-import confetti from 'canvas-confetti';
-import { Download, Moon, Sun, Info } from 'lucide-react';
-import { Tooltip } from '@/components/ui/tooltip';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { Moon, Sun } from 'lucide-react';
+import ProgressBar from '@/components/ProgressBar';
+import GoalStats from '@/components/GoalStats';
+import ProfitGraph from '@/components/ProfitGraph';
+import WeekInput from '@/components/WeekInput';
+import SettingsPanel from '@/components/SettingsPanel';
+import Toast from '@/components/Toast';
 
 const MILESTONES = [10000, 25000, 50000, 75000, 100000, 150000, 200000, 250000];
 
-// Initialize with 49 weeks, but this will be adjustable
+// Initialize with configurable number of weeks
 const createInitialWeeks = (numberOfWeeks) => {
   return Array.from({ length: numberOfWeeks }, (_, i) => ({
     week: i + 1,
@@ -23,33 +22,46 @@ const createInitialWeeks = (numberOfWeeks) => {
 export default function GT3Tracker() {
   // Theme state
   const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('gt3-tracker-theme');
+    const savedTheme = localStorage.getItem('savings-tracker-theme');
     return savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   });
   
-  // Local storage loading
+  // Toast notifications
+  const [toast, setToast] = useState(null);
+  
+  // Local storage loading with custom goal settings
+  const [goalName, setGoalName] = useState(() => {
+    const savedGoalName = localStorage.getItem('savings-tracker-goal-name');
+    return savedGoalName || "Porsche GT3";
+  });
+  
+  const [startDate, setStartDate] = useState(() => {
+    const savedStartDate = localStorage.getItem('savings-tracker-start-date');
+    return savedStartDate || new Date().toISOString().split('T')[0];
+  });
+  
   const [totalWeeks, setTotalWeeks] = useState(() => {
-    const savedTotalWeeks = localStorage.getItem('gt3-tracker-total-weeks');
+    const savedTotalWeeks = localStorage.getItem('savings-tracker-total-weeks');
     return savedTotalWeeks ? parseInt(savedTotalWeeks) : 49;
   });
   
   const [weeks, setWeeks] = useState(() => {
-    const savedWeeks = localStorage.getItem('gt3-tracker-weeks');
+    const savedWeeks = localStorage.getItem('savings-tracker-weeks');
     return savedWeeks ? JSON.parse(savedWeeks) : createInitialWeeks(totalWeeks);
   });
   
   const [target, setTarget] = useState(() => {
-    const savedTarget = localStorage.getItem('gt3-tracker-target');
+    const savedTarget = localStorage.getItem('savings-tracker-target');
     return savedTarget ? parseFloat(savedTarget) : 280000;
   });
   
   const [visibleWeeks, setVisibleWeeks] = useState(() => {
-    const savedVisibleWeeks = localStorage.getItem('gt3-tracker-visible-weeks');
+    const savedVisibleWeeks = localStorage.getItem('savings-tracker-visible-weeks');
     return savedVisibleWeeks ? parseInt(savedVisibleWeeks) : 12;
   });
   
   const [showCumulative, setShowCumulative] = useState(() => {
-    const savedShowCumulative = localStorage.getItem('gt3-tracker-show-cumulative');
+    const savedShowCumulative = localStorage.getItem('savings-tracker-show-cumulative');
     return savedShowCumulative ? savedShowCumulative === 'true' : true;
   });
   
@@ -58,43 +70,86 @@ export default function GT3Tracker() {
 
   // Save to localStorage when state changes
   useEffect(() => {
-    localStorage.setItem('gt3-tracker-weeks', JSON.stringify(weeks));
+    localStorage.setItem('savings-tracker-weeks', JSON.stringify(weeks));
   }, [weeks]);
 
   useEffect(() => {
-    localStorage.setItem('gt3-tracker-target', target.toString());
+    localStorage.setItem('savings-tracker-target', target.toString());
   }, [target]);
 
   useEffect(() => {
-    localStorage.setItem('gt3-tracker-visible-weeks', visibleWeeks.toString());
+    localStorage.setItem('savings-tracker-visible-weeks', visibleWeeks.toString());
   }, [visibleWeeks]);
   
   useEffect(() => {
-    localStorage.setItem('gt3-tracker-total-weeks', totalWeeks.toString());
+    localStorage.setItem('savings-tracker-total-weeks', totalWeeks.toString());
   }, [totalWeeks]);
   
   useEffect(() => {
-    localStorage.setItem('gt3-tracker-show-cumulative', showCumulative.toString());
+    localStorage.setItem('savings-tracker-show-cumulative', showCumulative.toString());
   }, [showCumulative]);
   
   useEffect(() => {
-    localStorage.setItem('gt3-tracker-theme', theme);
+    localStorage.setItem('savings-tracker-theme', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+  
+  useEffect(() => {
+    localStorage.setItem('savings-tracker-goal-name', goalName);
+  }, [goalName]);
+  
+  useEffect(() => {
+    localStorage.setItem('savings-tracker-start-date', startDate);
+  }, [startDate]);
 
   // Handle theme toggle
   const toggleTheme = () => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
   };
 
+  // Calculate streak information
+  const streakInfo = useMemo(() => {
+    let currentStreak = 0;
+    let bestStreak = 0;
+    let tempStreak = 0;
+    
+    for (const week of weeks) {
+      if (week.profit > 0) {
+        tempStreak++;
+        if (tempStreak > bestStreak) {
+          bestStreak = tempStreak;
+        }
+      } else {
+        tempStreak = 0;
+      }
+    }
+    
+    // Calculate current streak (must be at the end)
+    for (let i = weeks.length - 1; i >= 0; i--) {
+      if (weeks[i].profit > 0) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+    
+    return { currentStreak, bestStreak };
+  }, [weeks]);
+
+  // Show a toast notification
+  const showToast = useCallback((message, emoji = null) => {
+    setToast({ message, emoji });
+  }, []);
+
   // Memoized profit change handler
   const handleProfitChange = useCallback((weekIndex, value) => {
     const updatedWeeks = [...weeks];
     const newProfit = parseFloat(value) || 0;
+    const oldProfit = updatedWeeks[weekIndex].profit;
     updatedWeeks[weekIndex].profit = newProfit;
     
     // Recalculate cumulative only from this week forward
@@ -106,6 +161,15 @@ export default function GT3Tracker() {
     
     setWeeks(updatedWeeks);
     
+    // Show toast for new profit
+    if (newProfit > 0 && newProfit !== oldProfit) {
+      let emoji = '💰';
+      if (newProfit >= 5000) emoji = '🤑';
+      else if (newProfit >= 1000) emoji = '💸';
+      
+      showToast(`Added $${newProfit.toLocaleString()} for Week ${updatedWeeks[weekIndex].week}`, emoji);
+    }
+    
     // Check if we've hit any new milestones
     const currentCumulative = updatedWeeks[weekIndex].cumulative;
     if (currentCumulative > lastMilestone) {
@@ -113,15 +177,23 @@ export default function GT3Tracker() {
       for (let i = MILESTONES.length - 1; i >= 0; i--) {
         if (currentCumulative >= MILESTONES[i] && MILESTONES[i] > lastMilestone) {
           setLastMilestone(MILESTONES[i]);
-          celebrateMilestone();
+          celebrateMilestone(MILESTONES[i]);
           break;
         }
       }
     }
-  }, [weeks, lastMilestone]);
+  }, [weeks, lastMilestone, showToast]);
 
   const handleTargetChange = useCallback((e) => {
     setTarget(parseFloat(e.target.value) || 0);
+  }, []);
+  
+  const handleGoalNameChange = useCallback((e) => {
+    setGoalName(e.target.value);
+  }, []);
+  
+  const handleStartDateChange = useCallback((e) => {
+    setStartDate(e.target.value);
   }, []);
 
   const handleTotalWeeksChange = useCallback((e) => {
@@ -151,28 +223,42 @@ export default function GT3Tracker() {
       }
     }
   }, [totalWeeks, weeks, visibleWeeks]);
+  
+  const handleVisibleWeeksChange = useCallback((e) => {
+    setVisibleWeeks(Math.min(totalWeeks, Math.max(4, parseInt(e.target.value) || 4)));
+  }, [totalWeeks]);
+  
+  const handleToggleCumulative = useCallback((value) => {
+    setShowCumulative(value);
+  }, []);
 
   const resetValues = useCallback(() => {
     setWeeks(createInitialWeeks(totalWeeks));
     setLastMilestone(0);
     setShowConfirmReset(false);
-  }, [totalWeeks]);
+    showToast('All data has been reset', '🔄');
+  }, [totalWeeks, showToast]);
 
   // Celebration animation for reaching milestones
-  const celebrateMilestone = () => {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
+  const celebrateMilestone = useCallback((milestone) => {
+    import('canvas-confetti').then((confetti) => {
+      confetti.default({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
     });
     
     // Play celebration sound
     const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3');
     audio.play().catch(e => console.log('Audio play failed:', e));
-  };
+    
+    // Show milestone toast
+    showToast(`🎉 Congratulations! You've reached $${milestone.toLocaleString()} in savings!`, '🏆');
+  }, [showToast]);
 
   // Export data as CSV
-  const exportAsCSV = () => {
+  const exportAsCSV = useCallback(() => {
     const headers = ['Week', 'Weekly Profit', 'Cumulative'];
     const csvContent = [
       headers.join(','),
@@ -185,12 +271,63 @@ export default function GT3Tracker() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `gt3-tracker-data-${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `${goalName.replace(/\s+/g, '-').toLowerCase()}-tracker-${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+    
+    showToast('Data exported as CSV', '📤');
+  }, [weeks, goalName, showToast]);
+  
+  // Export data as JSON for backup
+  const exportAsJSON = useCallback(() => {
+    const data = {
+      goalName,
+      target,
+      startDate,
+      totalWeeks,
+      visibleWeeks,
+      weeks,
+      lastModified: new Date().toISOString()
+    };
+    
+    const jsonContent = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${goalName.replace(/\s+/g, '-').toLowerCase()}-backup-${new Date().toISOString().split('T')[0]}.json`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast('Backup created successfully', '💾');
+  }, [goalName, target, startDate, totalWeeks, visibleWeeks, weeks, showToast]);
+  
+  // Import data from JSON backup
+  const importJSON = useCallback((jsonString) => {
+    try {
+      const data = JSON.parse(jsonString);
+      
+      if (!data.weeks || !Array.isArray(data.weeks)) {
+        throw new Error('Invalid backup format: weeks data missing');
+      }
+      
+      setGoalName(data.goalName || 'Porsche GT3');
+      setTarget(data.target || 280000);
+      setStartDate(data.startDate || new Date().toISOString().split('T')[0]);
+      setTotalWeeks(data.totalWeeks || 49);
+      setVisibleWeeks(Math.min(data.visibleWeeks || 12, data.totalWeeks || 49));
+      setWeeks(data.weeks);
+      
+      showToast('Data imported successfully', '📥');
+    } catch (error) {
+      console.error('Error importing data:', error);
+      showToast('Failed to import data. Invalid format.', '⚠️');
+    }
+  }, [showToast]);
 
   // Memoized calculations
   const totalProfit = useMemo(() => 
@@ -264,10 +401,10 @@ export default function GT3Tracker() {
       <header className="max-w-6xl mx-auto mb-8 flex items-center justify-between">
         <div>
           <h1 className={`text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-porsche-black'}`}>
-            Porsche GT3 Tracker
+            {goalName} Tracker
           </h1>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            Track your progress towards your Porsche GT3 goal
+            Track your progress towards your {goalName} goal
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -290,279 +427,75 @@ export default function GT3Tracker() {
       <main className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
           <div className="md:col-span-4">
-            <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
-              <CardHeader>
-                <CardTitle className={theme === 'dark' ? 'text-white' : ''}>Target Settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
-                      Target Amount ($)
-                    </Label>
-                    <Input 
-                      type="number" 
-                      value={target} 
-                      onChange={handleTargetChange} 
-                      className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
-                      Total Weeks
-                    </Label>
-                    <Input
-                      type="number"
-                      min="4"
-                      max="260"
-                      value={totalWeeks}
-                      onChange={handleTotalWeeksChange}
-                      className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-                    />
-                    <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Set the total number of weeks in your tracking period
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
-                      Visible Weeks
-                    </Label>
-                    <Input
-                      type="number"
-                      min="4"
-                      max={totalWeeks}
-                      value={visibleWeeks}
-                      onChange={(e) => setVisibleWeeks(Math.min(totalWeeks, Math.max(4, parseInt(e.target.value) || 4)))}
-                      className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
-                      Chart Display
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={showCumulative ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setShowCumulative(true)}
-                        className="flex-1"
-                      >
-                        Cumulative
-                      </Button>
-                      <Button
-                        variant={!showCumulative ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setShowCumulative(false)}
-                        className="flex-1"
-                      >
-                        Weekly
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Dialog open={showConfirmReset} onOpenChange={setShowConfirmReset}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="flex-1">
-                          Reset Values
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className={theme === 'dark' ? 'bg-gray-800 text-white border-gray-700' : ''}>
-                        <DialogHeader>
-                          <DialogTitle>Confirm Reset</DialogTitle>
-                          <DialogDescription className={theme === 'dark' ? 'text-gray-300' : ''}>
-                            Are you sure you want to reset all your progress data? This action cannot be undone.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter className="flex gap-2 justify-end">
-                          <Button variant="outline" onClick={() => setShowConfirmReset(false)}>
-                            Cancel
-                          </Button>
-                          <Button variant="destructive" onClick={resetValues}>
-                            Yes, Reset All Data
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                    <Button variant="outline" className="flex-1" onClick={exportAsCSV}>
-                      <Download size={16} className="mr-2" />
-                      Export CSV
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <SettingsPanel 
+              theme={theme}
+              target={target}
+              goalName={goalName}
+              totalWeeks={totalWeeks}
+              visibleWeeks={visibleWeeks}
+              showCumulative={showCumulative}
+              startDate={startDate}
+              onTargetChange={handleTargetChange}
+              onGoalNameChange={handleGoalNameChange}
+              onTotalWeeksChange={handleTotalWeeksChange}
+              onVisibleWeeksChange={handleVisibleWeeksChange}
+              onToggleCumulative={handleToggleCumulative}
+              onStartDateChange={handleStartDateChange}
+              showConfirmReset={showConfirmReset}
+              setShowConfirmReset={setShowConfirmReset}
+              resetValues={resetValues}
+              exportAsCSV={exportAsCSV}
+              exportAsJSON={exportAsJSON}
+              importJSON={importJSON}
+            />
           </div>
           
           <div className="md:col-span-8">
-            <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
-              <CardHeader>
-                <CardTitle className={theme === 'dark' ? 'text-white' : ''}>Progress Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className={`p-4 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white'}`}>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Target Amount</p>
-                    <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : ''}`}>${target.toLocaleString()}</p>
-                  </div>
-                  <div className={`p-4 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white'}`}>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Total Earned</p>
-                    <p className="text-2xl font-bold text-green-600">${totalProfit.toLocaleString()}</p>
-                  </div>
-                  <div className={`p-4 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white'}`}>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Remaining</p>
-                    <p className="text-2xl font-bold text-porsche-red">${remaining.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-porsche-red transition-all duration-1000 ease-out rounded-full" 
-                      style={{ width: `${progressPercentage}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between mt-1 text-xs text-gray-500">
-                    <span>0%</span>
-                    <span>{progressPercentage.toFixed(1)}% of target</span>
-                    <span>100%</span>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  {weeklyTargetAverage > 0 && (
-                    <div className={`p-3 rounded-md text-sm mb-2 flex items-start gap-2 ${
-                      theme === 'dark' ? 'bg-yellow-900 border border-yellow-700 text-yellow-100' : 'bg-yellow-50 border border-yellow-200'
-                    }`}>
-                      <Info size={16} className="mt-0.5" />
-                      <div>
-                        You need to earn <strong>${weeklyTargetAverage.toLocaleString(undefined, {maximumFractionDigits: 2})}</strong> weekly to reach your target.
-                      </div>
-                    </div>
-                  )}
-                  
-                  {prediction && (
-                    <div className={`p-3 rounded-md text-sm mb-2 flex items-start gap-2 ${
-                      theme === 'dark' ? 'bg-blue-900 border border-blue-700 text-blue-100' : 'bg-blue-50 border border-blue-200'
-                    }`}>
-                      <Info size={16} className="mt-0.5" />
-                      <div>
-                        At your current pace (${prediction.avgWeeklyProfit.toLocaleString(undefined, {maximumFractionDigits: 2})} weekly), 
-                        you'll reach your goal in approximately <strong>{prediction.weeksNeeded} weeks</strong> by <strong>{prediction.targetDate}</strong>.
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <GoalStats 
+              target={target}
+              totalProfit={totalProfit}
+              remaining={remaining}
+              progressPercentage={progressPercentage}
+              weeklyTargetAverage={weeklyTargetAverage}
+              prediction={prediction}
+              streakInfo={streakInfo}
+              theme={theme}
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="md:col-span-12">
-            <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
-              <CardHeader>
-                <CardTitle className={theme === 'dark' ? 'text-white' : ''}>
-                  {showCumulative ? "Cumulative Progress" : "Weekly Progress"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={displayedWeeks}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} />
-                      <XAxis 
-                        dataKey="week" 
-                        stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'}
-                      />
-                      <YAxis 
-                        stroke={theme === 'dark' ? '#9ca3af' : '#6b7280'}
-                        tickFormatter={(value) => `$${value.toLocaleString()}`}
-                      />
-                      <RechartsTooltip 
-                        formatter={(value) => [`$${value.toLocaleString()}`, null]}
-                        labelFormatter={(label) => `Week ${label}`}
-                        contentStyle={{ 
-                          backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
-                          borderColor: theme === 'dark' ? '#4b5563' : '#e5e7eb',
-                          color: theme === 'dark' ? '#f9fafb' : 'inherit'
-                        }}
-                      />
-                      <Legend />
-                      {!showCumulative && (
-                        <Line 
-                          type="monotone" 
-                          dataKey="profit" 
-                          name="Weekly Profit" 
-                          stroke="#D5001C" 
-                          strokeWidth={2} 
-                          dot={{ r: 4 }} 
-                          activeDot={{ r: 6, fill: theme === 'dark' ? '#f87171' : '#D5001C' }}
-                        />
-                      )}
-                      {showCumulative && (
-                        <Line 
-                          type="monotone" 
-                          dataKey="cumulative" 
-                          name="Cumulative Progress" 
-                          stroke={theme === 'dark' ? '#CFB87C' : '#191F22'} 
-                          strokeWidth={2} 
-                          dot={{ r: 4 }} 
-                          activeDot={{ r: 6 }}
-                        />
-                      )}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            <ProfitGraph 
+              data={displayedWeeks}
+              showCumulative={showCumulative}
+              theme={theme}
+            />
           </div>
 
           <div className="md:col-span-12">
-            <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
-              <CardHeader>
-                <CardTitle className={theme === 'dark' ? 'text-white' : ''}>Weekly Input</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {displayedWeeks.map((week, index) => (
-                    <div 
-                      key={index} 
-                      className={`p-3 border rounded-lg ${theme === 'dark' ? 'border-gray-700 bg-gray-700/50' : ''}`}
-                    >
-                      <div className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : ''}`}>Week {week.week}</div>
-                      <div className="flex flex-col space-y-2">
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            value={week.profit || ""}
-                            onChange={(e) => handleProfitChange(index, e.target.value)}
-                            placeholder="0"
-                            className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-                          />
-                          {weeklyTargetAverage > 0 && (
-                            <Tooltip content={`Target: $${weeklyTargetAverage.toLocaleString(undefined, {maximumFractionDigits: 0})}`}>
-                              <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                                <Info size={16} className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} />
-                              </div>
-                            </Tooltip>
-                          )}
-                        </div>
-                        <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Cumulative: ${week.cumulative.toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <WeekInput 
+              weeks={displayedWeeks}
+              onProfitChange={handleProfitChange}
+              weeklyTargetAverage={weeklyTargetAverage}
+              theme={theme}
+              currentStreak={streakInfo.currentStreak}
+            />
           </div>
         </div>
       </main>
 
       <footer className={`max-w-6xl mx-auto mt-12 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-        <p>Porsche GT3 Savings Tracker © {new Date().getFullYear()}</p>
+        <p>{goalName} Savings Tracker © {new Date().getFullYear()}</p>
       </footer>
+      
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          emoji={toast.emoji} 
+          onClose={() => setToast(null)} 
+        />
+      )}
     </div>
   );
 }
