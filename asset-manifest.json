@@ -1,21 +1,21 @@
 {
   "files": {
-    "main.css": "/gt3-tracker/static/css/main.2d9097b8.css",
-    "main.js": "/gt3-tracker/static/js/main.1f1f795d.js",
+    "main.css": "/gt3-tracker/static/css/main.7ce4c6f3.css",
+    "main.js": "/gt3-tracker/static/js/main.aa3a8ea7.js",
     "static/js/74.85b1f2d2.chunk.js": "/gt3-tracker/static/js/74.85b1f2d2.chunk.js",
     "static/js/239.30bfcd71.chunk.js": "/gt3-tracker/static/js/239.30bfcd71.chunk.js",
     "static/js/977.712e7d14.chunk.js": "/gt3-tracker/static/js/977.712e7d14.chunk.js",
     "static/js/732.0ed5c23a.chunk.js": "/gt3-tracker/static/js/732.0ed5c23a.chunk.js",
     "index.html": "/gt3-tracker/index.html",
-    "main.2d9097b8.css.map": "/gt3-tracker/static/css/main.2d9097b8.css.map",
-    "main.1f1f795d.js.map": "/gt3-tracker/static/js/main.1f1f795d.js.map",
+    "main.7ce4c6f3.css.map": "/gt3-tracker/static/css/main.7ce4c6f3.css.map",
+    "main.aa3a8ea7.js.map": "/gt3-tracker/static/js/main.aa3a8ea7.js.map",
     "74.85b1f2d2.chunk.js.map": "/gt3-tracker/static/js/74.85b1f2d2.chunk.js.map",
     "239.30bfcd71.chunk.js.map": "/gt3-tracker/static/js/239.30bfcd71.chunk.js.map",
     "977.712e7d14.chunk.js.map": "/gt3-tracker/static/js/977.712e7d14.chunk.js.map",
     "732.0ed5c23a.chunk.js.map": "/gt3-tracker/static/js/732.0ed5c23a.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.2d9097b8.css",
-    "static/js/main.1f1f795d.js"
+    "static/css/main.7ce4c6f3.css",
+    "static/js/main.aa3a8ea7.js"
   ]
 }
