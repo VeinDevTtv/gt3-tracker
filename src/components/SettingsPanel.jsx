@@ -1,22 +1,15 @@
-import React, { useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Label } from "./ui/label";
-import { Input } from "./ui/input";
-import { Switch } from "./ui/switch";
-import { 
-  RefreshCcw, 
-  Download, 
-  Upload,
-  Calendar
-} from 'lucide-react';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Download } from 'lucide-react';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
-export default function SettingsPanel({
+const SettingsPanel = ({ 
   theme,
   target,
   goalName,
-  carImageUrl,
   totalWeeks,
   visibleWeeks,
   showCumulative,
@@ -33,60 +26,48 @@ export default function SettingsPanel({
   exportAsCSV,
   exportAsJSON,
   importJSON
-}) {
-  // References and state
-  const fileInputRef = useRef(null);
-  
-  // Handle file import
+}) => {
+  const fileInputRef = React.useRef(null);
+
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
-  
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      const jsonData = event.target.result;
-      importJSON(jsonData);
+      try {
+        importJSON(event.target.result);
+      } catch (error) {
+        console.error('Error parsing JSON:', error);
+        alert('Invalid JSON file. Please upload a valid JSON export.');
+      }
     };
     reader.readAsText(file);
     e.target.value = null; // Reset the input
   };
 
   return (
-    <div className={`space-y-6 ${theme === 'dark' ? 'text-white' : ''}`}>
-      <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
-        <CardHeader>
-          <CardTitle>Goal Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="goalName" className="mb-2 block">
+    <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
+      <CardHeader>
+        <CardTitle className={theme === 'dark' ? 'text-white' : ''}>Settings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
               Goal Name
             </Label>
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
-              <div className="flex-1">
-                <Input 
-                  type="text" 
-                  id="goalName" 
-                  value={goalName} 
-                  onChange={onGoalNameChange}
-                  className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-                />
-                <p className="text-xs mt-1 text-gray-500">
-                  The name will update the car image automatically if recognized
-                </p>
-              </div>
-              <div className="flex-shrink-0">
-                <img 
-                  src={carImageUrl} 
-                  alt={goalName} 
-                  className="h-20 w-auto object-contain" 
-                />
-              </div>
-            </div>
+            <Input 
+              type="text" 
+              value={goalName} 
+              onChange={onGoalNameChange} 
+              placeholder="Porsche GT3"
+              className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+            />
           </div>
           
           <div className="space-y-2">
@@ -210,18 +191,19 @@ export default function SettingsPanel({
               <Button variant="outline" size="sm" className="flex-1" onClick={handleImportClick}>
                 Import JSON
               </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".json"
+                className="hidden"
+              />
             </div>
           </div>
-        </CardContent>
-      </Card>
-      
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        accept=".json"
-        className="hidden"
-      />
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
-} 
+};
+
+export default SettingsPanel; 

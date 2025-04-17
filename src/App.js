@@ -3,17 +3,16 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
-import { getCarImageUrl } from './utils/carImages';
 
 const MILESTONES = [10000, 25000, 50000, 75000, 100000, 150000, 200000, 250000];
 
 // Initialize with configurable number of weeks
 const createInitialWeeks = (numberOfWeeks) => {
   return Array.from({ length: numberOfWeeks }, (_, i) => ({
-    week: i + 1,
-    profit: 0,
-    cumulative: 0,
-  }));
+  week: i + 1,
+  profit: 0,
+  cumulative: 0,
+}));
 };
 
 export default function GT3Tracker() {
@@ -30,12 +29,6 @@ export default function GT3Tracker() {
   const [goalName, setGoalName] = useState(() => {
     const savedGoalName = localStorage.getItem('savings-tracker-goal-name');
     return savedGoalName || "Porsche GT3";
-  });
-
-  // Car image URL based on goal name
-  const [carImageUrl, setCarImageUrl] = useState(() => {
-    const savedGoalName = localStorage.getItem('savings-tracker-goal-name');
-    return getCarImageUrl(savedGoalName || "Porsche GT3");
   });
   
   const [startDate, setStartDate] = useState(() => {
@@ -148,6 +141,22 @@ export default function GT3Tracker() {
     setToast({ message, emoji });
   }, []);
 
+  // Celebration animation for reaching milestones
+  const celebrateMilestone = useCallback((milestone) => {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+    
+    // Play celebration sound
+    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3');
+    audio.play().catch(e => console.log('Audio play failed:', e));
+    
+    // Show milestone toast
+    showToast(`🎉 Congratulations! You've reached $${milestone.toLocaleString()} in savings!`, '🏆');
+  }, [showToast]);
+
   // Memoized profit change handler
   const handleProfitChange = useCallback((weekIndex, value) => {
     const updatedWeeks = [...weeks];
@@ -185,16 +194,14 @@ export default function GT3Tracker() {
         }
       }
     }
-  }, [weeks, lastMilestone, showToast]);
+  }, [weeks, lastMilestone, showToast, celebrateMilestone]);
 
   const handleTargetChange = useCallback((e) => {
     setTarget(parseFloat(e.target.value) || 0);
   }, []);
   
   const handleGoalNameChange = useCallback((e) => {
-    const newGoalName = e.target.value;
-    setGoalName(newGoalName);
-    setCarImageUrl(getCarImageUrl(newGoalName));
+    setGoalName(e.target.value);
   }, []);
   
   const handleStartDateChange = useCallback((e) => {
@@ -243,94 +250,6 @@ export default function GT3Tracker() {
     setShowConfirmReset(false);
     showToast('All data has been reset', '🔄');
   }, [totalWeeks, showToast]);
-
-  // Celebration animation for reaching milestones
-  const celebrateMilestone = useCallback((milestone) => {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-    
-    // Play celebration sound
-    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3');
-    audio.play().catch(e => console.log('Audio play failed:', e));
-    
-    // Show milestone toast
-    showToast(`🎉 Congratulations! You've reached $${milestone.toLocaleString()} in savings!`, '🏆');
-  }, [showToast]);
-
-  // Export data as CSV
-  const exportAsCSV = useCallback(() => {
-    const headers = ['Week', 'Weekly Profit', 'Cumulative'];
-    const csvContent = [
-      headers.join(','),
-      ...weeks.map(week => 
-        [week.week, week.profit, week.cumulative].join(',')
-      )
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${goalName.replace(/\s+/g, '-').toLowerCase()}-tracker-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast('Data exported as CSV', '📤');
-  }, [weeks, goalName, showToast]);
-  
-  // Export data as JSON for backup
-  const exportAsJSON = useCallback(() => {
-    const data = {
-      goalName,
-      target,
-      startDate,
-      totalWeeks,
-      visibleWeeks,
-      weeks,
-      lastModified: new Date().toISOString()
-    };
-    
-    const jsonContent = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${goalName.replace(/\s+/g, '-').toLowerCase()}-backup-${new Date().toISOString().split('T')[0]}.json`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast('Backup created successfully', '💾');
-  }, [goalName, target, startDate, totalWeeks, visibleWeeks, weeks, showToast]);
-  
-  // Import data from JSON backup
-  const importJSON = useCallback((jsonString) => {
-    try {
-      const data = JSON.parse(jsonString);
-      
-      if (!data.weeks || !Array.isArray(data.weeks)) {
-        throw new Error('Invalid backup format: weeks data missing');
-      }
-      
-      setGoalName(data.goalName || 'Porsche GT3');
-      setTarget(data.target || 280000);
-      setStartDate(data.startDate || new Date().toISOString().split('T')[0]);
-      setTotalWeeks(data.totalWeeks || 49);
-      setVisibleWeeks(Math.min(data.visibleWeeks || 12, data.totalWeeks || 49));
-      setWeeks(data.weeks);
-      
-      showToast('Data imported successfully', '📥');
-    } catch (error) {
-      console.error('Error importing data:', error);
-      showToast('Failed to import data. Invalid format.', '⚠️');
-    }
-  }, [showToast]);
 
   // Memoized calculations
   const totalProfit = useMemo(() => 
@@ -409,7 +328,6 @@ export default function GT3Tracker() {
               theme={theme}
               toggleTheme={toggleTheme}
               goalName={goalName}
-              carImageUrl={carImageUrl}
               target={target}
               totalProfit={totalProfit}
               remaining={remaining}
@@ -434,7 +352,6 @@ export default function GT3Tracker() {
               theme={theme}
               target={target}
               goalName={goalName}
-              carImageUrl={carImageUrl}
               totalWeeks={totalWeeks}
               visibleWeeks={visibleWeeks}
               showCumulative={showCumulative}
