@@ -371,6 +371,15 @@ User question: ${userMessage}`;
           errorMessage = 'Invalid Replicate API key. Please check that you\'ve entered a valid key.';
         } else if (error.message?.includes('429')) {
           errorMessage = 'Replicate API rate limit exceeded.';
+        } else if (error.message?.includes('Failed to fetch') || error.message?.includes('CORS')) {
+          errorMessage = 'CORS error detected. Replicate API cannot be called directly from a browser. You need a backend server to make these API calls. Try the alternatives below.';
+          setShowFreeAlternatives(true);
+          
+          // Automatically switch to OpenAI if available
+          if (openaiApiKey) {
+            errorMessage += ' Switching to OpenAI API for now.';
+            handleSwitchProvider(API_PROVIDERS.OPENAI);
+          }
         }
       }
       
@@ -393,7 +402,8 @@ User question: ${userMessage}`;
     replicateApiKey,
     messages, 
     createAIContext, 
-    debugMode
+    debugMode,
+    handleSwitchProvider
   ]);
 
   return (
@@ -556,6 +566,13 @@ User question: ${userMessage}`;
                 </li>
               </ul>
               <p className="mt-2">These options require manual copy/paste of your data, but don't need API keys or paid subscriptions.</p>
+              
+              {apiProvider === API_PROVIDERS.REPLICATE && (
+                <div className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded">
+                  <p className="font-semibold">Note about Replicate:</p>
+                  <p>Replicate requires a backend server to work from a browser due to CORS restrictions. For direct browser use, try the other alternatives.</p>
+                </div>
+              )}
             </div>
           )}
         </div>
