@@ -5,6 +5,8 @@
 A React application designed to track your savings progress toward purchasing your dream Porsche GT3.
 
 ## Recent Updates
+- Added Community Leaderboard with privacy-focused anonymous comparison
+- Enhanced chart visualization with multiple graph types and analytics
 - Added AI Assistant powered by OpenAI's API, Ollama, or other providers
 - PDF report generation with shareable screenshots
 - Dedicated settings page with theme options
@@ -22,6 +24,18 @@ A React application designed to track your savings progress toward purchasing yo
   - Weeks remaining
   - Weekly target average
   - Predicted completion date
+- **Enhanced Chart Options:** Visualize your data with multiple chart types:
+  - Line charts for trend visualization
+  - Bar charts for weekly comparison
+  - Area charts for visual impact
+  - Combined charts with trend analysis
+  - Moving averages and trend lines
+- **Community Leaderboard:** Securely and anonymously compare your savings progress with other GT3 enthusiasts:
+  - 100% secure and private
+  - No personal information shared
+  - Strict opt-in only policy
+  - See your rank among other savers
+  - Compare weekly averages and total savings
 - **Data Management:** Save progress locally with options to reset or export data.
 - **Theme Selection:** Choose between light, dark, and various accent color themes to customize your experience.
 - **PDF Reports:** Generate detailed PDF reports of your savings progress.

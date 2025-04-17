@@ -1,5 +1,5 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Moon, Sun, Settings } from 'lucide-react';
 import ProgressBar from '../components/ProgressBar';
@@ -8,6 +8,7 @@ import ProfitGraph from '../components/ProfitGraph';
 import WeekInput from '../components/WeekInput';
 import Toast from '../components/Toast';
 import AIAssistant from '../components/AIAssistant';
+import CommunityLeaderboard from '../components/CommunityLeaderboard';
 
 export default function Home({
   theme,
@@ -17,7 +18,8 @@ export default function Home({
   totalProfit,
   remaining,
   progressPercentage,
-  displayedWeeks,
+  currentWeek,
+  weeksRemaining,
   weeklyTargetAverage,
   prediction,
   showCumulative,
@@ -26,12 +28,20 @@ export default function Home({
   visibleWeeks,
   handleProfitChange,
   toast,
-  setToast
+  setToast,
+  toggleAI,
+  showAIAssistant
 }) {
-  const navigate = useNavigate();
+  const visibleWeeksData = visibleWeeks || 12;
   
-  // Use displayedWeeks if available, otherwise compute from weeks and visibleWeeks
-  const visibleWeeksData = displayedWeeks || (weeks ? weeks.slice(0, Math.min(visibleWeeks, weeks.length)) : []);
+  // Ensure weeks is valid and create a safe version for components
+  const visibleWeeksDataSafe = weeks && weeks.length > 0 
+    ? weeks.slice(0, visibleWeeksData) 
+    : Array.from({ length: visibleWeeksData }, (_, i) => ({
+      week: i + 1,
+      profit: 0,
+      cumulative: 0
+    }));
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50'} p-6 transition-colors duration-200`}>
@@ -45,15 +55,10 @@ export default function Home({
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={() => navigate('/settings')} 
-            className="rounded-full"
-            title="Settings"
-          >
-            <Settings size={18} />
-          </Button>
+          <Link to="/settings" className="flex items-center text-primary-color hover:underline font-medium">
+            <span>Settings</span>
+            <Settings className="ml-1 h-4 w-4" />
+          </Link>
           <Button 
             variant="outline" 
             size="icon" 
@@ -102,17 +107,28 @@ export default function Home({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          <div className="md:col-span-12">
+          <div className="md:col-span-4">
+            <CommunityLeaderboard
+              totalProfit={totalProfit}
+              weeklyAverage={weeklyTargetAverage}
+              weeks={weeks}
+              theme={theme}
+            />
+          </div>
+          
+          <div className="md:col-span-8">
             <ProfitGraph 
-              data={visibleWeeksData}
+              data={visibleWeeksDataSafe}
               showCumulative={showCumulative}
               theme={theme}
             />
           </div>
+        </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="md:col-span-12">
             <WeekInput 
-              weeks={visibleWeeksData}
+              weeks={visibleWeeksDataSafe}
               onProfitChange={handleProfitChange}
               weeklyTargetAverage={weeklyTargetAverage}
               theme={theme}
@@ -131,6 +147,23 @@ export default function Home({
           message={toast.message} 
           emoji={toast.emoji} 
           onClose={() => setToast(null)} 
+        />
+      )}
+      
+      {showAIAssistant && (
+        <AIAssistant 
+          theme={theme}
+          toggleAI={toggleAI}
+          themeColor={theme}
+          goalData={{
+            goalName,
+            target,
+            totalProfit,
+            remaining,
+            progressPercentage,
+            weeklyAverage: weeklyTargetAverage,
+            prediction
+          }}
         />
       )}
     </div>
