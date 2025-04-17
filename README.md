@@ -6,11 +6,13 @@ A React application to track your savings progress towards purchasing a Porsche 
 
 ## Recent Updates
 
-The application has been enhanced with two major new features:
+The application has been enhanced with several major new features:
 
 1. **AI Assistant**: Using OpenAI's API, you can now ask questions about your savings progress and receive personalized insights, advice, and encouragement based on your current stats.
 
 2. **Dedicated Settings Page**: All configuration options have been moved to a separate settings page, giving the main tracking interface a cleaner, more focused design.
+
+3. **Dynamic Car Selection**: Choose from a variety of luxury car models as your savings goal. The app now automatically updates the car image based on the goal name you enter, or you can browse the built-in gallery of dream cars.
 
 ## Overview
 
@@ -21,6 +23,8 @@ This application helps you track your weekly savings toward a Porsche GT3. It vi
 - **Customizable Goal Settings**:
   - Set your savings target amount
   - Customize the goal name (default is "Porsche GT3")
+  - Browse and select from a gallery of luxury cars
+  - Dynamic car images that change based on your selected goal
   - Set a start date for your savings journey
 - **Weekly Profit Tracking**: 
   - Input your weekly savings/profits

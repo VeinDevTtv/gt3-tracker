@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
+import { getCarImageUrl } from './utils/carImages';
 
 const MILESTONES = [10000, 25000, 50000, 75000, 100000, 150000, 200000, 250000];
 
@@ -29,6 +30,12 @@ export default function GT3Tracker() {
   const [goalName, setGoalName] = useState(() => {
     const savedGoalName = localStorage.getItem('savings-tracker-goal-name');
     return savedGoalName || "Porsche GT3";
+  });
+
+  // Car image URL based on goal name
+  const [carImageUrl, setCarImageUrl] = useState(() => {
+    const savedGoalName = localStorage.getItem('savings-tracker-goal-name');
+    return getCarImageUrl(savedGoalName || "Porsche GT3");
   });
   
   const [startDate, setStartDate] = useState(() => {
@@ -185,7 +192,9 @@ export default function GT3Tracker() {
   }, []);
   
   const handleGoalNameChange = useCallback((e) => {
-    setGoalName(e.target.value);
+    const newGoalName = e.target.value;
+    setGoalName(newGoalName);
+    setCarImageUrl(getCarImageUrl(newGoalName));
   }, []);
   
   const handleStartDateChange = useCallback((e) => {
@@ -400,6 +409,7 @@ export default function GT3Tracker() {
               theme={theme}
               toggleTheme={toggleTheme}
               goalName={goalName}
+              carImageUrl={carImageUrl}
               target={target}
               totalProfit={totalProfit}
               remaining={remaining}
@@ -424,6 +434,7 @@ export default function GT3Tracker() {
               theme={theme}
               target={target}
               goalName={goalName}
+              carImageUrl={carImageUrl}
               totalWeeks={totalWeeks}
               visibleWeeks={visibleWeeks}
               showCumulative={showCumulative}

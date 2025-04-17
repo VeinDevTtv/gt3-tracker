@@ -13,6 +13,7 @@ export default function Home({
   theme,
   toggleTheme,
   goalName,
+  carImageUrl,
   target,
   totalProfit,
   remaining,
@@ -61,8 +62,8 @@ export default function Home({
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </Button>
           <img 
-            src="https://files.porsche.com/filestore/image/multimedia/none/992-gt3-modelimage-sideshot/model/765dfc51-51bc-11eb-80d1-005056bbdc38/porsche-model.png" 
-            alt="Porsche GT3" 
+            src={carImageUrl}
+            alt={goalName} 
             className="h-24 w-auto"
           />
         </div>
