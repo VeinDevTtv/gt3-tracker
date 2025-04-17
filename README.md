@@ -5,6 +5,7 @@
 A React application designed to track your savings progress toward purchasing your dream Porsche GT3.
 
 ## Recent Updates
+- Added user authentication system with secure local storage
 - Added Community Leaderboard with privacy-focused anonymous comparison
 - Enhanced chart visualization with multiple graph types and analytics
 - Added AI Assistant powered by OpenAI's API, Ollama, or other providers
@@ -14,6 +15,7 @@ A React application designed to track your savings progress toward purchasing yo
 - Weekly profit tracking with graphical visualization
 
 ## Features
+- **User Authentication:** Secure signup, login, and profile management system.
 - **Customizable Goal Settings:** Set your target amount, goal name, and weekly savings target.
 - **Weekly Profit Tracking:** Record your weekly earnings toward your goal.
 - **Progress Visualization:** View your progress with a responsive progress bar and interactive chart.
@@ -47,12 +49,32 @@ A React application designed to track your savings progress toward purchasing yo
 
 ## Technical Implementation
 The application is built using:
-- React
-- TailwindCSS
+- React with React Router for navigation
+- Context API for state management
+- TailwindCSS for styling
 - Recharts for data visualization
 - HTML2PDF for PDF report generation
 - HTML2Canvas for image sharing
-- Local Storage for data persistence
+- Local Storage for data persistence and user authentication
+- React Hot Toast for notifications
+
+## Authentication System
+The app includes a secure authentication system:
+
+### Features
+- User registration with username, email, and password
+- Secure login with remember me functionality
+- Password reset flow
+- User profile management
+- Protected routes for authenticated users
+- Mobile-responsive navigation with user menu
+
+### Implementation
+- Uses React Context API for global auth state
+- Securely stores user data in localStorage with encryption
+- Implements form validation for all auth forms
+- Provides clear error feedback to users
+- Includes "remember me" functionality for persistent sessions
 
 ## AI Assistant Setup
 The app includes an AI-powered assistant with support for multiple providers:
@@ -80,7 +102,7 @@ The app also supports Poe and Replicate as AI providers, with similar configurat
 ## Installation and Usage
 ```bash
 # Clone the repository
-git clone https://github.com/VeinDevTtv/gt3-tracker.git
+git clone https://github.com/YourUsername/gt3-tracker.git
 
 # Navigate to the project directory
 cd gt3-tracker
@@ -105,6 +127,7 @@ npm run build
 - Historical data comparison
 - Goal revision history
 - AI-powered savings recommendations
+- Full backend implementation with real database
 
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
