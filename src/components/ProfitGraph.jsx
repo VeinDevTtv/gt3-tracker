@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   LineChart, Line, BarChart, Bar, AreaChart, Area, 
   XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
   ResponsiveContainer, Legend, ComposedChart, Scatter 
 } from 'recharts';
-import { Button } from "@/components/ui/button";
 import { BarChart2, LineChart as LineChartIcon, TrendingUp, GitBranch, ArrowUpDown } from 'lucide-react';
 
 const ProfitGraph = ({ data, showCumulative, theme }) => {
@@ -344,69 +342,69 @@ const ProfitGraph = ({ data, showCumulative, theme }) => {
   };
   
   return (
-    <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
-      <CardHeader className="pb-2">
+    <div className={`rounded-lg overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border border-gray-200'} shadow`}>
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex justify-between items-center">
-          <CardTitle className={theme === 'dark' ? 'text-white' : ''}>
+          <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : ''}`}>
             {showCumulative ? "Cumulative Progress" : "Weekly Progress"}
-          </CardTitle>
+          </h3>
           <div className="flex gap-2">
-            <Button 
-              size="sm" 
-              variant={chartType === 'line' ? "themed" : "outline"}
+            <button 
+              className={`p-1.5 h-8 rounded-md ${chartType === 'line' 
+                ? 'bg-primary-color text-white' 
+                : 'bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'}`}
               onClick={() => setChartType('line')}
               title="Line Chart"
-              className="p-1.5 h-8"
             >
               <LineChartIcon className="h-4 w-4" />
-            </Button>
-            <Button 
-              size="sm" 
-              variant={chartType === 'bar' ? "themed" : "outline"}
+            </button>
+            <button 
+              className={`p-1.5 h-8 rounded-md ${chartType === 'bar' 
+                ? 'bg-primary-color text-white' 
+                : 'bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'}`}
               onClick={() => setChartType('bar')}
               title="Bar Chart"
-              className="p-1.5 h-8"
             >
               <BarChart2 className="h-4 w-4" />
-            </Button>
-            <Button 
-              size="sm" 
-              variant={chartType === 'area' ? "themed" : "outline"}
+            </button>
+            <button 
+              className={`p-1.5 h-8 rounded-md ${chartType === 'area' 
+                ? 'bg-primary-color text-white' 
+                : 'bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'}`}
               onClick={() => setChartType('area')}
               title="Area Chart"
-              className="p-1.5 h-8"
             >
               <TrendingUp className="h-4 w-4" />
-            </Button>
-            <Button 
-              size="sm" 
-              variant={chartType === 'composed' ? "themed" : "outline"}
+            </button>
+            <button 
+              className={`p-1.5 h-8 rounded-md ${chartType === 'composed' 
+                ? 'bg-primary-color text-white' 
+                : 'bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'}`}
               onClick={() => setChartType('composed')}
               title="Combined Chart"
-              className="p-1.5 h-8"
             >
               <GitBranch className="h-4 w-4" />
-            </Button>
-            <Button 
-              size="sm" 
-              variant={showMovingAverage ? "themed" : "outline"}
+            </button>
+            <button 
+              className={`p-1.5 h-8 rounded-md ml-2 ${showMovingAverage 
+                ? 'bg-primary-color text-white' 
+                : 'bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'}`}
               onClick={() => setShowMovingAverage(!showMovingAverage)}
               title={showMovingAverage ? "Hide Average" : "Show Average"}
-              className="p-1.5 h-8 ml-2"
             >
               <ArrowUpDown className="h-4 w-4" />
-            </Button>
+            </button>
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="p-4">
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             {renderChart()}
           </ResponsiveContainer>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

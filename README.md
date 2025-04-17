@@ -80,7 +80,7 @@ The app also supports Poe and Replicate as AI providers, with similar configurat
 ## Installation and Usage
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/gt3-tracker.git
+git clone https://github.com/VeinDevTtv/gt3-tracker.git
 
 # Navigate to the project directory
 cd gt3-tracker
