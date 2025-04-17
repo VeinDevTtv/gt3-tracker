@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from './ui/button';
-import { SendHorizontal, BrainCircuit, Bug, RefreshCw, Cpu } from 'lucide-react';
+import { SendHorizontal, BrainCircuit, Bug, RefreshCw, Cpu, ChevronDown, ChevronUp, Minimize2, Maximize2 } from 'lucide-react';
 import { OpenAI } from 'openai';
 
 // Create a configurable OpenAI client
@@ -31,6 +31,9 @@ export default function AIAssistant({
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(
+    localStorage.getItem('ai-assistant-collapsed') === 'true'
+  );
   
   const [apiProvider, setApiProvider] = useState(
     localStorage.getItem('ai-assistant-provider') || API_PROVIDERS.OLLAMA
@@ -74,6 +77,13 @@ export default function AIAssistant({
   const [debugMode, setDebugMode] = useState(false);
   const [errorDetails, setErrorDetails] = useState('');
   const [showFreeAlternatives, setShowFreeAlternatives] = useState(false);
+
+  // Toggle collapsed state of AI Assistant
+  const toggleCollapsed = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem('ai-assistant-collapsed', newState);
+  };
 
   // Check Ollama status when it's selected
   useEffect(() => {
@@ -536,276 +546,297 @@ User question: ${userMessage}`;
           <h2 className="text-xl font-bold">AI Assistant</h2>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={apiProvider}
-            onChange={(e) => handleSwitchProvider(e.target.value)}
-            className={`text-xs py-1 px-2 rounded ${theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100'}`}
-          >
-            <option value={API_PROVIDERS.OLLAMA}>Ollama (Local AI)</option>
-            <option value={API_PROVIDERS.REPLICATE}>Replicate (Free Credits)</option>
-            <option value={API_PROVIDERS.OPENAI}>OpenAI (Paid)</option>
-            <option value={API_PROVIDERS.POE}>Poe (Paid)</option>
-          </select>
+          {!isCollapsed && (
+            <>
+              <select
+                value={apiProvider}
+                onChange={(e) => handleSwitchProvider(e.target.value)}
+                className={`text-xs py-1 px-2 rounded ${theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100'}`}
+              >
+                <option value={API_PROVIDERS.OLLAMA}>Ollama (Local AI)</option>
+                <option value={API_PROVIDERS.REPLICATE}>Replicate (Free Credits)</option>
+                <option value={API_PROVIDERS.OPENAI}>OpenAI (Paid)</option>
+                <option value={API_PROVIDERS.POE}>Poe (Paid)</option>
+              </select>
+              <button 
+                onClick={() => setDebugMode(!debugMode)} 
+                className={`text-xs p-1 rounded ${debugMode ? 'bg-yellow-200 text-yellow-800' : 'text-gray-400 hover:text-gray-600'}`}
+                title="Toggle debug mode"
+              >
+                <Bug size={16} />
+              </button>
+            </>
+          )}
           <button 
-            onClick={() => setDebugMode(!debugMode)} 
-            className={`text-xs p-1 rounded ${debugMode ? 'bg-yellow-200 text-yellow-800' : 'text-gray-400 hover:text-gray-600'}`}
-            title="Toggle debug mode"
+            onClick={toggleCollapsed} 
+            className={`text-xs p-1 rounded ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-200'}`}
+            title={isCollapsed ? "Expand AI Assistant" : "Collapse AI Assistant"}
           >
-            <Bug size={16} />
+            {isCollapsed ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
           </button>
         </div>
       </div>
       
-      {showApiKeyInput ? (
-        <div className="mb-4">
-          <p className="text-sm mb-2">
-            {apiProvider === API_PROVIDERS.OPENAI 
-              ? 'Enter your OpenAI API key (requires billing setup):' 
-              : apiProvider === API_PROVIDERS.POE
-                ? 'Enter your Poe API key (requires subscription):'
-                : apiProvider === API_PROVIDERS.REPLICATE
-                  ? 'Enter your Replicate API key (free credits available):'
-                  : 'Configure Ollama settings:'}
-          </p>
-          
-          {apiProvider === API_PROVIDERS.OLLAMA ? (
-            <div className="space-y-2">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs">Ollama Server Address</label>
-                <input
-                  type="text"
-                  className={`p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-                  value={ollamaHost}
-                  onChange={(e) => setOllamaHost(e.target.value)}
-                  placeholder="http://localhost:11434"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs">Model Name</label>
-                <input
-                  type="text"
-                  className={`p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-                  value={ollamaModel}
-                  onChange={(e) => setOllamaModel(e.target.value)}
-                  placeholder="llama3"
-                />
-                <p className="text-xs text-gray-500 mt-1">Common models: llama3, mistral, gemma, phi</p>
-              </div>
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleApiKeySave} 
-                  disabled={!ollamaHost.trim() || !ollamaModel.trim()}
-                >
-                  Save &amp; Test Connection
-                </Button>
+      {!isCollapsed && (
+        <>
+          {showApiKeyInput ? (
+            <div className="mb-4">
+              <p className="text-sm mb-2">
+                {apiProvider === API_PROVIDERS.OPENAI 
+                  ? 'Enter your OpenAI API key (requires billing setup):' 
+                  : apiProvider === API_PROVIDERS.POE
+                    ? 'Enter your Poe API key (requires subscription):'
+                    : apiProvider === API_PROVIDERS.REPLICATE
+                      ? 'Enter your Replicate API key (free credits available):'
+                      : 'Configure Ollama settings:'}
+              </p>
+              
+              {apiProvider === API_PROVIDERS.OLLAMA ? (
+                <div className="space-y-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs">Ollama Server Address</label>
+                    <input
+                      type="text"
+                      className={`p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                      value={ollamaHost}
+                      onChange={(e) => setOllamaHost(e.target.value)}
+                      placeholder="http://localhost:11434"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs">Model Name</label>
+                    <input
+                      type="text"
+                      className={`p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                      value={ollamaModel}
+                      onChange={(e) => setOllamaModel(e.target.value)}
+                      placeholder="llama3"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Common models: llama3, mistral, gemma, phi</p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={handleApiKeySave} 
+                      disabled={!ollamaHost.trim() || !ollamaModel.trim()}
+                    >
+                      Save &amp; Test Connection
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                    value={
+                      apiProvider === API_PROVIDERS.OPENAI 
+                        ? openaiApiKey 
+                        : apiProvider === API_PROVIDERS.POE
+                          ? poeApiKey
+                          : replicateApiKey
+                    }
+                    onChange={(e) => {
+                      if (apiProvider === API_PROVIDERS.OPENAI) {
+                        setOpenaiApiKey(e.target.value);
+                      } else if (apiProvider === API_PROVIDERS.POE) {
+                        setPoeApiKey(e.target.value);
+                      } else {
+                        setReplicateApiKey(e.target.value);
+                      }
+                    }}
+                    placeholder={
+                      apiProvider === API_PROVIDERS.OPENAI 
+                        ? 'sk-...' 
+                        : apiProvider === API_PROVIDERS.POE
+                          ? 'poe-...'
+                          : 'r8_...'
+                    }
+                  />
+                  <Button 
+                    onClick={handleApiKeySave} 
+                    disabled={
+                      (apiProvider === API_PROVIDERS.OPENAI && !openaiApiKey.trim()) || 
+                      (apiProvider === API_PROVIDERS.POE && !poeApiKey.trim()) ||
+                      (apiProvider === API_PROVIDERS.REPLICATE && !replicateApiKey.trim())
+                    }
+                  >
+                    Save
+                  </Button>
+                </div>
+              )}
+              
+              <div className="mt-3 text-xs space-y-1">
+                <p className="text-gray-500">Your settings are stored locally and never sent to our servers.</p>
+                
+                {apiProvider === API_PROVIDERS.OLLAMA && (
+                  <>
+                    <p className="text-green-600">✓ Runs completely locally - no API keys or payments needed!</p>
+                    <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded text-xs">
+                      <h3 className="font-bold mb-1">Ollama Setup Guide:</h3>
+                      <ol className="list-decimal pl-4 space-y-1">
+                        <li>Download and install Ollama from <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">ollama.com</a></li>
+                        <li>Run Ollama after installation</li>
+                        <li>Open a terminal/command prompt and run: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">ollama pull llama3</code></li>
+                        <li>Wait for the model to download (one-time setup)</li>
+                        <li>Make sure Ollama is running in the background</li>
+                      </ol>
+                    </div>
+                  </>
+                )}
+                
+                {apiProvider === API_PROVIDERS.REPLICATE && (
+                  <>
+                    <p className="text-green-600">✓ Replicate offers free credits for new users!</p>
+                    <p className="text-gray-500">
+                      <a 
+                        href="https://replicate.com/signin" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        Sign up for Replicate to get free credits
+                      </a>
+                    </p>
+                  </>
+                )}
+                
+                {(apiProvider === API_PROVIDERS.OPENAI || apiProvider === API_PROVIDERS.POE) && (
+                  <>
+                    <p className="text-yellow-600">⚠️ Both OpenAI and Poe APIs require paid subscriptions.</p>
+                    <button 
+                      onClick={() => handleSwitchProvider(API_PROVIDERS.OLLAMA)} 
+                      className="text-blue-500 hover:underline"
+                    >
+                      Switch to Ollama (completely free, local AI)
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ) : (
-            <div className="flex gap-2">
-              <input
-                type="password"
-                className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-                value={
-                  apiProvider === API_PROVIDERS.OPENAI 
-                    ? openaiApiKey 
-                    : apiProvider === API_PROVIDERS.POE
-                      ? poeApiKey
-                      : replicateApiKey
-                }
-                onChange={(e) => {
-                  if (apiProvider === API_PROVIDERS.OPENAI) {
-                    setOpenaiApiKey(e.target.value);
-                  } else if (apiProvider === API_PROVIDERS.POE) {
-                    setPoeApiKey(e.target.value);
-                  } else {
-                    setReplicateApiKey(e.target.value);
-                  }
-                }}
-                placeholder={
-                  apiProvider === API_PROVIDERS.OPENAI 
-                    ? 'sk-...' 
-                    : apiProvider === API_PROVIDERS.POE
-                      ? 'poe-...'
-                      : 'r8_...'
-                }
-              />
-              <Button 
-                onClick={handleApiKeySave} 
-                disabled={
-                  (apiProvider === API_PROVIDERS.OPENAI && !openaiApiKey.trim()) || 
-                  (apiProvider === API_PROVIDERS.POE && !poeApiKey.trim()) ||
-                  (apiProvider === API_PROVIDERS.REPLICATE && !replicateApiKey.trim())
-                }
+            <>
+              <div 
+                className={`h-64 overflow-y-auto mb-4 p-3 rounded ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}
               >
-                Save
-              </Button>
-            </div>
-          )}
-          
-          <div className="mt-3 text-xs space-y-1">
-            <p className="text-gray-500">Your settings are stored locally and never sent to our servers.</p>
-            
-            {apiProvider === API_PROVIDERS.OLLAMA && (
-              <>
-                <p className="text-green-600">✓ Runs completely locally - no API keys or payments needed!</p>
-                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded text-xs">
-                  <h3 className="font-bold mb-1">Ollama Setup Guide:</h3>
-                  <ol className="list-decimal pl-4 space-y-1">
-                    <li>Download and install Ollama from <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">ollama.com</a></li>
-                    <li>Run Ollama after installation</li>
-                    <li>Open a terminal/command prompt and run: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded">ollama pull llama3</code></li>
-                    <li>Wait for the model to download (one-time setup)</li>
-                    <li>Make sure Ollama is running in the background</li>
-                  </ol>
-                </div>
-              </>
-            )}
-            
-            {apiProvider === API_PROVIDERS.REPLICATE && (
-              <>
-                <p className="text-green-600">✓ Replicate offers free credits for new users!</p>
-                <p className="text-gray-500">
-                  <a 
-                    href="https://replicate.com/signin" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline"
-                  >
-                    Sign up for Replicate to get free credits
-                  </a>
-                </p>
-              </>
-            )}
-            
-            {(apiProvider === API_PROVIDERS.OPENAI || apiProvider === API_PROVIDERS.POE) && (
-              <>
-                <p className="text-yellow-600">⚠️ Both OpenAI and Poe APIs require paid subscriptions.</p>
-                <button 
-                  onClick={() => handleSwitchProvider(API_PROVIDERS.OLLAMA)} 
-                  className="text-blue-500 hover:underline"
-                >
-                  Switch to Ollama (completely free, local AI)
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      ) : (
-        <>
-          <div 
-            className={`h-64 overflow-y-auto mb-4 p-3 rounded ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}
-          >
-            {messages.length === 0 ? (
-              <div className="text-center py-10 text-gray-500">
-                <p>Ask me anything about your savings!</p>
-                <p className="text-sm mt-2">Examples:</p>
-                <ul className="text-xs mt-1 space-y-1">
-                  <li>"How am I doing with my savings?"</li>
-                  <li>"What's my current streak?"</li>
-                  <li>"When will I reach my goal?"</li>
-                  <li>"What should my weekly target be?"</li>
-                </ul>
-                <p className="text-xs mt-3">
-                  Using: <span className="font-semibold">
-                    {apiProvider === API_PROVIDERS.OPENAI 
-                      ? 'OpenAI API' 
-                      : apiProvider === API_PROVIDERS.POE
-                        ? 'Poe API (Claude)'
-                        : apiProvider === API_PROVIDERS.REPLICATE
-                          ? 'Replicate API (Llama 4)'
-                          : `Ollama (${ollamaModel})`
-                    }
-                  </span>
-                </p>
-                {apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'running' && (
-                  <p className="text-xs text-green-600 mt-1">✓ Ollama server running locally</p>
-                )}
-                {apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'error' && (
-                  <p className="text-xs text-red-600 mt-1 flex items-center justify-center gap-1">
-                    <span>⚠ Ollama not running</span>
-                    <button 
-                      onClick={() => setShowApiKeyInput(true)} 
-                      className="underline"
+                {messages.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500">
+                    <p>Ask me anything about your savings!</p>
+                    <p className="text-sm mt-2">Examples:</p>
+                    <ul className="text-xs mt-1 space-y-1">
+                      <li>"How am I doing with my savings?"</li>
+                      <li>"What's my current streak?"</li>
+                      <li>"When will I reach my goal?"</li>
+                      <li>"What should my weekly target be?"</li>
+                    </ul>
+                    <p className="text-xs mt-3">
+                      Using: <span className="font-semibold">
+                        {apiProvider === API_PROVIDERS.OPENAI 
+                          ? 'OpenAI API' 
+                          : apiProvider === API_PROVIDERS.POE
+                            ? 'Poe API (Claude)'
+                            : apiProvider === API_PROVIDERS.REPLICATE
+                              ? 'Replicate API (Llama 4)'
+                              : `Ollama (${ollamaModel})`
+                        }
+                      </span>
+                    </p>
+                    {apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'running' && (
+                      <p className="text-xs text-green-600 mt-1">✓ Ollama server running locally</p>
+                    )}
+                    {apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'error' && (
+                      <p className="text-xs text-red-600 mt-1 flex items-center justify-center gap-1">
+                        <span>⚠ Ollama not running</span>
+                        <button 
+                          onClick={() => setShowApiKeyInput(true)} 
+                          className="underline"
+                        >
+                          Setup
+                        </button>
+                      </p>
+                    )}
+                    {apiProvider === API_PROVIDERS.REPLICATE && (
+                      <p className="text-xs text-green-600 mt-1">✓ Free credits available with new Replicate account</p>
+                    )}
+                  </div>
+                ) : (
+                  messages.map((msg, index) => (
+                    <div 
+                      key={index} 
+                      className={`mb-3 p-2 rounded ${
+                        msg.role === 'user' 
+                          ? theme === 'dark' ? 'bg-blue-800 ml-8' : 'bg-blue-100 ml-8' 
+                          : theme === 'dark' ? 'bg-gray-600 mr-8' : 'bg-white mr-8 shadow-sm'
+                      }`}
                     >
-                      Setup
-                    </button>
-                  </p>
+                      <p className="text-sm">{msg.content}</p>
+                    </div>
+                  ))
                 )}
-                {apiProvider === API_PROVIDERS.REPLICATE && (
-                  <p className="text-xs text-green-600 mt-1">✓ Free credits available with new Replicate account</p>
+                {isLoading && (
+                  <div className={`p-2 rounded ${theme === 'dark' ? 'bg-gray-600 mr-8' : 'bg-white mr-8 shadow-sm'}`}>
+                    <div className="flex space-x-2 justify-center items-center h-6">
+                      <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'}`}></div>
+                      <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'} animation-delay-200`}></div>
+                      <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'} animation-delay-400`}></div>
+                    </div>
+                  </div>
+                )}
+                {debugMode && errorDetails && (
+                  <div className="mt-3 p-2 text-xs bg-red-100 text-red-800 rounded overflow-auto max-h-24">
+                    <strong>Debug Error:</strong>
+                    <pre>{errorDetails}</pre>
+                  </div>
                 )}
               </div>
-            ) : (
-              messages.map((msg, index) => (
-                <div 
-                  key={index} 
-                  className={`mb-3 p-2 rounded ${
-                    msg.role === 'user' 
-                      ? theme === 'dark' ? 'bg-blue-800 ml-8' : 'bg-blue-100 ml-8' 
-                      : theme === 'dark' ? 'bg-gray-600 mr-8' : 'bg-white mr-8 shadow-sm'
-                  }`}
+              
+              <div className="flex gap-2">
+                <input
+                  className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Ask about your savings..."
+                  onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                  disabled={isLoading || (apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'error')}
+                />
+                <Button 
+                  onClick={sendMessage} 
+                  disabled={!inputValue.trim() || isLoading || (apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'error')}
+                  title="Send message"
                 >
-                  <p className="text-sm">{msg.content}</p>
-                </div>
-              ))
-            )}
-            {isLoading && (
-              <div className={`p-2 rounded ${theme === 'dark' ? 'bg-gray-600 mr-8' : 'bg-white mr-8 shadow-sm'}`}>
-                <div className="flex space-x-2 justify-center items-center h-6">
-                  <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'}`}></div>
-                  <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'} animation-delay-200`}></div>
-                  <div className={`w-2 h-2 rounded-full animate-pulse ${theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'} animation-delay-400`}></div>
-                </div>
+                  <SendHorizontal size={18} />
+                </Button>
               </div>
-            )}
-            {debugMode && errorDetails && (
-              <div className="mt-3 p-2 text-xs bg-red-100 text-red-800 rounded overflow-auto max-h-24">
-                <strong>Debug Error:</strong>
-                <pre>{errorDetails}</pre>
+              
+              <div className="mt-3 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setShowApiKeyInput(true)}
+                    className="text-xs text-blue-500 hover:underline"
+                  >
+                    {apiProvider === API_PROVIDERS.OLLAMA ? 'Ollama Settings' : 'Change API Key'}
+                  </button>
+                </div>
+                <span className="text-xs text-gray-500">
+                  Powered by {
+                    apiProvider === API_PROVIDERS.OPENAI 
+                      ? 'OpenAI' 
+                      : apiProvider === API_PROVIDERS.POE 
+                        ? 'Poe (Claude)' 
+                        : apiProvider === API_PROVIDERS.REPLICATE
+                          ? 'Replicate (Llama 4)'
+                          : `Ollama (${ollamaModel})`
+                  }
+                </span>
               </div>
-            )}
-          </div>
-          
-          <div className="flex gap-2">
-            <input
-              className={`flex-1 p-2 text-sm rounded border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Ask about your savings..."
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              disabled={isLoading || (apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'error')}
-            />
-            <Button 
-              onClick={sendMessage} 
-              disabled={!inputValue.trim() || isLoading || (apiProvider === API_PROVIDERS.OLLAMA && ollamaStatus === 'error')}
-              title="Send message"
-            >
-              <SendHorizontal size={18} />
-            </Button>
-          </div>
-          
-          <div className="mt-3 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setShowApiKeyInput(true)}
-                className="text-xs text-blue-500 hover:underline"
-              >
-                {apiProvider === API_PROVIDERS.OLLAMA ? 'Ollama Settings' : 'Change API Key'}
-              </button>
-            </div>
-            <span className="text-xs text-gray-500">
-              Powered by {
-                apiProvider === API_PROVIDERS.OPENAI 
-                  ? 'OpenAI' 
-                  : apiProvider === API_PROVIDERS.POE 
-                    ? 'Poe (Claude)' 
-                    : apiProvider === API_PROVIDERS.REPLICATE
-                      ? 'Replicate (Llama 4)'
-                      : `Ollama (${ollamaModel})`
-              }
-            </span>
-          </div>
+            </>
+          )}
         </>
+      )}
+      
+      {isCollapsed && (
+        <div className="text-center text-sm text-gray-500">
+          AI Assistant is collapsed. Click the expand button to use it.
+        </div>
       )}
     </div>
   );
