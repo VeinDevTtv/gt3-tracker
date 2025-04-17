@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Moon, Sun, Settings } from 'lucide-react';
+import ProgressBar from '../components/ProgressBar';
 import GoalStats from '../components/GoalStats';
 import ProfitGraph from '../components/ProfitGraph';
 import WeekInput from '../components/WeekInput';
