@@ -5,7 +5,7 @@ import { Info, Flame } from 'lucide-react';
 import { Tooltip } from '@/components/ui/tooltip';
 
 const getEmojiForProfit = (profit, previousProfit = 0) => {
-  if (profit === 0) return '';
+  if (profit === 0) return '⚖️';
   if (profit < 0) return '😢';
   if (profit > previousProfit && previousProfit > 0) return '💰';
   if (profit >= 1000) return '🤑';
