@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
-import { Home, Settings, User, Menu, X, LogOut, CalendarClock } from 'lucide-react';
+import { Home, Settings, User, Menu, X, LogOut, CalendarClock, Trophy } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ThemeToggle from './ThemeToggle';
 
@@ -48,6 +48,16 @@ const NavMenu = ({ theme, toggleTheme }) => {
               >
                 <Home size={18} />
                 <span>Dashboard</span>
+              </Link>
+              
+              <Link 
+                to="/goals" 
+                className={`flex items-center gap-1 px-2 py-1 rounded-md ${
+                  location.pathname === '/goals' ? 'text-primary-color' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Trophy size={18} />
+                <span>Goals</span>
               </Link>
               
               <Link 
@@ -129,6 +139,17 @@ const NavMenu = ({ theme, toggleTheme }) => {
           >
             <Home size={18} />
             <span>Dashboard</span>
+          </Link>
+          
+          <Link 
+            to="/goals" 
+            className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+              location.pathname === '/goals' ? 'bg-muted text-primary-color' : 'hover:bg-muted'
+            }`}
+            onClick={() => setIsOpen(false)}
+          >
+            <Trophy size={18} />
+            <span>Goals</span>
           </Link>
           
           <Link 

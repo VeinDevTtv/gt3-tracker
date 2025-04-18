@@ -4,6 +4,7 @@ import confetti from 'canvas-confetti';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
+import Goals from './pages/Goals';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
@@ -12,6 +13,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/auth/PrivateRoute';
 import NavMenu from './components/NavMenu';
 import { Toaster } from 'react-hot-toast';
+import goalManager from './services/GoalManager';
+import achievementManager from './services/AchievementManager';
 
 // Simple error boundary component
 class ErrorBoundary extends React.Component {
@@ -90,32 +93,55 @@ export default function GT3Tracker() {
   // Toast notifications
   const [toast, setToast] = useState(null);
   
-  // Local storage loading with custom goal settings
-  const [goalName, setGoalName] = useState(() => {
-    const savedGoalName = localStorage.getItem('savings-tracker-goal-name');
-    return savedGoalName || "Porsche GT3";
-  });
+  // Initialize services
+  useEffect(() => {
+    goalManager.initialize();
+    achievementManager.initialize();
+  }, []);
   
-  const [startDate, setStartDate] = useState(() => {
-    const savedStartDate = localStorage.getItem('savings-tracker-start-date');
-    return savedStartDate || new Date().toISOString().split('T')[0];
-  });
+  // Load active goal data
+  const [activeGoal, setActiveGoal] = useState(null);
   
-  const [totalWeeks, setTotalWeeks] = useState(() => {
-    const savedTotalWeeks = localStorage.getItem('savings-tracker-total-weeks');
-    return savedTotalWeeks ? parseInt(savedTotalWeeks) : 49;
-  });
+  useEffect(() => {
+    const loadActiveGoal = () => {
+      const goal = goalManager.getActiveGoal();
+      setActiveGoal(goal);
+    };
+    
+    loadActiveGoal();
+    
+    // Setup an event listener to check for storage changes (for multi-tab support)
+    const handleStorageChange = (e) => {
+      if (e.key === goalManager.GOALS_STORAGE_KEY || e.key === goalManager.ACTIVE_GOAL_KEY) {
+        loadActiveGoal();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
   
-  const [weeks, setWeeks] = useState(() => {
-    const savedWeeks = localStorage.getItem('savings-tracker-weeks');
-    return savedWeeks ? JSON.parse(savedWeeks) : createInitialWeeks(totalWeeks);
-  });
+  // Legacy state - mapped from active goal for backward compatibility
+  const [goalName, setGoalName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [totalWeeks, setTotalWeeks] = useState(49);
+  const [weeks, setWeeks] = useState([]);
+  const [target, setTarget] = useState(0);
   
-  const [target, setTarget] = useState(() => {
-    const savedTarget = localStorage.getItem('savings-tracker-target');
-    return savedTarget ? parseFloat(savedTarget) : 280000;
-  });
+  // Sync state with active goal
+  useEffect(() => {
+    if (activeGoal) {
+      setGoalName(activeGoal.name || 'Porsche GT3');
+      setStartDate(activeGoal.startDate || new Date().toISOString().split('T')[0]);
+      setWeeks(activeGoal.weeks || createInitialWeeks(totalWeeks));
+      setTarget(activeGoal.target || 280000);
+    }
+  }, [activeGoal, totalWeeks]);
   
+  // Other state
   const [visibleWeeks, setVisibleWeeks] = useState(() => {
     const savedVisibleWeeks = localStorage.getItem('savings-tracker-visible-weeks');
     return savedVisibleWeeks ? parseInt(savedVisibleWeeks) : 12;
@@ -127,7 +153,9 @@ export default function GT3Tracker() {
   });
   
   const [showConfirmReset, setShowConfirmReset] = useState(false);
-  const [lastMilestone, setLastMilestone] = useState(0);
+  const [lastMilestone, setLastMilestone] = useState(() => {
+    return activeGoal?.lastMilestone || 0;
+  });
   
   // AI Assistant settings
   const [openAIKey, setOpenAIKey] = useState(() => localStorage.getItem('openai-api-key') || '');
@@ -139,20 +167,17 @@ export default function GT3Tracker() {
 
   // Save to localStorage when state changes
   useEffect(() => {
-    localStorage.setItem('savings-tracker-weeks', JSON.stringify(weeks));
-  }, [weeks]);
-
-  useEffect(() => {
-    localStorage.setItem('savings-tracker-target', target.toString());
-  }, [target]);
+    if (activeGoal?.id) {
+      goalManager.updateGoal(activeGoal.id, { 
+        weeks,
+        lastMilestone
+      });
+    }
+  }, [weeks, lastMilestone, activeGoal?.id]);
 
   useEffect(() => {
     localStorage.setItem('savings-tracker-visible-weeks', visibleWeeks.toString());
   }, [visibleWeeks]);
-  
-  useEffect(() => {
-    localStorage.setItem('savings-tracker-total-weeks', totalWeeks.toString());
-  }, [totalWeeks]);
   
   useEffect(() => {
     localStorage.setItem('savings-tracker-show-cumulative', showCumulative.toString());
@@ -182,14 +207,6 @@ export default function GT3Tracker() {
     // Add the current theme color class
     document.documentElement.classList.add(`theme-${themeColor}`);
   }, [themeColor]);
-  
-  useEffect(() => {
-    localStorage.setItem('savings-tracker-goal-name', goalName);
-  }, [goalName]);
-  
-  useEffect(() => {
-    localStorage.setItem('savings-tracker-start-date', startDate);
-  }, [startDate]);
 
   // Handle theme toggle
   const toggleTheme = () => {
@@ -253,55 +270,87 @@ export default function GT3Tracker() {
   }, []);
 
   // Memoized profit change handler
-  const handleProfitChange = useCallback((weekIndex, value) => {
-    const updatedWeeks = [...weeks];
-    const newProfit = parseFloat(value) || 0;
-    const oldProfit = updatedWeeks[weekIndex].profit;
-    updatedWeeks[weekIndex].profit = newProfit;
+  const handleProfitChange = (weekIndex, profit) => {
+    const profitNum = parseFloat(profit) || 0;
     
-    // Recalculate cumulative only from this week forward
-    let cumulative = weekIndex > 0 ? updatedWeeks[weekIndex - 1].cumulative : 0;
-    for (let i = weekIndex; i < updatedWeeks.length; i++) {
+    // Create a new weeks array with the updated profit
+    const updatedWeeks = [...weeks];
+    updatedWeeks[weekIndex] = {
+      ...updatedWeeks[weekIndex],
+      profit: profitNum
+    };
+    
+    // Recalculate the cumulative profits
+    let cumulative = 0;
+    for (let i = 0; i < updatedWeeks.length; i++) {
       cumulative += updatedWeeks[i].profit;
       updatedWeeks[i].cumulative = cumulative;
     }
     
     setWeeks(updatedWeeks);
     
-    // Show toast for new profit
-    if (newProfit > 0 && newProfit !== oldProfit) {
-      let emoji = '💰';
-      if (newProfit >= 5000) emoji = '🤑';
-      else if (newProfit >= 1000) emoji = '💸';
+    // Check for milestones
+    if (profitNum > 0) {
+      const totalProfit = updatedWeeks.reduce((sum, week) => sum + week.profit, 0);
+      const newMilestone = MILESTONES.find(milestone => 
+        totalProfit >= milestone && milestone > lastMilestone
+      );
       
-      showToast(`Added $${newProfit.toLocaleString()} for Week ${updatedWeeks[weekIndex].week}`, emoji);
-    }
-    
-    // Check if we've hit any new milestones
-    const currentCumulative = updatedWeeks[weekIndex].cumulative;
-    if (currentCumulative > lastMilestone) {
-      // Find the highest milestone we've passed
-      for (let i = MILESTONES.length - 1; i >= 0; i--) {
-        if (currentCumulative >= MILESTONES[i] && MILESTONES[i] > lastMilestone) {
-          setLastMilestone(MILESTONES[i]);
-          celebrateMilestone(MILESTONES[i]);
-          break;
-        }
+      if (newMilestone) {
+        setLastMilestone(newMilestone);
+        showToast(`🎉 Milestone reached: ${(newMilestone/1000)}k!`, '🏆');
+        
+        // Trigger confetti celebration
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } else {
+        // Show toast for new profit
+        showToast(`Added ${new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD'
+        }).format(profitNum)} for Week ${weekIndex + 1}`, '💰');
       }
     }
-  }, [weeks, lastMilestone, showToast]);
+    
+    // Save to goal manager
+    if (activeGoal?.id) {
+      goalManager.updateGoal(activeGoal.id, { 
+        weeks: updatedWeeks,
+        lastMilestone
+      });
+      
+      // Check for achievements
+      achievementManager.checkForAchievements({
+        goals: goalManager.getGoals(),
+        activeGoal: goalManager.getActiveGoal(),
+        weeks: updatedWeeks
+      });
+    }
+  };
 
-  const handleTargetChange = useCallback((e) => {
-    setTarget(parseFloat(e.target.value) || 0);
-  }, []);
+  const handleTargetChange = (newTarget) => {
+    setTarget(newTarget);
+    if (activeGoal?.id) {
+      goalManager.updateGoal(activeGoal.id, { target: newTarget });
+    }
+  };
   
-  const handleGoalNameChange = useCallback((e) => {
-    setGoalName(e.target.value);
-  }, []);
+  const handleGoalNameChange = (name) => {
+    setGoalName(name);
+    if (activeGoal?.id) {
+      goalManager.updateGoal(activeGoal.id, { name });
+    }
+  };
   
-  const handleStartDateChange = useCallback((e) => {
-    setStartDate(e.target.value);
-  }, []);
+  const handleStartDateChange = (date) => {
+    setStartDate(date);
+    if (activeGoal?.id) {
+      goalManager.updateGoal(activeGoal.id, { startDate: date });
+    }
+  };
 
   const handleTotalWeeksChange = useCallback((e) => {
     const newTotalWeeks = parseInt(e.target.value) || 4;
@@ -339,100 +388,20 @@ export default function GT3Tracker() {
     setShowCumulative(value);
   }, []);
 
-  const resetValues = useCallback(() => {
-    setWeeks(createInitialWeeks(totalWeeks));
+  const resetValues = () => {
+    const newWeeks = createInitialWeeks(totalWeeks);
+    setWeeks(newWeeks);
     setLastMilestone(0);
-    setShowConfirmReset(false);
-    showToast('All data has been reset', '🔄');
-  }, [totalWeeks, showToast]);
-
-  // Celebration animation for reaching milestones
-  const celebrateMilestone = useCallback((milestone) => {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
     
-    // Play celebration sound
-    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3');
-    audio.play().catch(e => console.log('Audio play failed:', e));
-    
-    // Show milestone toast
-    showToast(`🎉 Congratulations! You've reached $${milestone.toLocaleString()} in savings!`, '🏆');
-  }, [showToast]);
-
-  // Export data as CSV
-  const exportAsCSV = useCallback(() => {
-    const headers = ['Week', 'Weekly Profit', 'Cumulative'];
-    const csvContent = [
-      headers.join(','),
-      ...weeks.map(week => 
-        [week.week, week.profit, week.cumulative].join(',')
-      )
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${goalName.replace(/\s+/g, '-').toLowerCase()}-tracker-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast('Data exported as CSV', '📤');
-  }, [weeks, goalName, showToast]);
-  
-  // Export data as JSON for backup
-  const exportAsJSON = useCallback(() => {
-    const data = {
-      goalName,
-      target,
-      startDate,
-      totalWeeks,
-      visibleWeeks,
-      weeks,
-      lastModified: new Date().toISOString()
-    };
-    
-    const jsonContent = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${goalName.replace(/\s+/g, '-').toLowerCase()}-backup-${new Date().toISOString().split('T')[0]}.json`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast('Backup created successfully', '💾');
-  }, [goalName, target, startDate, totalWeeks, visibleWeeks, weeks, showToast]);
-  
-  // Import data from JSON backup
-  const importJSON = useCallback((jsonString) => {
-    try {
-      const data = JSON.parse(jsonString);
-      
-      if (!data.weeks || !Array.isArray(data.weeks)) {
-        throw new Error('Invalid backup format: weeks data missing');
-      }
-      
-      setGoalName(data.goalName || 'Porsche GT3');
-      setTarget(data.target || 280000);
-      setStartDate(data.startDate || new Date().toISOString().split('T')[0]);
-      setTotalWeeks(data.totalWeeks || 49);
-      setVisibleWeeks(Math.min(data.visibleWeeks || 12, data.totalWeeks || 49));
-      setWeeks(data.weeks);
-      
-      showToast('Data imported successfully', '📥');
-    } catch (error) {
-      console.error('Error importing data:', error);
-      showToast('Failed to import data. Invalid format.', '⚠️');
+    if (activeGoal?.id) {
+      goalManager.updateGoal(activeGoal.id, { 
+        weeks: newWeeks,
+        lastMilestone: 0
+      });
     }
-  }, [showToast]);
+    
+    showToast('All data has been reset', '🔄');
+  };
 
   // Memoized calculations
   const totalProfit = useMemo(() => 
@@ -1171,6 +1140,124 @@ export default function GT3Tracker() {
     });
   }, [theme, themeColor, weeks, target, goalName, streakInfo, showToast]);
 
+  // Export data as CSV
+  const exportAsCSV = useCallback(() => {
+    const currentGoal = goalManager.getActiveGoal();
+    if (!currentGoal) return;
+    
+    const currentWeeks = currentGoal.weeks || [];
+    const headers = ['Week', 'Weekly Profit', 'Cumulative'];
+    const csvContent = [
+      headers.join(','),
+      ...currentWeeks.map(week => 
+        [week.week, week.profit, week.cumulative].join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${currentGoal.name.replace(/\s+/g, '-').toLowerCase()}-tracker-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast('Data exported as CSV', '📤');
+  }, []);
+  
+  // Export data as JSON for backup
+  const exportAsJSON = useCallback(() => {
+    const allGoals = goalManager.getGoals();
+    const data = {
+      version: 2,
+      goals: allGoals,
+      activeGoalId: goalManager.getActiveGoalId(),
+      achievements: achievementManager.getEarnedAchievements(),
+      lastModified: new Date().toISOString()
+    };
+    
+    const jsonContent = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `gt3-tracker-backup-${new Date().toISOString().split('T')[0]}.json`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast('Backup created successfully', '💾');
+  }, []);
+  
+  // Import data from JSON backup
+  const importJSON = useCallback((jsonString) => {
+    try {
+      const data = JSON.parse(jsonString);
+      
+      // Handle different versions of backup
+      if (data.version === 2) {
+        // New multi-goal format
+        if (!data.goals || !Array.isArray(data.goals)) {
+          throw new Error('Invalid backup format: goals data missing');
+        }
+        
+        // Clear existing goals and add imported ones
+        const existingGoals = goalManager.getGoals();
+        if (existingGoals.length > 0) {
+          if (!window.confirm("This will replace all your existing goals. Are you sure you want to continue?")) {
+            return;
+          }
+        }
+        
+        // Save the imported goals
+        localStorage.setItem(goalManager.GOALS_STORAGE_KEY, JSON.stringify(data.goals));
+        
+        // Set active goal if specified
+        if (data.activeGoalId && data.goals.find(g => g.id === data.activeGoalId)) {
+          localStorage.setItem(goalManager.ACTIVE_GOAL_KEY, data.activeGoalId);
+        } else if (data.goals.length > 0) {
+          localStorage.setItem(goalManager.ACTIVE_GOAL_KEY, data.goals[0].id);
+        }
+        
+        // Import achievements if available
+        if (data.achievements) {
+          localStorage.setItem(achievementManager.STORAGE_KEY, JSON.stringify(data.achievements));
+        }
+        
+        // Force reload of active goal
+        window.location.reload();
+      } else {
+        // Old single-goal format - convert to new format
+        if (!data.weeks || !Array.isArray(data.weeks)) {
+          throw new Error('Invalid backup format: weeks data missing');
+        }
+        
+        // Create a new goal with the imported data
+        const newGoalId = goalManager.createGoal({
+          name: data.goalName || 'Porsche GT3',
+          target: data.target || 280000,
+          startDate: data.startDate || new Date().toISOString().split('T')[0],
+          weeks: data.weeks,
+          isCompleted: false
+        });
+        
+        // Set as active goal
+        goalManager.setActiveGoal(newGoalId);
+        
+        // Force reload to reflect changes
+        window.location.reload();
+      }
+      
+      showToast('Data imported successfully', '📥');
+    } catch (error) {
+      console.error('Error importing data:', error);
+      showToast('Failed to import data. Invalid format.', '⚠️');
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <Router>
@@ -1209,6 +1296,7 @@ export default function GT3Tracker() {
                 {/* Protected routes */}
                 <Route element={<PrivateRoute />}>
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/goals" element={<Goals />} />
                   <Route path="/settings" element={
                     <Settings 
                       theme={theme}
