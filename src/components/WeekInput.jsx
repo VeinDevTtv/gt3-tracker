@@ -79,7 +79,7 @@ const WeekInput = ({
                   <div className="relative">
                     <Input
                       type="number"
-                      value={week.profit || ""}
+                      value={week.profit === 0 ? "0" : week.profit || ""}
                       onChange={(e) => onProfitChange(index, e.target.value)}
                       placeholder="0"
                       className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
