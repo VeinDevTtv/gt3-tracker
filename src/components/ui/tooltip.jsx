@@ -1,62 +1,25 @@
 import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
-const TooltipContext = React.createContext({})
+import { cn } from "../../lib/utils"
 
-const Tooltip = ({ children, content, className }) => {
-  const [isVisible, setIsVisible] = React.useState(false)
-  const [position, setPosition] = React.useState({ x: 0, y: 0 })
-  const childRef = React.useRef(null)
+const TooltipProvider = TooltipPrimitive.Provider
 
-  const showTooltip = () => {
-    if (childRef.current) {
-      const rect = childRef.current.getBoundingClientRect()
-      setPosition({
-        x: rect.left + rect.width / 2,
-        y: rect.top - 10
-      })
-      setIsVisible(true)
-    }
-  }
+const Tooltip = TooltipPrimitive.Root
 
-  const hideTooltip = () => {
-    setIsVisible(false)
-  }
+const TooltipTrigger = TooltipPrimitive.Trigger
 
-  return (
-    <TooltipContext.Provider value={{ childRef }}>
-      <div 
-        className="relative inline-block"
-        onMouseEnter={showTooltip}
-        onMouseLeave={hideTooltip}
-        onFocus={showTooltip}
-        onBlur={hideTooltip}
-      >
-        {children}
-        {isVisible && (
-          <div
-            className={cn(
-              "absolute z-50 px-2 py-1 text-xs font-medium text-white bg-black rounded shadow-lg",
-              "transform -translate-x-1/2 -translate-y-full",
-              "pointer-events-none",
-              "dark:bg-gray-700 dark:text-gray-100",
-              "animate-in fade-in-50 zoom-in-95",
-              className
-            )}
-            style={{
-              left: position.x,
-              top: position.y,
-            }}
-          >
-            {content}
-            <div 
-              className="absolute w-2 h-2 bg-black rotate-45 -bottom-1 left-1/2 -translate-x-1/2 dark:bg-gray-700" 
-            />
-          </div>
-        )}
-      </div>
-    </TooltipContext.Provider>
-  )
-}
+const TooltipContent = React.forwardRef(({ className, sideOffset = 4, ...props }, ref) => (
+  <TooltipPrimitive.Content
+    ref={ref}
+    sideOffset={sideOffset}
+    className={cn(
+      "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      className
+    )}
+    {...props}
+  />
+))
+TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
-export { Tooltip } 
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } 
