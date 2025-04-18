@@ -6,6 +6,9 @@ A React application designed to track your savings progress toward purchasing yo
 
 ## 🚀 Recent Updates
 
+- **Community Competitions**: Added a complete competition system where users can create and join savings competitions with their own leaderboards.
+- **Improved Navigation**: Streamlined UI with consistent navigation and dark/light mode toggle in the header.
+- **Fixed AI Settings**: Enhanced AI provider selection and model choice in settings.
 - **Authentication System**: Added a complete authentication system with login, signup, password reset, and profile management.
 - **User Profiles**: Users can now create profiles, update their username, and add profile pictures.
 - **Theme Enhancements**: Improved theme system with better color variables and selector classes.
@@ -15,6 +18,12 @@ A React application designed to track your savings progress toward purchasing yo
 - **Settings Enhancement**: Added a more secure data reset confirmation that requires typing "CONFIRM".
 
 ## Features
+- **Community Competitions:** Create or join savings competitions:
+  - Create custom competitions with personalized targets and end dates
+  - Join competitions created by other savers
+  - Track your position on competition leaderboards
+  - See detailed participant stats and progress
+  - Compete with friends to reach savings goals faster
 - **User Authentication:** Secure signup, login, and profile management system.
 - **Customizable Goal Settings:** Set your target amount, goal name, and weekly savings target.
 - **Weekly Profit Tracking:** Record your weekly earnings toward your goal.
@@ -46,6 +55,23 @@ A React application designed to track your savings progress toward purchasing yo
 - **Toast Notifications:** Receive feedback through elegant toast notifications.
 - **Responsive Design:** Optimized for both desktop and mobile devices.
 - **AI Assistant:** Get help with using the app or planning your savings strategy.
+
+## 🏆 Community Competitions
+
+GT3 Tracker now includes a full-featured competition system to make saving more engaging:
+
+### Features
+- **Create Competitions**: Set up your own savings competitions with custom:
+  - Competition name and description
+  - Target savings amount
+  - End date
+- **Join Competitions**: Participate in competitions created by other users
+- **Competition Leaderboards**: Track your progress against others in real-time
+- **Position Tracking**: See your current position and celebration markers for top savers
+- **Multiple Competitions**: Join multiple competitions simultaneously
+- **Personalized Stats**: View participant-specific progress as percentage and amount
+
+Competitions help motivate consistent saving while adding a social element to your journey toward Porsche ownership.
 
 ## 🤖 AI Assistant Setup
 
@@ -93,6 +119,7 @@ The application is built using:
 - HTML2Canvas for image sharing
 - Local Storage for data persistence and user authentication
 - React Hot Toast for notifications
+- Radix UI Primitives for accessible UI components
 
 ## Authentication System
 The app includes a secure authentication system:
@@ -131,7 +158,9 @@ npm run build
 ```
 
 ## Potential Future Enhancements
-- More comprehensive statistics
+- Competition invitations and private competitions
+- Integration with real banking APIs for automatic tracking
+- Savings goals categorization
 - Multiple goal tracking
 - Sharing goals with friends
 - Mobile app version
