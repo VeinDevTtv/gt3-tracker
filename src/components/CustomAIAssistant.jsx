@@ -1,269 +1,231 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useAI } from '../contexts/AIContext';
+import React, { useState, useRef, useEffect } from 'react';
+import { Card, CardContent, CardFooter, CardHeader } from './ui/card';
+import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
-import { 
-  SendHorizontal, 
-  BrainCircuit, 
-  Trash2, 
-  ChevronDown, 
-  ChevronUp, 
-  RefreshCw, 
-  Lightbulb
-} from 'lucide-react';
+import { Lightbulb, Send, X, Maximize2, Minimize2 } from 'lucide-react';
+import AIService from '../services/CustomAIService';
+import { Skeleton } from './ui/skeleton';
 
-export default function CustomAIAssistant({
-  theme, 
-  weeks, 
-  goalName, 
-  target, 
-  totalProfit, 
-  remaining, 
-  progressPercentage, 
-  prediction, 
+const CustomAIAssistant = ({ 
+  theme,
+  weeks,
+  goalName,
+  target,
+  totalProfit,
+  remaining,
+  progressPercentage,
+  prediction,
   streakInfo,
   weeklyTargetAverage
-}) {
-  const { 
-    messages, 
-    isLoading, 
-    isInitialized,
-    aiError, 
-    isCollapsed, 
-    sendMessage, 
-    clearConversation, 
-    toggleCollapsed 
-  } = useAI();
-  
-  const [inputValue, setInputValue] = useState('');
+}) => {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
   
-  // Create AI context data from props
-  const createAIContext = useCallback(() => {
-    // IMPLEMENT:
-    // Format all the financial data into a context object for the AI
-    
-    // Format the prediction data for the AI
-    let predictionInfo = "Not enough data yet";
-    
-    if (prediction) {
-      if (prediction.insufficient) {
-        predictionInfo = prediction.message || "Insufficient data";
-      } else {
-        predictionInfo = `${prediction.targetDate} (${prediction.confidence} confidence, based on ${prediction.dataPoints} weeks of data)`;
-      }
-    }
-    
-    return {
-      goalName,
-      target: target.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-      totalSaved: totalProfit.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-      percentComplete: progressPercentage.toFixed(2),
-      remaining: remaining.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-      weeksWithData: weeks.filter(week => week.profit > 0).length,
-      totalWeeks: weeks.length,
-      weeklyAverage: weeks.filter(week => week.profit > 0).length > 0 
-        ? (weeks.reduce((sum, week) => sum + week.profit, 0) / weeks.filter(week => week.profit > 0).length).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-        : '$0',
-      currentStreak: streakInfo.currentStreak,
-      bestStreak: streakInfo.bestStreak,
-      predictedCompletion: predictionInfo,
-      weeklyTarget: weeklyTargetAverage.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-      recentPerformance: weeks.slice(-4).map(week => ({ 
-        week: week.week, 
-        amount: week.profit.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) 
-      }))
-    };
-  }, [
-    goalName, 
-    target, 
-    totalProfit, 
-    progressPercentage, 
-    remaining, 
-    weeks, 
-    streakInfo, 
-    prediction,
-    weeklyTargetAverage
-  ]);
+  // Initialize AI service
+  useEffect(() => {
+    const initService = async () => {
+      setIsLoading(true);
+      try {
+        const userData = {
+          weeks,
+          goalName,
+          target,
+          totalProfit,
+          remaining,
+          progressPercentage,
+          prediction,
+          streakInfo,
+          weeklyTargetAverage
+        };
+        
+        await AIService.initialize(userData);
+        
+        // Add welcome message
+        setMessages([{
+          role: 'assistant',
+          content: `👋 Hello! I'm your Savings Assistant. I can help you with:
+- Understanding your savings progress
+- Providing tips to reach your ${goalName} goal faster
+- Answering questions about your savings data
+- Suggesting weekly savings targets
 
-  // Scroll to bottom of messages
+How can I help you today?`
+        }]);
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Failed to initialize AI service:', error);
+        setMessages([{
+          role: 'assistant',
+          content: 'Sorry, I had trouble initializing. Please try again later.'
+        }]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    initService();
+  }, [weeks, goalName, target, totalProfit, remaining, progressPercentage, prediction, streakInfo, weeklyTargetAverage]);
+  
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // Handle sending a message
-  const handleSendMessage = useCallback(() => {
-    if (inputValue.trim() && !isLoading) {
-      sendMessage(inputValue, createAIContext());
-      setInputValue('');
+  
+  const handleSend = async () => {
+    if (input.trim() === '' || isLoading) return;
+    
+    const userMessage = {
+      role: 'user',
+      content: input
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    
+    try {
+      const response = await AIService.sendMessage(input);
+      
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: response
+      }]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error processing your request. Please try again.'
+      }]);
+    } finally {
+      setIsLoading(false);
     }
-  }, [inputValue, isLoading, sendMessage, createAIContext]);
-
-  // Handle Enter key to send message
-  const handleKeyDown = useCallback((e) => {
+  };
+  
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      handleSend();
     }
-  }, [handleSendMessage]);
+  };
 
-  // If collapsed, just show the expand button
-  if (isCollapsed) {
-    return (
-      <div className={`fixed bottom-4 right-4 z-50`}>
-        <Button 
-          onClick={toggleCollapsed}
-          size="sm"
-          className={`rounded-full h-12 w-12 shadow-lg flex items-center justify-center ${
-            theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
-          }`}
-        >
-          <BrainCircuit className="h-5 w-5 text-primary-color" />
-        </Button>
-      </div>
-    );
-  }
-
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+  
+  // Fixed position styles for the floating UI
+  const floatingStyles = {
+    position: 'fixed',
+    bottom: '20px',
+    right: '20px',
+    zIndex: 1000,
+    width: isCollapsed ? 'auto' : '350px',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    transition: 'all 0.3s ease',
+    maxHeight: isCollapsed ? 'auto' : '500px'
+  };
+  
+  // Collapsed button style
+  const collapsedButtonStyle = {
+    width: '50px',
+    height: '50px',
+    borderRadius: '50%',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme === 'dark' ? '#2D3748' : '#FFF',
+    color: theme === 'dark' ? '#FFF' : '#1A202C',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+  };
+  
   return (
-    <Card 
-      className={`fixed bottom-4 right-4 w-80 sm:w-96 shadow-xl z-50 overflow-hidden
-        ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}`}
-    >
-      <CardHeader className={`flex flex-row items-center justify-between py-3 border-b ${
-        theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-      }`}>
-        <CardTitle className={`text-sm font-medium flex items-center gap-2 ${
-          theme === 'dark' ? 'text-white' : ''
-        }`}>
-          <BrainCircuit className="h-4 w-4 text-primary-color" />
-          GT3 AI Assistant
-        </CardTitle>
-        
-        <div className="flex items-center gap-1">
-          {aiError && (
-            <div className="text-xs text-red-500 mr-2">
-              {aiError}
+    <div style={floatingStyles}>
+      {isCollapsed ? (
+        <Button 
+          onClick={toggleCollapse}
+          style={collapsedButtonStyle}
+          aria-label="Open AI Assistant"
+        >
+          <Lightbulb size={24} />
+        </Button>
+      ) : (
+        <Card className={`${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white'} overflow-hidden`}>
+          <CardHeader className="flex flex-row items-center justify-between p-3 border-b">
+            <div className="flex items-center">
+              <Lightbulb className="w-5 h-5 mr-2 text-primary" />
+              <h3 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Savings Assistant
+              </h3>
             </div>
-          )}
+            <div className="flex">
+              <Button variant="ghost" size="icon" onClick={toggleCollapse} className="h-8 w-8 p-0">
+                <Minimize2 className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={toggleCollapse} className="h-8 w-8 p-0 ml-1">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
           
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={clearConversation}
-            title="Clear conversation"
+          <CardContent 
+            className={`p-3 overflow-y-auto ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}
+            style={{ height: '300px', maxHeight: '300px' }}
           >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={toggleCollapsed}
-            title="Minimize"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-      
-      <CardContent className={`p-0 h-80 overflow-auto ${
-        theme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-white'
-      }`}>
-        <div className="flex flex-col">
-          {/* Message bubbles */}
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              } p-2`}
-            >
-              <div
-                className={`max-w-[90%] rounded-lg px-3 py-2 text-sm ${
-                  message.role === 'user'
-                    ? theme === 'dark'
-                      ? 'bg-primary-color/90 text-white'
-                      : 'bg-primary-color text-white'
-                    : theme === 'dark'
-                    ? 'bg-gray-700 text-gray-100'
-                    : 'bg-gray-100 text-gray-800'
-                }`}
+            {messages.map((message, index) => (
+              <div 
+                key={index} 
+                className={`mb-3 ${message.role === 'user' ? 'ml-auto text-right' : ''}`}
               >
-                {message.content}
+                <div 
+                  className={`inline-block rounded-lg px-3 py-2 text-sm max-w-[85%] whitespace-pre-wrap 
+                    ${message.role === 'user' 
+                      ? `${theme === 'dark' ? 'bg-primary text-white' : 'bg-primary/10 text-primary-foreground'}` 
+                      : `${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}`
+                  }
+                >
+                  {message.content}
+                </div>
               </div>
-            </div>
-          ))}
-          
-          {/* Loading indicator */}
-          {isLoading && (
-            <div className="flex justify-start p-2">
-              <div
-                className={`flex items-center gap-2 max-w-[90%] rounded-lg px-3 py-2 text-sm ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 text-gray-100'
-                    : 'bg-gray-100 text-gray-800'
-                }`}
-              >
-                <RefreshCw className="h-3 w-3 animate-spin" />
-                <span>Thinking...</span>
-              </div>
-            </div>
-          )}
-          
-          {/* Scroll anchor */}
-          <div ref={messagesEndRef} />
-        </div>
-      </CardContent>
-      
-      <CardFooter className={`p-2 border-t ${
-        theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-      }`}>
-        {!isInitialized ? (
-          <div className={`w-full text-center py-2 text-sm ${
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-          }`}>
-            Initializing AI assistant...
-          </div>
-        ) : (
-          <div className="flex w-full items-center gap-2">
-            <Textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask about your savings..."
-              ref={inputRef}
-              className={`resize-none h-9 min-h-9 py-1.5 ${
-                theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''
-              }`}
-            />
+            ))}
             
-            <Button
-              size="icon"
-              disabled={!inputValue.trim() || isLoading}
-              onClick={handleSendMessage}
-              className="h-9 w-9 shrink-0"
-            >
-              <SendHorizontal className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </CardFooter>
-
-      {!isCollapsed && (
-        <div className={`absolute top-0 right-12 -mt-8 ${
-          theme === 'dark' ? 'text-white' : 'text-gray-700'
-        }`}>
-          {(weeks.length > 0 && totalProfit > 0) && (
-            <div className="bg-primary-color/20 p-1.5 rounded-full flex items-center justify-center">
-              <Lightbulb size={14} className="text-primary-color" />
+            {isLoading && (
+              <div className="mb-3">
+                <div className={`inline-block rounded-lg px-3 py-2 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                  <Skeleton className="h-4 w-[200px] mb-2" />
+                  <Skeleton className="h-4 w-[170px]" />
+                </div>
+              </div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </CardContent>
+          
+          <CardFooter className={`p-3 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex w-full gap-2">
+              <Input
+                placeholder="Ask me anything..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={!isInitialized || isLoading}
+                className={theme === 'dark' ? 'bg-gray-700 border-gray-600' : ''}
+              />
+              <Button 
+                size="icon" 
+                onClick={handleSend} 
+                disabled={!isInitialized || isLoading || input.trim() === ''}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
-          )}
-        </div>
+          </CardFooter>
+        </Card>
       )}
-    </Card>
+    </div>
   );
-}; 
+};
+
+export default CustomAIAssistant; 

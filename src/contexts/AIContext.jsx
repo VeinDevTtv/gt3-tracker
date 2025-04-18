@@ -31,9 +31,9 @@ export function AIProvider({ children }) {
 
   // Initialize the AI service
   useEffect(() => {
-    async function initAI() {
+    async function initAI(userData) {
       try {
-        const success = await customAIService.initialize();
+        const success = await customAIService.initialize(userData || {});
         setIsInitialized(success);
         if (!success) {
           setAiError('Failed to initialize AI assistant');
@@ -44,6 +44,8 @@ export function AIProvider({ children }) {
       }
     }
     
+    // We don't have user data here, but the CustomAIAssistant component 
+    // will initialize the service with the correct data when it mounts
     initAI();
   }, []);
   

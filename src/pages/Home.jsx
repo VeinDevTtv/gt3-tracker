@@ -10,6 +10,7 @@ import { GoalSelector } from "../components/GoalSelector";
 import { Button } from "../components/ui/button";
 import { useGoals } from "../contexts/GoalsContext";
 import { BarChart3, Settings, Download, ArrowUpRight } from "lucide-react";
+import CustomAIAssistant from '../components/CustomAIAssistant';
 
 export default function Home({
   theme,
@@ -29,8 +30,6 @@ export default function Home({
   handleProfitChange,
   toast,
   setToast,
-  toggleAI,
-  showAIAssistant,
   setShowProfitModal,
   dataVisuals,
   setActiveTabIndex
@@ -87,15 +86,7 @@ export default function Home({
 
       <main className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
-          <div className="md:col-span-4">
-            <ComingSoon 
-              title="AI Assistant"
-              description="Smart assistance for your savings journey"
-              theme={theme}
-            />
-          </div>
-          
-          <div className="md:col-span-8">
+          <div className="md:col-span-12">
             <GoalStats 
               target={target}
               totalProfit={totalProfit}
@@ -206,19 +197,25 @@ export default function Home({
         <p>{goalName} Savings Tracker © {new Date().getFullYear()}</p>
       </footer>
       
+      {/* AI Assistant floating component */}
+      <CustomAIAssistant 
+        theme={theme}
+        weeks={weeks}
+        goalName={goalName}
+        target={target}
+        totalProfit={totalProfit}
+        remaining={remaining}
+        progressPercentage={progressPercentage}
+        prediction={prediction}
+        streakInfo={streakInfo}
+        weeklyTargetAverage={weeklyTargetAverage}
+      />
+      
       {toast && (
         <Toast 
           message={toast.message} 
           emoji={toast.emoji} 
           onClose={() => setToast(null)} 
-        />
-      )}
-      
-      {showAIAssistant && (
-        <ComingSoon 
-          title="AI Chat Assistant"
-          description="Our AI chat assistant is coming soon"
-          theme={theme}
         />
       )}
     </div>

@@ -17,6 +17,7 @@ import goalManager from './services/GoalManager';
 import achievementManager from './services/AchievementManager';
 import { GoalsProvider } from './contexts/GoalsContext';
 import { TooltipProvider } from './components/ui/tooltip';
+import { AIProvider } from './contexts/AIContext';
 
 // Simple error boundary component
 class ErrorBoundary extends React.Component {
@@ -1280,124 +1281,126 @@ export default function GT3Tracker() {
     <ErrorBoundary>
       <AuthProvider>
         <GoalsProvider>
-          <TooltipProvider>
-            <Router>
-              <div className={`${theme} min-h-screen flex flex-col`}>
-                <Toaster 
-                  position="top-right"
-                  toastOptions={{
-                    style: {
-                      background: theme === 'dark' ? '#1F2937' : '#ffffff',
-                      color: theme === 'dark' ? '#ffffff' : '#1F2937',
-                    },
-                  }}
-                />
-                
-                <NavMenu theme={theme} toggleTheme={toggleTheme} />
-                
-                {toast && (
-                  <div 
-                    className={`fixed top-4 right-4 py-2 px-4 rounded-lg shadow-lg flex items-center gap-2 z-50 transform translate-x-0 transition-transform duration-300 ease-out ${
-                      theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
-                    }`}
-                  >
-                    {toast.emoji && <span className="text-xl">{toast.emoji}</span>}
-                    <p>{toast.message}</p>
-                  </div>
-                )}
-                
-                <main className="flex-grow">
-                  <Routes>
-                    {/* Auth routes */}
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/signup" element={<Signup />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    
-                    {/* Protected routes */}
-                    <Route element={<PrivateRoute />}>
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/goals" element={<Goals />} />
-                      <Route path="/settings" element={
-                        <Settings 
-                          theme={theme}
-                          target={target}
-                          goalName={goalName}
-                          totalWeeks={totalWeeks}
-                          visibleWeeks={visibleWeeks}
-                          showCumulative={showCumulative}
-                          startDate={startDate}
-                          onTargetChange={handleTargetChange}
-                          onGoalNameChange={handleGoalNameChange}
-                          onTotalWeeksChange={handleTotalWeeksChange}
-                          onVisibleWeeksChange={handleVisibleWeeksChange}
-                          onToggleCumulative={handleToggleCumulative}
-                          onStartDateChange={handleStartDateChange}
-                          showConfirmReset={showConfirmReset}
-                          setShowConfirmReset={setShowConfirmReset}
-                          resetValues={resetValues}
-                          exportAsCSV={exportAsCSV}
-                          exportAsJSON={exportAsJSON}
-                          importJSON={importJSON}
-                          themeColor={themeColor}
-                          onThemeColorChange={changeThemeColor}
-                          generatePdfReport={generatePdfReport}
-                          generateSharingImage={generateSharingImage}
-                          setTheme={setTheme}
-                          customTarget={target}
-                          setCustomTarget={setTarget}
-                          weeklyTarget={weeklyTargetAverage}
-                          setWeeklyTarget={() => {}}
-                          openAIKey={openAIKey}
-                          setOpenAIKey={setOpenAIKey}
-                          poeKey={poeKey}
-                          setPoeKey={setPoeKey}
-                          replicateKey={replicateKey}
-                          setReplicateKey={setReplicateKey}
-                          ollamaUrl={ollamaUrl}
-                          setOllamaUrl={setOllamaUrl}
-                          ollamaModel={ollamaModel}
-                          setOllamaModel={setOllamaModel}
-                          aiProvider={aiProvider}
-                          setAiProvider={setAiProvider}
-                        />
-                      } />
-                      <Route path="/" element={
-                        <Home 
-                          theme={theme}
-                          toggleTheme={toggleTheme}
-                          target={target}
-                          goalName={goalName}
-                          weeks={weeks}
-                          visibleWeeks={visibleWeeks}
-                          showCumulative={showCumulative}
-                          totalProfit={totalProfit}
-                          remaining={remaining}
-                          progressPercentage={progressPercentage}
-                          handleProfitChange={handleProfitChange}
-                          prediction={prediction}
-                          streakInfo={streakInfo}
-                          weeklyTarget={weeklyTargetAverage}
-                          startDate={startDate}
-                          toast={toast}
-                          themeColor={themeColor}
-                          displayedWeeks={displayedWeeks}
-                          weeklyTargetAverage={weeklyTargetAverage}
-                          setToast={showToast}
-                        />
-                      } />
-                      <Route path="/leaderboards" element={
-                        <ComingSoonPage 
-                          theme={theme}
-                          title="Community Leaderboards"
-                          description="Competition features are coming soon"
-                        />
-                      } />
-                    </Route>
-                  </Routes>
-                </main>
-              </div>
-            </Router>
-          </TooltipProvider>
+          <AIProvider>
+            <TooltipProvider>
+              <Router>
+                <div className={`${theme} min-h-screen flex flex-col`}>
+                  <Toaster 
+                    position="top-right"
+                    toastOptions={{
+                      style: {
+                        background: theme === 'dark' ? '#1F2937' : '#ffffff',
+                        color: theme === 'dark' ? '#ffffff' : '#1F2937',
+                      },
+                    }}
+                  />
+                  
+                  <NavMenu theme={theme} toggleTheme={toggleTheme} />
+                  
+                  {toast && (
+                    <div 
+                      className={`fixed top-4 right-4 py-2 px-4 rounded-lg shadow-lg flex items-center gap-2 z-50 transform translate-x-0 transition-transform duration-300 ease-out ${
+                        theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
+                      }`}
+                    >
+                      {toast.emoji && <span className="text-xl">{toast.emoji}</span>}
+                      <p>{toast.message}</p>
+                    </div>
+                  )}
+                  
+                  <main className="flex-grow">
+                    <Routes>
+                      {/* Auth routes */}
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/signup" element={<Signup />} />
+                      <Route path="/forgot-password" element={<ForgotPassword />} />
+                      
+                      {/* Protected routes */}
+                      <Route element={<PrivateRoute />}>
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/goals" element={<Goals />} />
+                        <Route path="/settings" element={
+                          <Settings 
+                            theme={theme}
+                            target={target}
+                            goalName={goalName}
+                            totalWeeks={totalWeeks}
+                            visibleWeeks={visibleWeeks}
+                            showCumulative={showCumulative}
+                            startDate={startDate}
+                            onTargetChange={handleTargetChange}
+                            onGoalNameChange={handleGoalNameChange}
+                            onTotalWeeksChange={handleTotalWeeksChange}
+                            onVisibleWeeksChange={handleVisibleWeeksChange}
+                            onToggleCumulative={handleToggleCumulative}
+                            onStartDateChange={handleStartDateChange}
+                            showConfirmReset={showConfirmReset}
+                            setShowConfirmReset={setShowConfirmReset}
+                            resetValues={resetValues}
+                            exportAsCSV={exportAsCSV}
+                            exportAsJSON={exportAsJSON}
+                            importJSON={importJSON}
+                            themeColor={themeColor}
+                            onThemeColorChange={changeThemeColor}
+                            generatePdfReport={generatePdfReport}
+                            generateSharingImage={generateSharingImage}
+                            setTheme={setTheme}
+                            customTarget={target}
+                            setCustomTarget={setTarget}
+                            weeklyTarget={weeklyTargetAverage}
+                            setWeeklyTarget={() => {}}
+                            openAIKey={openAIKey}
+                            setOpenAIKey={setOpenAIKey}
+                            poeKey={poeKey}
+                            setPoeKey={setPoeKey}
+                            replicateKey={replicateKey}
+                            setReplicateKey={setReplicateKey}
+                            ollamaUrl={ollamaUrl}
+                            setOllamaUrl={setOllamaUrl}
+                            ollamaModel={ollamaModel}
+                            setOllamaModel={setOllamaModel}
+                            aiProvider={aiProvider}
+                            setAiProvider={setAiProvider}
+                          />
+                        } />
+                        <Route path="/" element={
+                          <Home 
+                            theme={theme}
+                            toggleTheme={toggleTheme}
+                            target={target}
+                            goalName={goalName}
+                            weeks={weeks}
+                            visibleWeeks={visibleWeeks}
+                            showCumulative={showCumulative}
+                            totalProfit={totalProfit}
+                            remaining={remaining}
+                            progressPercentage={progressPercentage}
+                            handleProfitChange={handleProfitChange}
+                            prediction={prediction}
+                            streakInfo={streakInfo}
+                            weeklyTarget={weeklyTargetAverage}
+                            startDate={startDate}
+                            toast={toast}
+                            themeColor={themeColor}
+                            displayedWeeks={displayedWeeks}
+                            weeklyTargetAverage={weeklyTargetAverage}
+                            setToast={showToast}
+                          />
+                        } />
+                        <Route path="/leaderboards" element={
+                          <ComingSoonPage 
+                            theme={theme}
+                            title="Community Leaderboards"
+                            description="Competition features are coming soon"
+                          />
+                        } />
+                      </Route>
+                    </Routes>
+                  </main>
+                </div>
+              </Router>
+            </TooltipProvider>
+          </AIProvider>
         </GoalsProvider>
       </AuthProvider>
     </ErrorBoundary>

@@ -3,30 +3,28 @@
  * Analyze savings data to generate insights and trends
  */
 
+import trainingData from './trainingData';
+
 /**
  * Identify trends in weekly savings data
  * @param {array} weeks - Array of weekly savings data
  * @returns {object} - Trend information
  */
 export function analyzeTrends(weeks) {
-  // IMPLEMENT:
-  // 1. Calculate moving averages
-  // 2. Detect increasing/decreasing trends
-  // 3. Identify consistency patterns
-  
-  if (!weeks || weeks.length === 0) {
-    return { trend: 'insufficient', message: 'Not enough data to analyze trends' };
+  if (!weeks || weeks.length < 2) {
+    return { trend: 'insufficient', message: 'Not enough data to analyze trends.' };
   }
-  
-  // Filter to only weeks with data
-  const weeksWithData = weeks.filter(week => week.profit > 0);
-  
-  if (weeksWithData.length < 2) {
-    return { trend: 'starting', message: 'Just getting started! Add more weeks of data to see trends.' };
+  const nums = weeks.map(w => w.profit).filter(n => !isNaN(n));
+  const firstHalf = nums.slice(0, Math.floor(nums.length / 2));
+  const secondHalf = nums.slice(Math.floor(nums.length / 2));
+  const avg1 = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+  const avg2 = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+  if (avg2 > avg1 * 1.05) {
+    return { trend: 'increasing', message: 'Your savings are trending upward!' };
+  } else if (avg2 < avg1 * 0.95) {
+    return { trend: 'decreasing', message: 'Your savings rate is slowing down.' };
   }
-  
-  // Placeholder implementation - replace with your algorithm
-  return { trend: 'stable', message: 'Your savings appear stable.' };
+  return { trend: 'stable', message: 'Your savings are relatively stable.' };
 }
 
 /**
@@ -35,28 +33,19 @@ export function analyzeTrends(weeks) {
  * @returns {object} - Statistical analysis
  */
 export function calculateStatistics(weeks) {
-  // IMPLEMENT:
-  // 1. Calculate min, max, average, median weekly saving
-  // 2. Calculate variance and standard deviation
-  // 3. Identify outliers
-  
-  if (!weeks || weeks.length === 0) {
-    return { average: 0, median: 0, min: 0, max: 0 };
-  }
-  
-  const weeksWithData = weeks.filter(week => week.profit !== 0);
-  
-  if (weeksWithData.length === 0) {
-    return { average: 0, median: 0, min: 0, max: 0 };
-  }
-  
-  // Placeholder implementation - replace with your algorithm
+  const nums = weeks.map(w => w.profit).filter(n => !isNaN(n)).sort((a, b) => a - b);
+  if (!nums.length) return { average: 0, median: 0, min: 0, max: 0 };
+  const sum = nums.reduce((a, b) => a + b, 0);
+  const avg = sum / nums.length;
+  const median =
+    nums.length % 2 === 1
+      ? nums[(nums.length - 1) / 2]
+      : (nums[nums.length / 2 - 1] + nums[nums.length / 2]) / 2;
   return {
-    average: 0,
-    median: 0,
-    min: 0,
-    max: 0,
-    totalWeeks: weeksWithData.length
+    average: parseFloat(avg.toFixed(2)),
+    median: parseFloat(median.toFixed(2)),
+    min: nums[0],
+    max: nums[nums.length - 1]
   };
 }
 
@@ -66,22 +55,10 @@ export function calculateStatistics(weeks) {
  * @returns {array} - Array of insight objects
  */
 export function generateInsights(context) {
-  // IMPLEMENT:
-  // 1. Analyze the context data
-  // 2. Generate actionable insights
-  // 3. Prioritize insights by relevance
-  
-  const insights = [];
-  
-  // Placeholder - replace with your insight generation logic
-  insights.push({
-    type: 'general',
-    title: 'Keep Tracking',
-    message: 'Consistent tracking of your savings is key to reaching your goal.',
-    priority: 'medium'
-  });
-  
-  return insights;
+  const tips = trainingData.savingTips;
+  if (context.percentComplete < 50) return tips.belowTarget;
+  if (context.currentStreak >= 4) return tips.goodProgress;
+  return tips.inconsistent;
 }
 
 /**
@@ -90,16 +67,43 @@ export function generateInsights(context) {
  * @returns {object} - Time estimation
  */
 export function estimateTimeToCompletion(context) {
-  // IMPLEMENT:
-  // 1. Calculate average savings rate
-  // 2. Estimate weeks/months required
-  // 3. Provide optimistic and pessimistic estimates
+  // Parse numeric values if they're strings with currency formatting
+  const target = typeof context.target === 'string' 
+    ? parseFloat(context.target.replace(/[^\d.-]/g, '')) 
+    : context.target;
+    
+  const totalSaved = typeof context.totalSaved === 'string'
+    ? parseFloat(context.totalSaved.replace(/[^\d.-]/g, ''))
+    : context.totalSaved;
+    
+  const weeklyAverage = typeof context.weeklyAverage === 'string'
+    ? parseFloat(context.weeklyAverage.replace(/[^\d.-]/g, ''))
+    : context.weeklyAverage;
   
-  // Placeholder implementation - replace with your algorithm
+  const remaining = target - totalSaved;
+  
+  if (!weeklyAverage || weeklyAverage <= 0) {
+    return { 
+      estimatedWeeks: 0, 
+      estimatedDate: 'Unknown', 
+      confidence: 'low',
+      message: 'Need more data to estimate completion date'
+    };
+  }
+  
+  const weeks = Math.ceil(remaining / weeklyAverage);
+  const d = new Date();
+  d.setDate(d.getDate() + weeks * 7);
+  
   return {
-    estimatedWeeks: 0,
-    estimatedDate: '',
-    confidence: 'low'
+    estimatedWeeks: weeks,
+    estimatedDate: d.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }),
+    confidence: weeks < 10 ? 'high' : weeks < 20 ? 'medium' : 'low',
+    message: null
   };
 }
 
@@ -109,21 +113,10 @@ export function estimateTimeToCompletion(context) {
  * @returns {array} - Array of personalized saving tips
  */
 export function generateSavingTips(context) {
-  // IMPLEMENT:
-  // 1. Analyze saving patterns and goal
-  // 2. Select relevant tips from a library
-  // 3. Personalize tips with user's data
-  
-  const tips = [
-    "Set up automatic transfers to your savings account",
-    "Look for expenses you can cut back on",
-    "Consider a side hustle to accelerate your progress",
-    "Track your daily expenses to find savings opportunities",
-    "Set smaller milestone celebrations to stay motivated"
-  ];
-  
-  // Placeholder - replace with your tip selection algorithm
-  return tips.slice(0, 3);
+  const tips = trainingData.savingTips;
+  if (context.percentComplete < 50) return tips.belowTarget;
+  if (context.percentComplete >= 80) return tips.goodProgress;
+  return tips.inconsistent;
 }
 
 export default {

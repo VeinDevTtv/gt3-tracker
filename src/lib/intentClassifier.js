@@ -3,42 +3,44 @@
  * Simple intent classification for the custom AI assistant
  */
 
+import { preprocessText, extractNumbers, extractTimeEntities } from './nluUtils';
+
 // Define known intents with example phrases and regex patterns
 const INTENTS = {
   GREETING: {
     name: 'greeting',
     examples: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'howdy'],
-    regex: /^(hi|hello|hey|howdy|greetings|good\s(morning|afternoon|evening))[\s\.,!]*$/i
+    regex: /^(hi|hello|hey|howdy|greetings|good\s(morning|afternoon|evening))/i
   },
   SAVING_PROGRESS: {
     name: 'savingProgress',
-    examples: ['how am I doing', 'what\'s my progress', 'how much have I saved', 'show my progress', 'savings progress'],
-    regex: /^(how\s(am\si|is\smy|are\smy)|what\'?s\smy)\s(progress|saving|savings)|how\smuch\s(have\si|did\si)\ssave(d)?|show\s(me\s)?(my\s)?progress/i
+    examples: ['how am I doing', "what's my progress", 'how much have I saved', 'show my progress'],
+    regex: /(how\s(am\si|much\shave\si)|what('|')s\s(my)?\s(progress|savings?))/i
   },
   TIME_REMAINING: {
     name: 'timeRemaining',
-    examples: ['when will I reach my goal', 'how long until', 'time remaining', 'how much longer', 'completion date'],
-    regex: /^(when\swill|how\slong\suntil|how\smuch\slonger|how\smany\sweeks|how\smany\smonths|completion\sdate)/i
+    examples: ['when will I reach my goal', 'how long until', 'time remaining'],
+    regex: /(when\swill|how\slong\suntil|time\sremaining)/i
   },
   ADVICE: {
     name: 'advice',
-    examples: ['give me advice', 'how can I save more', 'saving tips', 'financial advice', 'suggestions'],
-    regex: /^(give\sme|any|some|what)?\s?((financial|money|saving)\s)?(advice|tips|suggestions|ideas|help)/i
+    examples: ['give me advice', 'saving tips', 'financial advice'],
+    regex: /(give\sme|any)\s((financial|saving)\s)?(advice|tips)/i
   },
   WEEKLY_TARGET: {
     name: 'weeklyTarget',
-    examples: ['weekly target', 'how much should I save each week', 'weekly goal', 'weekly amount'],
-    regex: /^(what\sis|what\'s|how\smuch\sis|tell\sme)?\s?(my)?\s?(weekly|monthly|per\sweek)\s(target|goal|saving|amount)/i
+    examples: ['weekly target', 'how much should I save each week'],
+    regex: /(weekly|per\sweek)\s(target|goal|amount)/i
   },
   PREDICTION: {
     name: 'prediction',
-    examples: ['predict my savings', 'future savings', 'how much will I save', 'savings forecast'],
-    regex: /^(predict|forecast|project|estimate|calculate)\s(my|future|next|weekly)\s(savings|progress|amount)/i
+    examples: ['predict my savings', 'forecast savings'],
+    regex: /(predict|forecast|estimate)\s.*(savings|progress)/i
   },
   HELP: {
     name: 'help',
-    examples: ['help', 'what can you do', 'commands', 'features', 'assistance'],
-    regex: /^(help|assist|what\scan\syou\sdo|how\sdo\syou\swork|commands|features)/i
+    examples: ['help', 'what can you do', 'commands'],
+    regex: /^(help|what\scan\syou\sdo|commands)/i
   }
 };
 
@@ -48,34 +50,24 @@ const INTENTS = {
  * @returns {object} - The identified intent or UNKNOWN
  */
 export function classifyIntent(message) {
-  // IMPLEMENT:
-  // 1. Preprocess the message (lowercase, remove punctuation)
-  // 2. Check against regex patterns
-  // 3. If no regex match, use more advanced classification
-  // 4. Return matched intent or UNKNOWN
+  const text = preprocessText(message);
 
-  // Simple implementation - expand this with your NLP logic
-  const text = message.toLowerCase().trim();
-  
-  // Check regex patterns first (for quick matching)
-  for (const intentKey in INTENTS) {
-    const intent = INTENTS[intentKey];
-    if (intent.regex.test(text)) {
-      return { name: intent.name, confidence: 0.9 };
+  // 1. Try regex
+  for (const { name, regex } of Object.values(INTENTS)) {
+    if (regex.test(text)) {
+      return { name, confidence: 0.9 };
     }
   }
-  
-  // If no regex match, check for partial matches (examples)
-  for (const intentKey in INTENTS) {
-    const intent = INTENTS[intentKey];
-    for (const example of intent.examples) {
-      if (text.includes(example)) {
-        return { name: intent.name, confidence: 0.7 };
+
+  // 2. Fallback to example matching
+  for (const { name, examples } of Object.values(INTENTS)) {
+    for (const ex of examples) {
+      if (text.includes(preprocessText(ex))) {
+        return { name, confidence: 0.7 };
       }
     }
   }
-  
-  // Return unknown intent if no match
+
   return { name: 'unknown', confidence: 0 };
 }
 
@@ -85,17 +77,14 @@ export function classifyIntent(message) {
  * @returns {object} - Extracted entities
  */
 export function extractEntities(message) {
-  // IMPLEMENT:
-  // 1. Extract numbers, dates, monetary values
-  // 2. Extract specific entities like "week number" or "amount"
-  // 3. Return structured entities
-  
-  return {};
+  const numbers = extractNumbers(message);
+  const times = extractTimeEntities(message);
+  return { numbers, times };
 }
 
 // Export intents for use in other modules
 export const IntentTypes = Object.fromEntries(
-  Object.entries(INTENTS).map(([key, value]) => [key, value.name])
+  Object.values(INTENTS).map(i => [i.name.toUpperCase(), i.name])
 );
 
 export default {
