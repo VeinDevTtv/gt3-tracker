@@ -88,7 +88,21 @@ How can I help you today?`
     setIsLoading(true);
     
     try {
-      const response = await AIService.sendMessage(input);
+      // Make sure we're passing the latest context data to the AI service
+      const contextData = {
+        goalName,
+        target,
+        totalProfit,
+        remaining,
+        progressPercentage,
+        prediction,
+        streakInfo,
+        weeklyTargetAverage,
+        weeks
+      };
+      
+      // Pass both the message and updated context
+      const response = await AIService.sendMessage(input, contextData);
       
       setMessages(prev => [...prev, {
         role: 'assistant',

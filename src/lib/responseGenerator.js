@@ -13,7 +13,10 @@ const RESPONSE_TEMPLATES = {
   ],
   [IntentTypes.SAVING_PROGRESS]: [
     "You've saved {{totalSaved}} so far, which is {{percentComplete}}% of your {{goalName}} goal. You still need {{remaining}}.",
-    "Currently you've saved {{totalSaved}} ({{percentComplete}}%) of {{goalName}}. Keep it up!"
+    "Currently you've saved {{totalSaved}} ({{percentComplete}}%) of your {{goalName}}. Keep it up!",
+    "Your progress is {{percentComplete}}% toward your {{goalName}} with {{totalSaved}} saved. You need {{remaining}} more to reach your goal.",
+    "So far, you've accumulated {{totalSaved}} ({{percentComplete}}%) toward your {{goalName}}. Keep saving to reach the remaining {{remaining}}.",
+    "You're making good progress! {{totalSaved}} saved so far, which is {{percentComplete}}% of your {{goalName}} goal. Just {{remaining}} to go!"
   ],
   [IntentTypes.TIME_REMAINING]: [
     "Based on your pace, you'll reach {{goalName}} by {{predictedCompletion}}.",

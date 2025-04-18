@@ -14,8 +14,8 @@ const INTENTS = {
   },
   SAVING_PROGRESS: {
     name: 'savingProgress',
-    examples: ['how am I doing', "what's my progress", 'how much have I saved', 'show my progress'],
-    regex: /(how\s(am\si|much\shave\si)|what('|')s\s(my)?\s(progress|savings?))/i
+    examples: ['how am I doing', "what's my progress", 'how much have I saved', 'show my progress', 'how is it', 'status', 'progress', 'update', 'how far', 'so far'],
+    regex: /(how\s(am\si|much\shave\si|is\sit)|what('|')s\s(my)?\s(progress|savings?)|status|progress|update|how\sfar|so\sfar)/i
   },
   TIME_REMAINING: {
     name: 'timeRemaining',

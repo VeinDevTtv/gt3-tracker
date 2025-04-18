@@ -82,9 +82,36 @@ class CustomAIService {
    * Send a message to the AI and get a response
    * This is the main method called from the assistant component
    */
-  async sendMessage(message) {
-    if (!this.initialized || !this.context) {
+  async sendMessage(message, updatedContext = null) {
+    if (!this.initialized) {
       throw new Error('AI service not initialized');
+    }
+    
+    // Allow updating context with fresh data if provided
+    if (updatedContext) {
+      try {
+        // Format any numeric values in the updated context
+        const formattedContext = {
+          goalName: updatedContext.goalName,
+          target: typeof updatedContext.target === 'number' 
+            ? updatedContext.target.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+            : updatedContext.target,
+          totalSaved: typeof updatedContext.totalProfit === 'number'
+            ? updatedContext.totalProfit.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+            : updatedContext.totalProfit,
+          percentComplete: typeof updatedContext.progressPercentage === 'number'
+            ? updatedContext.progressPercentage.toFixed(2)
+            : updatedContext.progressPercentage,
+          remaining: typeof updatedContext.remaining === 'number'
+            ? updatedContext.remaining.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+            : updatedContext.remaining
+        };
+        
+        // Merge with existing context
+        this.context = { ...this.context, ...formattedContext };
+      } catch (error) {
+        console.error('Error updating context:', error);
+      }
     }
     
     return this.processMessage(message, this.context);
@@ -99,10 +126,18 @@ class CustomAIService {
     }
 
     try {
+      // Check if context is valid
+      if (!context || !context.totalSaved) {
+        console.warn('Context missing or incomplete', context);
+        return 'I need more information about your savings to answer that. Please try again later.';
+      }
+
       // 1. Preprocess and classify intent
       const cleaned = nluUtils.preprocessText(message);
+      console.log('Cleaned message:', cleaned);
       const intentResult = classifyIntent(cleaned);
       const intentName = intentResult.name;
+      console.log('Detected intent:', intentName, 'confidence:', intentResult.confidence);
 
       // 2. Extract entities
       const entities = extractEntities(message);
