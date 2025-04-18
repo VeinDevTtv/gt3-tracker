@@ -5,8 +5,7 @@ import GoalStats from '../components/GoalStats';
 import ProfitGraph from '../components/ProfitGraph';
 import WeekInput from '../components/WeekInput';
 import Toast from '../components/Toast';
-import AIAssistant from '../components/AIAssistant';
-import CommunityLeaderboard from '../components/CommunityLeaderboard';
+import ComingSoon from '../components/ComingSoon';
 
 export default function Home({
   theme,
@@ -65,16 +64,10 @@ export default function Home({
       <main className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
           <div className="md:col-span-4">
-            <AIAssistant 
+            <ComingSoon 
+              title="AI Assistant"
+              description="Smart assistance for your savings journey"
               theme={theme}
-              weeks={weeks}
-              target={target}
-              goalName={goalName}
-              totalProfit={totalProfit}
-              remaining={remaining}
-              progressPercentage={progressPercentage}
-              prediction={prediction}
-              streakInfo={streakInfo}
             />
           </div>
           
@@ -93,20 +86,18 @@ export default function Home({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          <div className="md:col-span-4">
-            <CommunityLeaderboard
-              totalProfit={totalProfit}
-              weeklyAverage={weeklyTargetAverage}
-              weeks={weeks}
-              theme={theme}
-              username={currentUser?.username || currentUser?.email?.split('@')[0]}
-            />
-          </div>
-          
           <div className="md:col-span-8">
             <ProfitGraph 
               data={visibleWeeksDataSafe}
               showCumulative={showCumulative}
+              theme={theme}
+            />
+          </div>
+          
+          <div className="md:col-span-4">
+            <ComingSoon 
+              title="Community Features"
+              description="Connect with other savers and compare progress"
               theme={theme}
             />
           </div>
@@ -138,19 +129,10 @@ export default function Home({
       )}
       
       {showAIAssistant && (
-        <AIAssistant 
+        <ComingSoon 
+          title="AI Chat Assistant"
+          description="Our AI chat assistant is coming soon"
           theme={theme}
-          toggleAI={toggleAI}
-          themeColor={theme}
-          goalData={{
-            goalName,
-            target,
-            totalProfit,
-            remaining,
-            progressPercentage,
-            weeklyAverage: weeklyTargetAverage,
-            prediction
-          }}
         />
       )}
     </div>

@@ -7,7 +7,7 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
-import Leaderboards from './pages/Leaderboards';
+import ComingSoonPage from './pages/ComingSoonPage';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/auth/PrivateRoute';
 import NavMenu from './components/NavMenu';
@@ -1278,10 +1278,10 @@ export default function GT3Tracker() {
                     />
                   } />
                   <Route path="/leaderboards" element={
-                    <Leaderboards 
+                    <ComingSoonPage 
                       theme={theme}
-                      target={target}
-                      totalProfit={totalProfit}
+                      title="Community Leaderboards"
+                      description="Competition features are coming soon"
                     />
                   } />
                 </Route>

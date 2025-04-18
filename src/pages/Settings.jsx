@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import ThemeSettings from '../components/ThemeSettings';
-import AISettings from '../components/AISettings';
+import ComingSoon from '../components/ComingSoon';
 import ProfilePanel from '../components/ProfilePanel';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -150,19 +150,10 @@ export default function Settings({
                   onThemeColorChange={onThemeColorChange}
                 />
                 
-                <AISettings
-                  openAIKey={openAIKey}
-                  setOpenAIKey={setOpenAIKey}
-                  poeKey={poeKey}
-                  setPoeKey={setPoeKey}
-                  replicateKey={replicateKey}
-                  setReplicateKey={setReplicateKey}
-                  ollamaUrl={ollamaUrl}
-                  setOllamaUrl={setOllamaUrl}
-                  ollamaModel={ollamaModel}
-                  setOllamaModel={setOllamaModel}
-                  aiProvider={aiProvider}
-                  setAiProvider={setAiProvider}
+                <ComingSoon
+                  title="AI Assistant Settings"
+                  description="Configure your AI assistant provider"
+                  theme={theme}
                 />
               </div>
             </div>

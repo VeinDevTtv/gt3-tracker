@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
-import { Home, Settings, User, Menu, X, LogOut, Trophy } from 'lucide-react';
+import { Home, Settings, User, Menu, X, LogOut, CalendarClock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ThemeToggle from './ThemeToggle';
 
@@ -56,8 +56,8 @@ const NavMenu = ({ theme, toggleTheme }) => {
                   location.pathname === '/leaderboards' ? 'text-primary-color' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Trophy size={18} />
-                <span>Leaderboards</span>
+                <CalendarClock size={18} />
+                <span>Coming Soon</span>
               </Link>
               
               <Link 
@@ -138,8 +138,8 @@ const NavMenu = ({ theme, toggleTheme }) => {
             }`}
             onClick={() => setIsOpen(false)}
           >
-            <Trophy size={18} />
-            <span>Leaderboards</span>
+            <CalendarClock size={18} />
+            <span>Coming Soon</span>
           </Link>
           
           <Link 
