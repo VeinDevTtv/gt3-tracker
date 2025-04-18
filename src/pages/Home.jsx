@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Button } from '../components/ui/button';
-import { Moon, Sun, Settings, User } from 'lucide-react';
 import ProgressBar from '../components/ProgressBar';
 import GoalStats from '../components/GoalStats';
 import ProfitGraph from '../components/ProfitGraph';
@@ -13,7 +10,6 @@ import CommunityLeaderboard from '../components/CommunityLeaderboard';
 
 export default function Home({
   theme,
-  toggleTheme,
   goalName,
   target,
   totalProfit,
@@ -53,30 +49,11 @@ export default function Home({
             {goalName} Tracker
           </h1>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            {currentUser ? `Hello, ${currentUser.username}! ` : ''}
+            {currentUser ? `Hello, ${currentUser.username || currentUser.email?.split('@')[0]}! ` : ''}
             Track your progress towards your {goalName} goal
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          {currentUser && (
-            <Link to="/profile" className="flex items-center text-primary-color hover:underline font-medium mr-2">
-              <User className="mr-1 h-4 w-4" />
-              <span>Profile</span>
-            </Link>
-          )}
-          <Link to="/settings" className="flex items-center text-primary-color hover:underline font-medium">
-            <span>Settings</span>
-            <Settings className="ml-1 h-4 w-4" />
-          </Link>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={toggleTheme} 
-            className="rounded-full"
-            title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </Button>
+        <div>
           <img 
             src="https://files.porsche.com/filestore/image/multimedia/none/992-gt3-modelimage-sideshot/model/765dfc51-51bc-11eb-80d1-005056bbdc38/porsche-model.png" 
             alt="Porsche GT3" 
@@ -122,7 +99,7 @@ export default function Home({
               weeklyAverage={weeklyTargetAverage}
               weeks={weeks}
               theme={theme}
-              username={currentUser?.username}
+              username={currentUser?.username || currentUser?.email?.split('@')[0]}
             />
           </div>
           

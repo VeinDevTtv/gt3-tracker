@@ -26,6 +26,9 @@ const AISettings = ({
   const [checking, setChecking] = useState(false);
   const [ollamaModels, setOllamaModels] = useState([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [openAIModel, setOpenAIModel] = useState(() => 
+    localStorage.getItem('openai-model') || 'gpt-3.5-turbo'
+  );
 
   const checkOllamaConnection = async () => {
     setChecking(true);
@@ -62,6 +65,7 @@ const AISettings = ({
 
   const handleProviderChange = (value) => {
     setAiProvider(value);
+    localStorage.setItem('ai-provider', value);
     toast.success(`AI provider changed to ${value}`);
   };
 
@@ -100,6 +104,12 @@ const AISettings = ({
     } else {
       toast.error('Please enter a valid Ollama server URL');
     }
+  };
+
+  const saveOpenAIModel = (model) => {
+    setOpenAIModel(model);
+    localStorage.setItem('openai-model', model);
+    toast.success(`OpenAI model changed to ${model}`);
   };
 
   return (
@@ -166,7 +176,7 @@ const AISettings = ({
               
               <div className="space-y-2">
                 <Label htmlFor="openai-model">Model</Label>
-                <Select defaultValue="gpt-3.5-turbo">
+                <Select value={openAIModel} onValueChange={saveOpenAIModel}>
                   <SelectTrigger id="openai-model">
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>

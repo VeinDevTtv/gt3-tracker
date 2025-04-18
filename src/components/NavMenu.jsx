@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/button';
-import { Home, Settings, User, Menu, X, LogOut } from 'lucide-react';
+import { Home, Settings, User, Menu, X, LogOut, Trophy } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import ThemeToggle from './ThemeToggle';
 
-const NavMenu = () => {
+const NavMenu = ({ theme, toggleTheme }) => {
   const { currentUser, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ const NavMenu = () => {
         {currentUser ? (
           <>
             {/* Desktop navigation */}
-            <nav className="hidden md:flex items-center space-x-4">
+            <nav className="hidden md:flex items-center space-x-2">
               <Link 
                 to="/" 
                 className={`flex items-center gap-1 px-2 py-1 rounded-md ${
@@ -48,6 +49,17 @@ const NavMenu = () => {
                 <Home size={18} />
                 <span>Dashboard</span>
               </Link>
+              
+              <Link 
+                to="/leaderboards" 
+                className={`flex items-center gap-1 px-2 py-1 rounded-md ${
+                  location.pathname === '/leaderboards' ? 'text-primary-color' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Trophy size={18} />
+                <span>Leaderboards</span>
+              </Link>
+              
               <Link 
                 to="/settings" 
                 className={`flex items-center gap-1 px-2 py-1 rounded-md ${
@@ -57,6 +69,7 @@ const NavMenu = () => {
                 <Settings size={18} />
                 <span>Settings</span>
               </Link>
+              
               <Link 
                 to="/profile" 
                 className={`flex items-center gap-1 px-2 py-1 rounded-md ${
@@ -66,6 +79,9 @@ const NavMenu = () => {
                 <User size={18} />
                 <span>Profile</span>
               </Link>
+              
+              <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+              
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -78,15 +94,19 @@ const NavMenu = () => {
             </nav>
             
             {/* Mobile menu button */}
-            <button 
-              className="block md:hidden p-2 rounded-md hover:bg-muted"
-              onClick={() => setIsOpen(!isOpen)}
-            >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            <div className="flex items-center gap-2 md:hidden">
+              <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+              <button 
+                className="p-2 rounded-md hover:bg-muted"
+                onClick={() => setIsOpen(!isOpen)}
+              >
+                {isOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
           </>
         ) : (
           <div className="flex items-center space-x-2">
+            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
             <Button variant="outline" size="sm" asChild>
               <Link to="/login">Sign in</Link>
             </Button>
@@ -110,6 +130,18 @@ const NavMenu = () => {
             <Home size={18} />
             <span>Dashboard</span>
           </Link>
+          
+          <Link 
+            to="/leaderboards" 
+            className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+              location.pathname === '/leaderboards' ? 'bg-muted text-primary-color' : 'hover:bg-muted'
+            }`}
+            onClick={() => setIsOpen(false)}
+          >
+            <Trophy size={18} />
+            <span>Leaderboards</span>
+          </Link>
+          
           <Link 
             to="/settings" 
             className={`flex items-center gap-2 px-3 py-2 rounded-md ${
@@ -120,6 +152,7 @@ const NavMenu = () => {
             <Settings size={18} />
             <span>Settings</span>
           </Link>
+          
           <Link 
             to="/profile" 
             className={`flex items-center gap-2 px-3 py-2 rounded-md ${
@@ -130,6 +163,7 @@ const NavMenu = () => {
             <User size={18} />
             <span>Profile</span>
           </Link>
+          
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 px-3 py-2 rounded-md text-left hover:bg-muted"

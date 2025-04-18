@@ -84,8 +84,7 @@ export default function Settings({
 
         <main className="max-w-7xl mx-auto p-4 md:p-8">
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-3xl font-bold">Settings</h1>
+            <div className="flex items-center justify-end mb-4">
               <div className="flex gap-2">
                 <Button
                   variant="destructive"

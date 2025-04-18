@@ -7,6 +7,7 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
+import Leaderboards from './pages/Leaderboards';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/auth/PrivateRoute';
 import NavMenu from './components/NavMenu';
@@ -1185,7 +1186,7 @@ export default function GT3Tracker() {
               }}
             />
             
-            <NavMenu />
+            <NavMenu theme={theme} toggleTheme={toggleTheme} />
             
             {toast && (
               <div 
@@ -1274,6 +1275,13 @@ export default function GT3Tracker() {
                       displayedWeeks={displayedWeeks}
                       weeklyTargetAverage={weeklyTargetAverage}
                       setToast={showToast}
+                    />
+                  } />
+                  <Route path="/leaderboards" element={
+                    <Leaderboards 
+                      theme={theme}
+                      target={target}
+                      totalProfit={totalProfit}
                     />
                   } />
                 </Route>
