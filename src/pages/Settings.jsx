@@ -5,9 +5,12 @@ import { Button } from '../components/ui/button';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import ThemeSettings from '../components/ThemeSettings';
-import ComingSoon from '../components/ComingSoon';
 import ProfilePanel from '../components/ProfilePanel';
 import { useAuth } from '../contexts/AuthContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Switch } from '../components/ui/switch';
+import { Label } from '../components/ui/label';
+import { Bot } from 'lucide-react';
 
 export default function Settings({
   theme,
@@ -38,21 +41,17 @@ export default function Settings({
   setCustomTarget,
   weeklyTarget,
   setWeeklyTarget,
-  openAIKey,
-  setOpenAIKey,
-  poeKey,
-  setPoeKey,
-  replicateKey,
-  setReplicateKey,
-  ollamaUrl,
-  setOllamaUrl,
-  ollamaModel,
-  setOllamaModel,
-  aiProvider,
-  setAiProvider,
 }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const [aiEnabled, setAiEnabled] = React.useState(() => {
+    return localStorage.getItem('custom-ai-enabled') !== 'false';
+  });
+  
+  const toggleAiEnabled = (enabled) => {
+    setAiEnabled(enabled);
+    localStorage.setItem('custom-ai-enabled', enabled.toString());
+  };
 
   return (
     <>
@@ -142,11 +141,50 @@ export default function Settings({
                   onThemeColorChange={onThemeColorChange}
                 />
                 
-                <ComingSoon
-                  title="AI Assistant Settings"
-                  description="Configure your AI assistant provider"
-                  theme={theme}
-                />
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bot className="h-5 w-5" />
+                      AI Assistant Settings
+                    </CardTitle>
+                    <CardDescription>
+                      Configure your built-in savings assistant
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="ai-enabled" className="font-medium">Enable AI Assistant</Label>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Toggle visibility of the built-in AI savings assistant
+                          </p>
+                        </div>
+                        <Switch 
+                          id="ai-enabled" 
+                          checked={aiEnabled} 
+                          onCheckedChange={toggleAiEnabled} 
+                        />
+                      </div>
+                      
+                      <div className="bg-primary/10 p-4 rounded-md">
+                        <h3 className="font-medium mb-2">About the Assistant</h3>
+                        <p className="text-sm">
+                          This app includes a built-in AI assistant that can help with:
+                        </p>
+                        <ul className="text-sm mt-2 space-y-1 list-disc pl-5">
+                          <li>Tracking your savings progress</li>
+                          <li>Providing personalized saving tips</li>
+                          <li>Estimating completion dates</li>
+                          <li>Suggesting weekly savings targets</li>
+                        </ul>
+                        <p className="text-sm mt-3">
+                          All processing happens locally within the app, with no data sent to external servers.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>

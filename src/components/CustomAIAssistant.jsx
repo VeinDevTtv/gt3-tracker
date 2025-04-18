@@ -23,10 +23,19 @@ const CustomAIAssistant = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isEnabled, setIsEnabled] = useState(true);
   const messagesEndRef = useRef(null);
+  
+  // Check if assistant is enabled
+  useEffect(() => {
+    const enabled = localStorage.getItem('custom-ai-enabled');
+    setIsEnabled(enabled !== 'false'); // Default to true if not set
+  }, []);
   
   // Initialize AI service
   useEffect(() => {
+    if (!isEnabled) return;
+    
     const initService = async () => {
       setIsLoading(true);
       try {
@@ -68,12 +77,15 @@ How can I help you today?`
     };
     
     initService();
-  }, [weeks, goalName, target, totalProfit, remaining, progressPercentage, prediction, streakInfo, weeklyTargetAverage]);
+  }, [weeks, goalName, target, totalProfit, remaining, progressPercentage, prediction, streakInfo, weeklyTargetAverage, isEnabled]);
   
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Don't render if disabled
+  if (!isEnabled) return null;
   
   const handleSend = async () => {
     if (input.trim() === '' || isLoading) return;
