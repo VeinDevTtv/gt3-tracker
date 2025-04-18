@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Info, Flame } from 'lucide-react';
-import { Tooltip } from '@/components/ui/tooltip';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const getEmojiForProfit = (profit, previousProfit = 0) => {
   if (profit === 0) return '⚖️';
@@ -85,10 +85,15 @@ const WeekInput = ({
                       className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                     />
                     {weeklyTargetAverage > 0 && (
-                      <Tooltip content={`Target: $${weeklyTargetAverage.toLocaleString(undefined, {maximumFractionDigits: 0})}`}>
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                          <Info size={16} className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} />
-                        </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer">
+                            <Info size={16} className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Target: ${weeklyTargetAverage.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                        </TooltipContent>
                       </Tooltip>
                     )}
                   </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,12 @@ const SettingsPanel = ({
   const [confirmText, setConfirmText] = useState('');
   const [confirmError, setConfirmError] = useState(false);
   
+  // Debug the resetValues function
+  useEffect(() => {
+    console.log("SettingsPanel: resetValues function exists?", !!resetValues);
+    console.log("SettingsPanel: resetValues type:", typeof resetValues);
+  }, [resetValues]);
+  
   // Debug check
   console.log("resetValues function available:", !!resetValues);
 
@@ -64,11 +70,17 @@ const SettingsPanel = ({
   };
 
   const handleReset = () => {
+    console.log("handleReset called with confirmText:", confirmText);
+    console.log("resetValues function exists?", !!resetValues);
+    
     if (confirmText.trim() === 'CONFIRM') {
-      resetValues();
+      console.log("Calling resetValues function");
+      resetValues(setShowConfirmReset);
       setConfirmText('');
       setConfirmError(false);
+      console.log("Reset completed");
     } else {
+      console.log("Confirmation failed, setting error");
       setConfirmError(true);
     }
   };

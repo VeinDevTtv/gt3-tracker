@@ -87,14 +87,6 @@ export default function Settings({
             <div className="flex items-center justify-end mb-4">
               <div className="flex gap-2">
                 <Button
-                  variant="destructive"
-                  onClick={() => setShowConfirmReset(true)}
-                  className="flex items-center gap-1"
-                >
-                  <AlertTriangle size={16} />
-                  Reset Data
-                </Button>
-                <Button
                   variant="outline"
                   onClick={() => window.history.back()}
                 >

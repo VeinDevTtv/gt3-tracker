@@ -15,6 +15,8 @@ import NavMenu from './components/NavMenu';
 import { Toaster } from 'react-hot-toast';
 import goalManager from './services/GoalManager';
 import achievementManager from './services/AchievementManager';
+import { GoalsProvider } from './contexts/GoalsContext';
+import { TooltipProvider } from './components/ui/tooltip';
 
 // Simple error boundary component
 class ErrorBoundary extends React.Component {
@@ -388,20 +390,36 @@ export default function GT3Tracker() {
     setShowCumulative(value);
   }, []);
 
-  const resetValues = () => {
+  const resetValues = (closeDialog) => {
+    const activeGoal = goalManager.getActiveGoal();
+    if (!activeGoal) {
+      showToast('No active goal to reset', '⚠️');
+      return;
+    }
+    
     const newWeeks = createInitialWeeks(totalWeeks);
+    
+    // Update goal with new empty weeks and reset milestone
+    goalManager.updateGoal(activeGoal.id, { 
+      weeks: newWeeks,
+      lastMilestone: null
+    });
+    
+    // Update local state for UI
     setWeeks(newWeeks);
     setLastMilestone(0);
     
-    if (activeGoal?.id) {
-      goalManager.updateGoal(activeGoal.id, { 
-        weeks: newWeeks,
-        lastMilestone: 0
-      });
+    // Close the dialog if callback provided
+    if (typeof closeDialog === 'function') {
+      closeDialog(false);
     }
     
-    showToast('All data has been reset', '🔄');
+    showToast('All data has been reset successfully', '🔄');
   };
+  
+  // Debug check for resetValues
+  console.log("App.js: resetValues function exists?", !!resetValues);
+  console.log("App.js: resetValues type:", typeof resetValues);
 
   // Memoized calculations
   const totalProfit = useMemo(() => 
@@ -947,8 +965,8 @@ export default function GT3Tracker() {
             <div style="background:${theme === 'dark' ? '#374151' : '#e5e7eb'}; height:40px; border-radius:20px; overflow:hidden; width:100%;">
               <div style="background:${accentColor}; width:${Math.min(100, percentComplete)}%; height:100%;"></div>
             </div>
-          </div>
-          
+      </div>
+
           <div style="flex:0; display:flex; justify-content:space-between;">
             <div style="flex:1; padding:20px; background:${theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'}; border-radius:15px; margin-right:15px;">
               <p style="font-size:20px; margin:0;">Current Streak</p>
@@ -970,8 +988,8 @@ export default function GT3Tracker() {
           
           <div style="margin-top:auto; opacity:0.5; text-align:center; font-size:18px;">
             Generated with GT3 Savings Tracker
-          </div>
-        </div>
+      </div>
+    </div>
       `;
       
       // Append to document temporarily
@@ -1260,124 +1278,128 @@ export default function GT3Tracker() {
 
   return (
     <ErrorBoundary>
-      <Router>
-        <AuthProvider>
-          <div className={`${theme} min-h-screen flex flex-col`}>
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                style: {
-                  background: theme === 'dark' ? '#1F2937' : '#ffffff',
-                  color: theme === 'dark' ? '#ffffff' : '#1F2937',
-                },
-              }}
-            />
-            
-            <NavMenu theme={theme} toggleTheme={toggleTheme} />
-            
-            {toast && (
-              <div 
-                className={`fixed top-4 right-4 py-2 px-4 rounded-lg shadow-lg flex items-center gap-2 z-50 transform translate-x-0 transition-transform duration-300 ease-out ${
-                  theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
-                }`}
-              >
-                {toast.emoji && <span className="text-xl">{toast.emoji}</span>}
-                <p>{toast.message}</p>
-              </div>
-            )}
-            
-            <main className="flex-grow">
-              <Routes>
-                {/* Auth routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
+      <AuthProvider>
+        <GoalsProvider>
+          <TooltipProvider>
+            <Router>
+              <div className={`${theme} min-h-screen flex flex-col`}>
+                <Toaster 
+                  position="top-right"
+                  toastOptions={{
+                    style: {
+                      background: theme === 'dark' ? '#1F2937' : '#ffffff',
+                      color: theme === 'dark' ? '#ffffff' : '#1F2937',
+                    },
+                  }}
+                />
                 
-                {/* Protected routes */}
-                <Route element={<PrivateRoute />}>
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/goals" element={<Goals />} />
-                  <Route path="/settings" element={
-                    <Settings 
-                      theme={theme}
-                      target={target}
-                      goalName={goalName}
-                      totalWeeks={totalWeeks}
-                      visibleWeeks={visibleWeeks}
-                      showCumulative={showCumulative}
-                      startDate={startDate}
-                      onTargetChange={handleTargetChange}
-                      onGoalNameChange={handleGoalNameChange}
-                      onTotalWeeksChange={handleTotalWeeksChange}
-                      onVisibleWeeksChange={handleVisibleWeeksChange}
-                      onToggleCumulative={handleToggleCumulative}
-                      onStartDateChange={handleStartDateChange}
-                      showConfirmReset={showConfirmReset}
-                      setShowConfirmReset={setShowConfirmReset}
-                      resetValues={resetValues}
-                      exportAsCSV={exportAsCSV}
-                      exportAsJSON={exportAsJSON}
-                      importJSON={importJSON}
-                      themeColor={themeColor}
-                      onThemeColorChange={changeThemeColor}
-                      generatePdfReport={generatePdfReport}
-                      generateSharingImage={generateSharingImage}
-                      setTheme={setTheme}
-                      customTarget={target}
-                      setCustomTarget={setTarget}
-                      weeklyTarget={weeklyTargetAverage}
-                      setWeeklyTarget={() => {}}
-                      openAIKey={openAIKey}
-                      setOpenAIKey={setOpenAIKey}
-                      poeKey={poeKey}
-                      setPoeKey={setPoeKey}
-                      replicateKey={replicateKey}
-                      setReplicateKey={setReplicateKey}
-                      ollamaUrl={ollamaUrl}
-                      setOllamaUrl={setOllamaUrl}
-                      ollamaModel={ollamaModel}
-                      setOllamaModel={setOllamaModel}
-                      aiProvider={aiProvider}
-                      setAiProvider={setAiProvider}
-                    />
-                  } />
-                  <Route path="/" element={
-                    <Home 
-                      theme={theme}
-                      toggleTheme={toggleTheme}
-                      target={target}
-                      goalName={goalName}
-                      weeks={weeks}
-                      visibleWeeks={visibleWeeks}
-                      showCumulative={showCumulative}
-                      totalProfit={totalProfit}
-                      remaining={remaining}
-                      progressPercentage={progressPercentage}
-                      handleProfitChange={handleProfitChange}
-                      prediction={prediction}
-                      streakInfo={streakInfo}
-                      weeklyTarget={weeklyTargetAverage}
-                      startDate={startDate}
-                      toast={toast}
-                      themeColor={themeColor}
-                      displayedWeeks={displayedWeeks}
-                      weeklyTargetAverage={weeklyTargetAverage}
-                      setToast={showToast}
-                    />
-                  } />
-                  <Route path="/leaderboards" element={
-                    <ComingSoonPage 
-                      theme={theme}
-                      title="Community Leaderboards"
-                      description="Competition features are coming soon"
-                    />
-                  } />
-                </Route>
-              </Routes>
-            </main>
-          </div>
-        </AuthProvider>
-      </Router>
+                <NavMenu theme={theme} toggleTheme={toggleTheme} />
+                
+                {toast && (
+                  <div 
+                    className={`fixed top-4 right-4 py-2 px-4 rounded-lg shadow-lg flex items-center gap-2 z-50 transform translate-x-0 transition-transform duration-300 ease-out ${
+                      theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
+                    }`}
+                  >
+                    {toast.emoji && <span className="text-xl">{toast.emoji}</span>}
+                    <p>{toast.message}</p>
+                  </div>
+                )}
+                
+                <main className="flex-grow">
+                  <Routes>
+                    {/* Auth routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/signup" element={<Signup />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    
+                    {/* Protected routes */}
+                    <Route element={<PrivateRoute />}>
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/goals" element={<Goals />} />
+                      <Route path="/settings" element={
+                        <Settings 
+                          theme={theme}
+                          target={target}
+                          goalName={goalName}
+                          totalWeeks={totalWeeks}
+                          visibleWeeks={visibleWeeks}
+                          showCumulative={showCumulative}
+                          startDate={startDate}
+                          onTargetChange={handleTargetChange}
+                          onGoalNameChange={handleGoalNameChange}
+                          onTotalWeeksChange={handleTotalWeeksChange}
+                          onVisibleWeeksChange={handleVisibleWeeksChange}
+                          onToggleCumulative={handleToggleCumulative}
+                          onStartDateChange={handleStartDateChange}
+                          showConfirmReset={showConfirmReset}
+                          setShowConfirmReset={setShowConfirmReset}
+                          resetValues={resetValues}
+                          exportAsCSV={exportAsCSV}
+                          exportAsJSON={exportAsJSON}
+                          importJSON={importJSON}
+                          themeColor={themeColor}
+                          onThemeColorChange={changeThemeColor}
+                          generatePdfReport={generatePdfReport}
+                          generateSharingImage={generateSharingImage}
+                          setTheme={setTheme}
+                          customTarget={target}
+                          setCustomTarget={setTarget}
+                          weeklyTarget={weeklyTargetAverage}
+                          setWeeklyTarget={() => {}}
+                          openAIKey={openAIKey}
+                          setOpenAIKey={setOpenAIKey}
+                          poeKey={poeKey}
+                          setPoeKey={setPoeKey}
+                          replicateKey={replicateKey}
+                          setReplicateKey={setReplicateKey}
+                          ollamaUrl={ollamaUrl}
+                          setOllamaUrl={setOllamaUrl}
+                          ollamaModel={ollamaModel}
+                          setOllamaModel={setOllamaModel}
+                          aiProvider={aiProvider}
+                          setAiProvider={setAiProvider}
+                        />
+                      } />
+                      <Route path="/" element={
+                        <Home 
+                          theme={theme}
+                          toggleTheme={toggleTheme}
+                          target={target}
+                          goalName={goalName}
+                          weeks={weeks}
+                          visibleWeeks={visibleWeeks}
+                          showCumulative={showCumulative}
+                          totalProfit={totalProfit}
+                          remaining={remaining}
+                          progressPercentage={progressPercentage}
+                          handleProfitChange={handleProfitChange}
+                          prediction={prediction}
+                          streakInfo={streakInfo}
+                          weeklyTarget={weeklyTargetAverage}
+                          startDate={startDate}
+                          toast={toast}
+                          themeColor={themeColor}
+                          displayedWeeks={displayedWeeks}
+                          weeklyTargetAverage={weeklyTargetAverage}
+                          setToast={showToast}
+                        />
+                      } />
+                      <Route path="/leaderboards" element={
+                        <ComingSoonPage 
+                          theme={theme}
+                          title="Community Leaderboards"
+                          description="Competition features are coming soon"
+                        />
+                      } />
+                    </Route>
+                  </Routes>
+                </main>
+              </div>
+            </Router>
+          </TooltipProvider>
+        </GoalsProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
