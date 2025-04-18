@@ -1,102 +1,149 @@
 import React from 'react';
-import { useGoals } from '../contexts/GoalsContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Trophy, Target, Calendar, Award, Medal, Clock, Flame } from 'lucide-react';
-import { format } from 'date-fns';
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import achievementManager from '@/services/AchievementManager';
 
-const AchievementsList = ({ theme }) => {
-  const { activeGoal } = useGoals();
+/**
+ * Component to display a list of achievements
+ * 
+ * @param {Object} props
+ * @param {Array} props.filter - Optional category filter
+ * @param {Boolean} props.showUnearned - Whether to show unearned achievements
+ * @param {Boolean} props.compact - Whether to show a compact version
+ * @param {Number} props.limit - Optional limit on number of achievements shown
+ */
+const AchievementsList = ({ 
+  filter, 
+  showUnearned = false, 
+  compact = false,
+  limit = 0
+}) => {
+  // Get all achievements and earned ones
+  const allAchievements = Object.values(achievementManager.getAchievements());
+  const earnedAchievements = achievementManager.getEarnedAchievements();
   
-  if (!activeGoal || !activeGoal.achievements || activeGoal.achievements.length === 0) {
-    return (
-      <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-primary-color" />
-            Achievements
-          </CardTitle>
-          <CardDescription>
-            Complete milestones to earn achievements
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Award className="h-16 w-16 text-gray-400 mb-3" />
-            <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} text-sm`}>
-              No achievements yet. Keep saving to earn badges!
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+  // Filter achievements based on props
+  let achievementsToShow = allAchievements;
+  
+  // Apply category filter if provided
+  if (filter) {
+    achievementsToShow = achievementsToShow.filter(achievement => {
+      // If filter is array, check if achievement category is in the array
+      if (Array.isArray(filter)) {
+        return filter.includes(achievement.category);
+      }
+      // Otherwise treat filter as a single category
+      return achievement.category === filter;
+    });
+  }
+  
+  // Filter based on earned status
+  if (!showUnearned) {
+    achievementsToShow = achievementsToShow.filter(achievement => 
+      earnedAchievements[achievement.id]
     );
   }
   
-  // Sort achievements by date (newest first)
-  const sortedAchievements = [...activeGoal.achievements].sort((a, b) => 
-    new Date(b.date) - new Date(a.date)
-  );
+  // Apply limit if provided
+  if (limit > 0) {
+    achievementsToShow = achievementsToShow.slice(0, limit);
+  }
   
-  // Get the icon based on achievement type
-  const getAchievementIcon = (achievement) => {
-    switch (achievement.type) {
-      case 'milestone':
-        return <Target className="h-10 w-10 text-primary-color" />;
-      case 'streak':
-        return <Flame className="h-10 w-10 text-orange-500" />;
-      case 'consistency':
-        return <Calendar className="h-10 w-10 text-purple-500" />;
-      case 'speed':
-        return <Clock className="h-10 w-10 text-blue-500" />;
-      default:
-        return <Medal className="h-10 w-10 text-yellow-500" />;
+  // Sort achievements: earned first, then by category and points
+  achievementsToShow.sort((a, b) => {
+    // First sort by earned status
+    const aEarned = !!earnedAchievements[a.id];
+    const bEarned = !!earnedAchievements[b.id];
+    
+    if (aEarned && !bEarned) return -1;
+    if (!aEarned && bEarned) return 1;
+    
+    // Then sort by category
+    if (a.category !== b.category) {
+      return a.category.localeCompare(b.category);
     }
-  };
+    
+    // Then sort by points (highest first)
+    return b.points - a.points;
+  });
+  
+  // If there are no achievements to show
+  if (achievementsToShow.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8">
+        {filter ? "No achievements in this category yet." : "No achievements earned yet."}
+      </div>
+    );
+  }
   
   return (
-    <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-primary-color" />
-          Achievements
-        </CardTitle>
-        <CardDescription>
-          {sortedAchievements.length} achievements earned
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {sortedAchievements.map(achievement => (
+    <ScrollArea className="h-full max-h-[500px]">
+      <div className="space-y-3">
+        {achievementsToShow.map(achievement => {
+          const isEarned = !!earnedAchievements[achievement.id];
+          const earnedDate = earnedAchievements[achievement.id] 
+            ? new Date(earnedAchievements[achievement.id])
+            : null;
+            
+          return (
             <div 
-              key={achievement.id} 
-              className={`flex items-center gap-4 p-3 rounded-lg ${
-                theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-100'
+              key={achievement.id}
+              className={`flex items-start p-3 rounded-lg border ${
+                isEarned 
+                  ? 'bg-primary/10 border-primary/20' 
+                  : 'bg-muted/50 border-border opacity-60'
               }`}
             >
-              <div className={`flex items-center justify-center h-14 w-14 rounded-full ${
-                achievement.type === 'milestone' ? 'bg-primary-color/20' :
-                achievement.type === 'streak' ? 'bg-orange-500/20' : 
-                achievement.type === 'consistency' ? 'bg-purple-500/20' :
-                achievement.type === 'speed' ? 'bg-blue-500/20' : 'bg-yellow-500/20'
-              }`}>
-                {getAchievementIcon(achievement)}
+              <div className="flex-shrink-0 text-3xl mr-3">
+                {achievement.icon}
               </div>
               
-              <div className="flex-1">
-                <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : ''}`}>
-                  {achievement.title}
-                </h4>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {achievement.description}
-                </p>
-                <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {format(new Date(achievement.date), 'MMM d, yyyy')}
+              <div className="flex-grow min-w-0">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-sm">{achievement.title}</h4>
+                  
+                  <div className="flex items-center gap-2">
+                    {/* Points badge */}
+                    <Badge variant="outline" className="ml-2">
+                      {achievement.points} pts
+                    </Badge>
+                    
+                    {/* Unlock date for earned achievements */}
+                    {isEarned && !compact && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-xs text-muted-foreground">
+                            {earnedDate.toLocaleDateString()}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Unlocked on {earnedDate.toLocaleString()}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </div>
+                
+                {/* Don't show description in compact mode */}
+                {!compact && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {achievement.description}
+                  </p>
+                )}
+                
+                {/* Show category badge in non-compact mode */}
+                {!compact && (
+                  <Badge variant="secondary" className="mt-2 text-xs">
+                    {achievement.category}
+                  </Badge>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          );
+        })}
+      </div>
+    </ScrollArea>
   );
 };
 

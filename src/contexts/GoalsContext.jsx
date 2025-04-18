@@ -27,20 +27,135 @@ const DEFAULT_MILESTONES = [
 
 // Default goal templates
 const GOAL_TEMPLATES = [
+  // Vehicles
   {
-    name: "Porsche GT3",
+    name: "Porsche 911 GT3",
     target: 200000,
-    description: "Save for a Porsche 911 GT3"
+    description: "Save for a Porsche 911 GT3 sports car",
+    category: "vehicles",
+    icon: "🏎️"
   },
+  {
+    name: "Tesla Model S",
+    target: 90000,
+    description: "Save for a Tesla Model S electric vehicle",
+    category: "vehicles",
+    icon: "🚗"
+  },
+  {
+    name: "Ducati Panigale V4",
+    target: 30000,
+    description: "Save for a Ducati Panigale V4 motorcycle",
+    category: "vehicles",
+    icon: "🏍️"
+  },
+  
+  // Real Estate
   {
     name: "Home Down Payment",
-    target: 50000,
-    description: "Save for a down payment on a house"
+    target: 60000,
+    description: "Save for a down payment on a house",
+    category: "real-estate",
+    icon: "🏠"
   },
+  {
+    name: "Apartment Renovation",
+    target: 25000,
+    description: "Save for renovating your apartment",
+    category: "real-estate",
+    icon: "🔨"
+  },
+  {
+    name: "Investment Property",
+    target: 80000,
+    description: "Save for an investment property down payment",
+    category: "real-estate",
+    icon: "🏢"
+  },
+  
+  // Education
+  {
+    name: "College Tuition",
+    target: 40000,
+    description: "Save for college or university tuition",
+    category: "education",
+    icon: "🎓"
+  },
+  {
+    name: "Coding Bootcamp",
+    target: 15000,
+    description: "Save for a coding bootcamp program",
+    category: "education",
+    icon: "💻"
+  },
+  {
+    name: "Professional Certification",
+    target: 5000,
+    description: "Save for professional certification courses",
+    category: "education",
+    icon: "📜"
+  },
+  
+  // Travel
   {
     name: "Dream Vacation",
     target: 10000,
-    description: "Save for a luxury vacation"
+    description: "Save for a luxury vacation",
+    category: "travel",
+    icon: "✈️"
+  },
+  {
+    name: "World Tour",
+    target: 30000,
+    description: "Save for a multi-country world tour",
+    category: "travel",
+    icon: "🌍"
+  },
+  {
+    name: "Sabbatical Year",
+    target: 50000,
+    description: "Save for a year-long travel sabbatical",
+    category: "travel",
+    icon: "🧳"
+  },
+  
+  // Business
+  {
+    name: "Small Business Startup",
+    target: 25000,
+    description: "Save for starting your own small business",
+    category: "business",
+    icon: "💼"
+  },
+  {
+    name: "E-commerce Store",
+    target: 10000,
+    description: "Save for launching an e-commerce store",
+    category: "business",
+    icon: "🛒"
+  },
+  
+  // Lifestyle
+  {
+    name: "Wedding Fund",
+    target: 35000,
+    description: "Save for a wedding celebration",
+    category: "lifestyle",
+    icon: "💍"
+  },
+  {
+    name: "Emergency Fund",
+    target: 20000,
+    description: "Save for a 6-month emergency fund",
+    category: "lifestyle",
+    icon: "🛡️"
+  },
+  {
+    name: "Retirement Boost",
+    target: 100000,
+    description: "Save for an additional retirement investment",
+    category: "lifestyle",
+    icon: "👵"
   }
 ];
 

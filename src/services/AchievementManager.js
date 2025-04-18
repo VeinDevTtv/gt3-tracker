@@ -1,267 +1,454 @@
 import { toast } from 'react-hot-toast';
-
-// Define achievements
-const ACHIEVEMENTS = {
-  EARLY_BIRD: {
-    id: 'early_bird',
-    title: 'Early Bird',
-    description: 'Set your first savings goal',
-    icon: '🌅',
-    points: 10
-  },
-  FIRST_DEPOSIT: {
-    id: 'first_deposit',
-    title: 'First Deposit',
-    description: 'Record your first savings deposit',
-    icon: '💰',
-    points: 10
-  },
-  CONSISTENT_SAVER: {
-    id: 'consistent_saver',
-    title: 'Consistent Saver',
-    description: 'Add savings for 4 consecutive weeks',
-    icon: '📆',
-    points: 25
-  },
-  BIG_MILESTONE: {
-    id: 'big_milestone',
-    title: 'Big Milestone',
-    description: 'Reach 25% of your savings goal',
-    icon: '🏁',
-    points: 25
-  },
-  HALFWAY_THERE: {
-    id: 'halfway_there',
-    title: 'Halfway There',
-    description: 'Reach 50% of your savings goal',
-    icon: '⚡',
-    points: 50
-  },
-  SUPER_SAVER: {
-    id: 'super_saver',
-    title: 'Super Saver',
-    description: 'Add a weekly amount that is 50% above your average',
-    icon: '🦸',
-    points: 15
-  },
-  MULTI_GOAL_MASTER: {
-    id: 'multi_goal_master',
-    title: 'Multi-Goal Master',
-    description: 'Create 3 or more savings goals',
-    icon: '🎯',
-    points: 30
-  },
-  GOAL_COMPLETE: {
-    id: 'goal_complete',
-    title: 'Goal Complete!',
-    description: 'Reach 100% of a savings goal',
-    icon: '🏆',
-    points: 100
-  }
-};
+import { 
+  Trophy, Award, Star, Target, Calendar, Clock, Zap, 
+  TrendingUp, FileText, Activity, Sunrise, BarChart2, 
+  Shield, Gift, Rocket, Medal, Clipboard, CheckCircle 
+} from 'lucide-react';
 
 class AchievementManager {
   constructor() {
-    this.STORAGE_KEY = 'gt3_tracker_achievements';
-    this.POINTS_KEY = 'gt3_tracker_achievement_points';
+    this.achievements = {
+      // Getting Started Achievements
+      "first-save": {
+        id: "first-save",
+        title: "First Save",
+        description: "Make your first contribution towards your goal",
+        icon: "💰",
+        category: "starter",
+        points: 10,
+        condition: (state) => state.weeks.some(week => week.profit > 0)
+      },
+      "profile-setup": {
+        id: "profile-setup",
+        title: "Profile Complete",
+        description: "Update your profile picture and username",
+        icon: "👤",
+        category: "starter",
+        points: 15,
+        condition: (state) => state.currentUser && state.currentUser.username && state.currentUser.profilePicture
+      },
+      "goal-defined": {
+        id: "goal-defined",
+        title: "Goal Setter",
+        description: "Set a specific savings goal and target amount",
+        icon: "🎯",
+        category: "starter",
+        points: 15,
+        condition: (state) => state.goalName && state.target && state.target > 0
+      },
+      
+      // Milestone Achievements
+      "25-percent": {
+        id: "25-percent",
+        title: "Quarter Way",
+        description: "Reach 25% of your savings goal",
+        icon: "🔔",
+        category: "milestone",
+        points: 25,
+        condition: (state) => (state.totalProfit / state.target) * 100 >= 25
+      },
+      "50-percent": {
+        id: "50-percent",
+        title: "Halfway Hero",
+        description: "Reach 50% of your savings goal",
+        icon: "🔔🔔",
+        category: "milestone",
+        points: 50,
+        condition: (state) => (state.totalProfit / state.target) * 100 >= 50
+      },
+      "75-percent": {
+        id: "75-percent",
+        title: "Three-Quarter Champion",
+        description: "Reach 75% of your savings goal",
+        icon: "🔔🔔🔔",
+        category: "milestone",
+        points: 75,
+        condition: (state) => (state.totalProfit / state.target) * 100 >= 75
+      },
+      "goal-reached": {
+        id: "goal-reached",
+        title: "Goal Achieved",
+        description: "Congratulations! You've reached 100% of your savings goal",
+        icon: "🏆",
+        category: "milestone",
+        points: 100,
+        condition: (state) => state.totalProfit >= state.target
+      },
+      "goal-exceeded": {
+        id: "goal-exceeded",
+        title: "Overachiever",
+        description: "Exceed your savings goal by 25% or more",
+        icon: "🚀",
+        category: "milestone",
+        points: 150,
+        condition: (state) => state.totalProfit >= state.target * 1.25
+      },
+      
+      // Consistency Achievements
+      "first-streak": {
+        id: "first-streak",
+        title: "Streak Starter",
+        description: "Achieve a 3-week savings streak",
+        icon: "🔥",
+        category: "consistency",
+        points: 30,
+        condition: (state) => state.streakInfo && state.streakInfo.currentStreak >= 3
+      },
+      "steady-saver": {
+        id: "steady-saver",
+        title: "Steady Saver",
+        description: "Achieve a 5-week savings streak",
+        icon: "🔥🔥",
+        category: "consistency",
+        points: 50,
+        condition: (state) => state.streakInfo && state.streakInfo.currentStreak >= 5
+      },
+      "savings-master": {
+        id: "savings-master",
+        title: "Savings Master",
+        description: "Achieve a 10-week savings streak",
+        icon: "🔥🔥🔥",
+        category: "consistency",
+        points: 100,
+        condition: (state) => state.streakInfo && state.streakInfo.currentStreak >= 10
+      },
+      "consistency-king": {
+        id: "consistency-king",
+        title: "Consistency King",
+        description: "Save more than your weekly target for 4 consecutive weeks",
+        icon: "👑",
+        category: "consistency",
+        points: 75,
+        condition: (state) => {
+          if (!state.weeks || state.weeks.length < 4) return false;
+          const weeklyTarget = state.target / state.totalWeeks;
+          const lastFourWeeks = state.weeks.slice(-4);
+          return lastFourWeeks.every(week => week.profit > weeklyTarget);
+        }
+      },
+      
+      // Amount Based Achievements
+      "big-saver": {
+        id: "big-saver",
+        title: "Big Saver",
+        description: "Save double your weekly target in a single week",
+        icon: "💸",
+        category: "amount",
+        points: 40,
+        condition: (state) => {
+          if (!state.weeks || state.weeks.length === 0) return false;
+          const weeklyTarget = state.target / state.totalWeeks;
+          return state.weeks.some(week => week.profit >= weeklyTarget * 2);
+        }
+      },
+      "mega-deposit": {
+        id: "mega-deposit",
+        title: "Mega Deposit",
+        description: "Make a deposit that's at least 3x your weekly target",
+        icon: "🏦",
+        category: "amount",
+        points: 60,
+        condition: (state) => {
+          if (!state.weeks || state.weeks.length === 0) return false;
+          const weeklyTarget = state.target / state.totalWeeks;
+          return state.weeks.some(week => week.profit >= weeklyTarget * 3);
+        }
+      },
+      "grand-deposit": {
+        id: "grand-deposit",
+        title: "Grand Deposit",
+        description: "Make a deposit that's at least 5x your weekly target",
+        icon: "💎",
+        category: "amount",
+        points: 100,
+        condition: (state) => {
+          if (!state.weeks || state.weeks.length === 0) return false;
+          const weeklyTarget = state.target / state.totalWeeks;
+          return state.weeks.some(week => week.profit >= weeklyTarget * 5);
+        }
+      },
+      
+      // Tools & Features Achievements
+      "first-export": {
+        id: "first-export",
+        title: "Data Exporter",
+        description: "Export your savings data for the first time",
+        icon: "📤",
+        category: "tools",
+        points: 20,
+        // This one will be manually triggered by the export function
+      },
+      "first-import": {
+        id: "first-import",
+        title: "Data Importer",
+        description: "Import savings data from a backup",
+        icon: "📥",
+        category: "tools",
+        points: 20,
+        // This one will be manually triggered by the import function
+      },
+      "first-report": {
+        id: "first-report",
+        title: "Report Generator",
+        description: "Generate your first PDF report",
+        icon: "📊",
+        category: "tools",
+        points: 25,
+        // This one will be manually triggered by the generateReport function
+      },
+      "ai-assistant": {
+        id: "ai-assistant",
+        title: "AI Explorer",
+        description: "Use the AI assistant feature to get insights",
+        icon: "🤖",
+        category: "tools",
+        points: 30,
+        // This one will be manually triggered by the AI assistant
+      },
+      
+      // Time Based Achievements
+      "one-month": {
+        id: "one-month",
+        title: "One Month Milestone",
+        description: "Track your savings for one month",
+        icon: "📅",
+        category: "time",
+        points: 30,
+        condition: (state) => {
+          if (!state.startDate) return false;
+          const start = new Date(state.startDate);
+          const now = new Date();
+          const diffTime = Math.abs(now - start);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays >= 30;
+        }
+      },
+      "three-months": {
+        id: "three-months",
+        title: "Quarterly Milestone",
+        description: "Track your savings for three months",
+        icon: "📅📅",
+        category: "time",
+        points: 60,
+        condition: (state) => {
+          if (!state.startDate) return false;
+          const start = new Date(state.startDate);
+          const now = new Date();
+          const diffTime = Math.abs(now - start);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays >= 90;
+        }
+      },
+      "six-months": {
+        id: "six-months",
+        title: "Half-Year Dedication",
+        description: "Track your savings for six months",
+        icon: "📅📅📅",
+        category: "time",
+        points: 100,
+        condition: (state) => {
+          if (!state.startDate) return false;
+          const start = new Date(state.startDate);
+          const now = new Date();
+          const diffTime = Math.abs(now - start);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays >= 180;
+        }
+      },
+      
+      // Special Achievements
+      "night-owl": {
+        id: "night-owl",
+        title: "Night Owl",
+        description: "Log a savings entry after midnight",
+        icon: "🦉",
+        category: "special",
+        points: 15,
+        // This one will be manually triggered when an entry is made after midnight
+      },
+      "early-bird": {
+        id: "early-bird",
+        title: "Early Bird",
+        description: "Log a savings entry before 7 AM",
+        icon: "🐦",
+        category: "special",
+        points: 15,
+        // This one will be manually triggered when an entry is made before 7 AM
+      },
+      "weekday-warrior": {
+        id: "weekday-warrior",
+        title: "Weekday Warrior",
+        description: "Log savings entries for 5 consecutive weekdays",
+        icon: "💼",
+        category: "special",
+        points: 40,
+        // This requires tracking date patterns which would need additional logic
+      },
+      "weekend-saver": {
+        id: "weekend-saver",
+        title: "Weekend Saver",
+        description: "Log savings entries for 3 consecutive weekends",
+        icon: "🏖️",
+        category: "special",
+        points: 30,
+        // This requires tracking date patterns which would need additional logic
+      },
+      
+      // Multiple Goals Achievements (can be added when multi-goal support is implemented)
+      "multi-goal-starter": {
+        id: "multi-goal-starter",
+        title: "Multi-Goal Starter",
+        description: "Create your second savings goal",
+        icon: "🔄",
+        category: "multi-goal",
+        points: 25,
+        // This will be handled when multi-goal feature is implemented
+      },
+      "goal-collector": {
+        id: "goal-collector",
+        title: "Goal Collector",
+        description: "Have three active savings goals",
+        icon: "📚",
+        category: "multi-goal",
+        points: 50,
+        // This will be handled when multi-goal feature is implemented
+      }
+    };
   }
-
-  /**
-   * Initialize the achievement manager by loading achieved items from localStorage
-   */
-  initialize() {
-    // Initialize achievements if not exist
-    if (!localStorage.getItem(this.STORAGE_KEY)) {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify({}));
-      localStorage.setItem(this.POINTS_KEY, '0');
-    }
-  }
-
-  /**
-   * Get all available achievements
-   * @returns {Object} - All achievement definitions
-   */
+  
+  // Get all achievements
   getAchievements() {
-    return ACHIEVEMENTS;
+    return this.achievements;
   }
-
-  /**
-   * Get the achievements the user has earned
-   * @returns {Object} - Map of earned achievement IDs to timestamp earned
-   */
+  
+  // Get only a specific category of achievements
+  getAchievementsByCategory(category) {
+    return Object.values(this.achievements).filter(
+      achievement => achievement.category === category
+    );
+  }
+  
+  // Get earned achievements from localStorage
   getEarnedAchievements() {
     try {
-      const earned = localStorage.getItem(this.STORAGE_KEY);
+      const earned = localStorage.getItem('earnedAchievements');
       return earned ? JSON.parse(earned) : {};
     } catch (error) {
-      console.error('Error parsing earned achievements:', error);
+      console.error('Error getting earned achievements:', error);
       return {};
     }
   }
-
-  /**
-   * Get the user's total achievement points
-   * @returns {number} - Total points
-   */
+  
+  // Save earned achievements to localStorage
+  saveEarnedAchievements(earnedAchievements) {
+    try {
+      localStorage.setItem('earnedAchievements', JSON.stringify(earnedAchievements));
+    } catch (error) {
+      console.error('Error saving earned achievements:', error);
+    }
+  }
+  
+  // Get total points earned
   getTotalPoints() {
-    try {
-      const points = localStorage.getItem(this.POINTS_KEY);
-      return points ? parseInt(points, 10) : 0;
-    } catch (error) {
-      console.error('Error parsing achievement points:', error);
-      return 0;
-    }
+    const earnedAchievements = this.getEarnedAchievements();
+    let totalPoints = 0;
+    
+    Object.keys(earnedAchievements).forEach(id => {
+      if (this.achievements[id]) {
+        totalPoints += this.achievements[id].points;
+      }
+    });
+    
+    return totalPoints;
   }
-
-  /**
-   * Check if a specific achievement has been earned
-   * @param {string} achievementId - ID of the achievement to check
-   * @returns {boolean} - Whether the achievement has been earned
-   */
-  hasEarnedAchievement(achievementId) {
-    const earned = this.getEarnedAchievements();
-    return !!earned[achievementId];
-  }
-
-  /**
-   * Award an achievement to the user
-   * @param {string} achievementId - ID of the achievement to award
-   * @returns {boolean} - Whether the operation was successful
-   */
-  awardAchievement(achievementId) {
-    // Check if the achievement exists
-    if (!ACHIEVEMENTS[achievementId]) {
-      console.error(`Achievement ${achievementId} not found`);
-      return false;
-    }
-
+  
+  // Mark achievement as earned
+  unlockAchievement(achievementId) {
+    const earnedAchievements = this.getEarnedAchievements();
+    
     // Check if already earned
-    if (this.hasEarnedAchievement(achievementId)) {
+    if (earnedAchievements[achievementId]) {
+      return false; // Already earned, no need to do anything
+    }
+    
+    // Mark as earned with timestamp
+    earnedAchievements[achievementId] = new Date().toISOString();
+    this.saveEarnedAchievements(earnedAchievements);
+    
+    // Get achievement details for notification
+    const achievement = this.achievements[achievementId];
+    if (achievement) {
+      // Show toast notification
+      toast.success(
+        <div>
+          <div className="text-lg font-bold">Achievement Unlocked!</div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{achievement.icon}</span>
+            <span>{achievement.title}</span>
+          </div>
+          <div className="text-sm">{achievement.description}</div>
+          <div className="text-sm font-semibold">+{achievement.points} points</div>
+        </div>,
+        { duration: 5000 }
+      );
+      
+      return true; // Successfully unlocked
+    }
+    
+    return false;
+  }
+  
+  // Check for achievements based on app state
+  checkAchievements(state) {
+    const earnedAchievements = this.getEarnedAchievements();
+    let newlyUnlocked = [];
+    
+    // Check each achievement's condition
+    Object.values(this.achievements).forEach(achievement => {
+      // Skip if already earned
+      if (earnedAchievements[achievement.id]) {
+        return;
+      }
+      
+      // If the achievement has a condition function, check it
+      if (achievement.condition && achievement.condition(state)) {
+        const unlocked = this.unlockAchievement(achievement.id);
+        if (unlocked) {
+          newlyUnlocked.push(achievement);
+        }
+      }
+    });
+    
+    return newlyUnlocked;
+  }
+  
+  // Manually trigger specific achievements (for actions like exports, imports, etc.)
+  triggerAchievement(achievementId, state) {
+    const earnedAchievements = this.getEarnedAchievements();
+    
+    // Skip if already earned
+    if (earnedAchievements[achievementId]) {
       return false;
     }
-
-    try {
-      // Update earned achievements
-      const earned = this.getEarnedAchievements();
-      earned[achievementId] = new Date().toISOString();
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(earned));
-
-      // Update points
-      const currentPoints = this.getTotalPoints();
-      const newPoints = currentPoints + ACHIEVEMENTS[achievementId].points;
-      localStorage.setItem(this.POINTS_KEY, newPoints.toString());
-
-      // Show notification
-      this.showAchievementNotification(achievementId);
-      return true;
-    } catch (error) {
-      console.error('Error awarding achievement:', error);
-      return false;
-    }
+    
+    return this.unlockAchievement(achievementId);
   }
-
-  /**
-   * Show a toast notification for a newly earned achievement
-   * @param {string} achievementId - ID of the achievement
-   */
-  showAchievementNotification(achievementId) {
-    const achievement = ACHIEVEMENTS[achievementId];
+  
+  // Check time-based special achievements
+  checkTimeBasedAchievements() {
+    const now = new Date();
+    const hour = now.getHours();
     
-    toast.success(
-      <div>
-        <div><strong>Achievement Unlocked!</strong></div>
-        <div>{achievement.icon} {achievement.title}</div>
-        <div>+{achievement.points} points</div>
-      </div>,
-      {
-        duration: 5000,
-        style: {
-          backgroundColor: '#4c1d95',
-          color: 'white',
-          border: '1px solid #6d28d9'
-        },
-        iconTheme: {
-          primary: '#fbbf24',
-          secondary: '#4c1d95'
-        }
-      }
-    );
-  }
-
-  /**
-   * Check and award achievements based on app data
-   * @param {Object} data - App data to check against
-   */
-  checkForAchievements(data) {
-    const { goals, activeGoal, weeks } = data;
-    
-    // Early Bird - Set first goal
-    if (goals && goals.length > 0) {
-      this.awardAchievement('EARLY_BIRD');
-    }
-    
-    // First Deposit - Record first savings
-    if (weeks && weeks.length > 0 && weeks.some(week => week.profit > 0)) {
-      this.awardAchievement('FIRST_DEPOSIT');
-    }
-    
-    // Consistent Saver - 4 consecutive weeks
-    if (weeks && weeks.length >= 4) {
-      let consecutiveWeeks = 0;
-      for (let i = 0; i < weeks.length; i++) {
-        if (weeks[i].profit > 0) {
-          consecutiveWeeks++;
-          if (consecutiveWeeks >= 4) {
-            this.awardAchievement('CONSISTENT_SAVER');
-            break;
-          }
-        } else {
-          consecutiveWeeks = 0;
-        }
-      }
-    }
-    
-    // Check progress-based achievements
-    if (activeGoal && activeGoal.target) {
-      const totalSaved = weeks?.reduce((sum, week) => sum + (week.profit || 0), 0) || 0;
-      const percentage = (totalSaved / activeGoal.target) * 100;
-      
-      // Big Milestone - 25%
-      if (percentage >= 25) {
-        this.awardAchievement('BIG_MILESTONE');
-      }
-      
-      // Halfway There - 50%
-      if (percentage >= 50) {
-        this.awardAchievement('HALFWAY_THERE');
-      }
-      
-      // Goal Complete - 100%
-      if (percentage >= 100) {
-        this.awardAchievement('GOAL_COMPLETE');
-      }
-    }
-    
-    // Super Saver - 50% above average
-    if (weeks && weeks.length > 1) {
-      const profits = weeks.map(week => week.profit || 0).filter(profit => profit > 0);
-      if (profits.length > 1) {
-        const average = profits.reduce((sum, profit) => sum + profit, 0) / profits.length;
-        const lastProfit = profits[profits.length - 1];
-        
-        if (lastProfit >= average * 1.5) {
-          this.awardAchievement('SUPER_SAVER');
-        }
-      }
-    }
-    
-    // Multi-Goal Master - 3+ goals
-    if (goals && goals.length >= 3) {
-      this.awardAchievement('MULTI_GOAL_MASTER');
+    if (hour >= 0 && hour < 5) {
+      // Night owl: after midnight and before 5 AM
+      this.triggerAchievement('night-owl');
+    } else if (hour >= 5 && hour < 7) {
+      // Early bird: between 5 AM and 7 AM
+      this.triggerAchievement('early-bird');
     }
   }
 }
 
-// Create a singleton instance
+// Create and export a singleton instance
 const achievementManager = new AchievementManager();
 export default achievementManager; 
