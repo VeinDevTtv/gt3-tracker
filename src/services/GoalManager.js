@@ -1,7 +1,11 @@
 import { toast } from 'react-hot-toast';
 
+// Debug to see if loaded
+console.log('GoalManager module loaded');
+
 class GoalManager {
   constructor() {
+    console.log('GoalManager constructor called');
     this.GOALS_STORAGE_KEY = 'gt3_tracker_goals';
     this.ACTIVE_GOAL_KEY = 'gt3_tracker_active_goal';
   }
@@ -10,16 +14,23 @@ class GoalManager {
    * Initialize the goal manager by loading goals from localStorage
    */
   initialize() {
+    console.log('GoalManager initialize called');
     // If no goals exist yet, create a default goal and migrate existing data
     const goals = this.getGoals();
+    console.log('Goals from storage:', goals);
+    
     if (!goals || goals.length === 0) {
+      console.log('No goals found, migrating existing data');
       this.migrateExistingDataToGoals();
     }
     
     // Ensure there's an active goal
     const activeGoalId = localStorage.getItem(this.ACTIVE_GOAL_KEY);
     const goals2 = this.getGoals();
+    console.log('Active goal ID:', activeGoalId);
+    
     if ((!activeGoalId || !goals2.find(g => g.id === activeGoalId)) && goals2.length > 0) {
+      console.log('Setting first goal as active:', goals2[0].id);
       this.setActiveGoal(goals2[0].id);
     }
   }
@@ -119,6 +130,7 @@ class GoalManager {
    * @returns {boolean} - Whether the operation was successful
    */
   updateGoal(goalId, updates) {
+    console.log(`Updating goal ${goalId}:`, updates);
     const goals = this.getGoals();
     const goalIndex = goals.findIndex(goal => goal.id === goalId);
     
@@ -127,12 +139,23 @@ class GoalManager {
       return false;
     }
     
+    // Handle weeks specially to ensure profit values are proper numbers
+    if (updates.weeks) {
+      updates.weeks = updates.weeks.map(week => ({
+        ...week,
+        week: week.week || 0,
+        profit: Math.abs(parseFloat(week.profit || 0)),
+        cumulative: parseFloat(week.cumulative || 0)
+      }));
+    }
+    
     goals[goalIndex] = {
       ...goals[goalIndex],
       ...updates,
       updatedAt: new Date().toISOString()
     };
     
+    console.log(`Updated goal:`, goals[goalIndex]);
     this.saveGoals(goals);
     return true;
   }

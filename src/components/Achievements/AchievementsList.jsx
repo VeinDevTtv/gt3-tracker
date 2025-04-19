@@ -3,7 +3,6 @@ import { Trophy, Lock, Award, CheckCircle, Filter, Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Input } from '../ui/input';
-import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { 
   Select, 
@@ -12,8 +11,11 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '../ui/select';
-import achievementManager from '../../services/AchievementManager';
+import achievementManager from '@/services/AchievementManager';
 import { format } from 'date-fns';
+
+// Debug import
+console.log('AchievementsList component imported', { achievementManager });
 
 // Achievement categories and their icons
 const CATEGORIES = {
@@ -35,59 +37,83 @@ const AchievementsList = ({ theme }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'earned', 'locked'
+  const [error, setError] = useState(null);
+  
+  console.log("AchievementsList render");
   
   // Load achievements on mount
   useEffect(() => {
-    // Get all achievement definitions
-    const achievements = achievementManager.getAchievements();
-    const achievementsArray = Object.values(achievements).map(achievement => ({
-      ...achievement,
-      isEarned: false,
-      earnedDate: null
-    }));
-    setAllAchievements(achievementsArray);
-    
-    // Get earned achievements
-    const earned = achievementManager.getEarnedAchievements();
-    setEarnedAchievements(earned);
-    
-    // Get total points
-    const points = achievementManager.getTotalPoints();
-    setTotalPoints(points);
+    try {
+      console.log("AchievementsList useEffect");
+      
+      // Ensure achievement manager is initialized 
+      if (!achievementManager.initialized) {
+        console.log("Initializing achievement manager from AchievementsList");
+        achievementManager.initialize();
+      }
+      
+      // Get all achievement definitions
+      console.log("Getting achievements...");
+      const achievements = achievementManager.getAchievements();
+      console.log("Loaded achievements:", achievements);
+      const achievementsArray = Object.values(achievements);
+      setAllAchievements(achievementsArray);
+      
+      // Get earned achievements
+      console.log("Getting earned achievements...");
+      const earned = achievementManager.getEarnedAchievements();
+      console.log("Earned achievements:", earned);
+      setEarnedAchievements(earned);
+      
+      // Get total points
+      console.log("Getting total points...");
+      const points = achievementManager.getTotalPoints();
+      console.log("Total points:", points);
+      setTotalPoints(points);
+    } catch (err) {
+      console.error("Error loading achievements:", err);
+      setError(err.message || "Failed to load achievements");
+    }
   }, []);
   
   // Get filtered achievements
   const getFilteredAchievements = () => {
-    let filtered = [...allAchievements];
-    
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(achievement => achievement.category === selectedCategory);
+    try {
+      let filtered = [...allAchievements];
+      
+      // Filter by category
+      if (selectedCategory !== 'all') {
+        filtered = filtered.filter(achievement => achievement.category === selectedCategory);
+      }
+      
+      // Filter by earned status
+      if (filterStatus === 'earned') {
+        filtered = filtered.filter(achievement => earnedAchievements[achievement.id]);
+      } else if (filterStatus === 'locked') {
+        filtered = filtered.filter(achievement => !earnedAchievements[achievement.id]);
+      }
+      
+      // Filter by search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(
+          achievement => 
+            achievement.title?.toLowerCase().includes(query) || 
+            achievement.description?.toLowerCase().includes(query)
+        );
+      }
+      
+      // Add earned status and date to each achievement
+      return filtered.map(achievement => ({
+        ...achievement,
+        isEarned: !!earnedAchievements[achievement.id],
+        earnedDate: earnedAchievements[achievement.id] || null
+      }));
+    } catch (err) {
+      console.error("Error filtering achievements:", err);
+      setError(err.message || "Failed to filter achievements");
+      return [];
     }
-    
-    // Filter by earned status
-    if (filterStatus === 'earned') {
-      filtered = filtered.filter(achievement => earnedAchievements[achievement.id]);
-    } else if (filterStatus === 'locked') {
-      filtered = filtered.filter(achievement => !earnedAchievements[achievement.id]);
-    }
-    
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        achievement => 
-          achievement.title.toLowerCase().includes(query) || 
-          achievement.description.toLowerCase().includes(query)
-      );
-    }
-    
-    // Add earned status and date to each achievement
-    return filtered.map(achievement => ({
-      ...achievement,
-      isEarned: !!earnedAchievements[achievement.id],
-      earnedDate: earnedAchievements[achievement.id] || null
-    }));
   };
   
   // Group achievements by category
@@ -96,6 +122,8 @@ const AchievementsList = ({ theme }) => {
     const grouped = {};
     
     filtered.forEach(achievement => {
+      if (!achievement.category) return;
+      
       if (!grouped[achievement.category]) {
         grouped[achievement.category] = [];
       }
@@ -105,13 +133,31 @@ const AchievementsList = ({ theme }) => {
     return grouped;
   };
   
-  const filteredAchievements = getFilteredAchievements();
   const groupedAchievements = getAchievementsByCategory();
   
   // Calculate statistics
   const earnedCount = Object.keys(earnedAchievements).length;
   const totalCount = allAchievements.length;
   const earnedPercentage = totalCount > 0 ? Math.round((earnedCount / totalCount) * 100) : 0;
+  
+  if (error) {
+    return (
+      <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-primary" />
+            Achievements
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="p-4 border border-red-300 bg-red-50 text-red-700 rounded-md">
+            <h3 className="font-semibold">Error loading achievements</h3>
+            <p>{error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
@@ -240,7 +286,7 @@ const AchievementsList = ({ theme }) => {
 
 // Achievement card component
 const AchievementCard = ({ achievement, theme }) => {
-  const { id, title, description, icon, points, isEarned, earnedDate } = achievement;
+  const { title, description, icon, points, isEarned, earnedDate } = achievement;
   
   const getBorderColor = () => {
     if (isEarned) {
@@ -248,60 +294,67 @@ const AchievementCard = ({ achievement, theme }) => {
         case 'milestone': return 'border-blue-500';
         case 'consistency': return 'border-green-500';
         case 'special': return 'border-purple-500';
-        case 'amount': return 'border-yellow-500';
-        case 'multi-goal': return 'border-indigo-500';
-        case 'tools': return 'border-cyan-500';
-        case 'time': return 'border-orange-500';
+        case 'multi-goal': return 'border-orange-500';
+        case 'time': return 'border-indigo-500';
         default: return 'border-primary';
       }
     }
-    return theme === 'dark' ? 'border-gray-700' : 'border-gray-200';
+    return 'border-gray-200 dark:border-gray-700';
+  };
+  
+  const getIconClass = () => {
+    if (isEarned) {
+      switch (achievement.category) {
+        case 'milestone': return 'text-blue-500';
+        case 'consistency': return 'text-green-500';
+        case 'special': return 'text-purple-500';
+        case 'multi-goal': return 'text-orange-500';
+        case 'time': return 'text-indigo-500';
+        default: return 'text-primary';
+      }
+    }
+    return 'text-gray-400';
   };
   
   return (
-    <div 
-      className={`flex p-3 rounded-lg border-2 ${getBorderColor()} ${
-        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-      } ${isEarned ? 'opacity-100' : 'opacity-60'}`}
-    >
-      <div className="flex-shrink-0 mr-3 mt-1">
-        <div 
-          className={`flex items-center justify-center h-12 w-12 rounded-full ${
-            isEarned 
-              ? 'bg-primary/20' 
-              : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-          }`}
-        >
-          {isEarned ? (
-            <span className="text-2xl">{icon}</span>
-          ) : (
-            <Lock className="h-6 w-6 text-gray-400" />
-          )}
+    <div className={`relative p-4 rounded-lg border-2 ${getBorderColor()} transition-colors ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
+      {/* Locked overlay */}
+      {!isEarned && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/10 dark:bg-gray-900/30 backdrop-blur-[1px] rounded-lg">
+          <Lock className="h-6 w-6 text-gray-500" />
         </div>
-      </div>
+      )}
       
-      <div className="flex-1">
-        <div className="flex items-start justify-between">
-          <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : ''}`}>
-            {title}
-          </h4>
-          <Badge 
-            variant={isEarned ? "default" : "outline"}
-            className={`ml-2 ${!isEarned && theme === 'dark' ? 'text-gray-400' : ''}`}
-          >
-            {points} pts
-          </Badge>
+      <div className={`flex ${isEarned ? '' : 'opacity-60'}`}>
+        <div className={`mr-3 ${getIconClass()}`}>
+          {icon || <Trophy className="h-6 w-6" />}
         </div>
         
-        <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-          {description}
-        </p>
-        
-        {isEarned && earnedDate && (
-          <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            Earned on {format(new Date(earnedDate), 'MMM d, yyyy')}
-          </p>
-        )}
+        <div className="flex-1">
+          <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : ''}`}>{title || 'Unknown Achievement'}</h4>
+          <p className="text-sm text-muted-foreground">{description || 'No description available'}</p>
+          
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center">
+              <Badge variant="secondary" className="text-xs">
+                {points || 0} points
+              </Badge>
+              
+              {isEarned && earnedDate && (
+                <span className="text-xs ml-2 text-muted-foreground">
+                  {format(new Date(earnedDate), 'MMM d, yyyy')}
+                </span>
+              )}
+            </div>
+            
+            {isEarned && (
+              <div className="flex items-center text-green-500">
+                <CheckCircle className="h-4 w-4 mr-1" />
+                <span className="text-xs">Unlocked</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

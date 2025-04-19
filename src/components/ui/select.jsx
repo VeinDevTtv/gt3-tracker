@@ -1,82 +1,121 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { ChevronDown } from "lucide-react"
+import React, { useState, useRef, useEffect } from 'react';
+import { cn } from "../../lib/utils";
+import { ChevronDown } from 'lucide-react';
 
-const Select = React.forwardRef(({ className, children, ...props }, ref) => {
+export function Select({ value, onValueChange, children, className }) {
+  const [open, setOpen] = useState(false);
+  const selectRef = useRef(null);
+  
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (selectRef.current && !selectRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+  // Find the selected value's label
+  let selectedLabel = "";
+  React.Children.forEach(children, child => {
+    if (child.type === SelectTrigger) {
+      React.Children.forEach(child.props.children, triggerChild => {
+        if (triggerChild.type === SelectValue) {
+          selectedLabel = triggerChild.props.placeholder;
+        }
+      });
+    } else if (child.type === SelectContent) {
+      React.Children.forEach(child.props.children, contentChild => {
+        if (contentChild.type === SelectItem && contentChild.props.value === value) {
+          selectedLabel = contentChild.props.children;
+        }
+      });
+    }
+  });
+  
   return (
-    <div className={cn("relative w-full", className)}>
-      {children}
+    <div ref={selectRef} className={cn("relative w-full", className)}>
+      {React.Children.map(children, child => {
+        if (child.type === SelectTrigger) {
+          return React.cloneElement(child, {
+            onClick: () => setOpen(!open),
+            selectedLabel
+          });
+        } else if (child.type === SelectContent) {
+          return open && React.cloneElement(child, {
+            onValueChange,
+            onClose: () => setOpen(false)
+          });
+        }
+        return child;
+      })}
     </div>
-  )
-})
-Select.displayName = "Select"
+  );
+}
 
-const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) => {
+export function SelectTrigger({ id, className, children, onClick, selectedLabel, disabled }) {
   return (
     <button
-      ref={ref}
+      id={id}
       className={cn(
-        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
-        "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        "dark:bg-gray-700 dark:border-gray-600 dark:text-white",
+        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
-      {...props}
+      onClick={onClick}
+      disabled={disabled}
     >
-      {children}
+      {React.Children.map(children, child => {
+        if (child.type === SelectValue) {
+          return React.cloneElement(child, { selectedLabel });
+        }
+        return child;
+      })}
       <ChevronDown className="h-4 w-4 opacity-50" />
     </button>
-  )
-})
-SelectTrigger.displayName = "SelectTrigger"
+  );
+}
 
-const SelectValue = React.forwardRef(({ className, ...props }, ref) => {
+export function SelectValue({ placeholder, selectedLabel }) {
+  return <span>{selectedLabel || placeholder}</span>;
+}
+
+export function SelectContent({ className, children, onValueChange, onClose }) {
   return (
-    <span
-      ref={ref}
-      className={cn("block truncate", className)}
-      {...props}
-    />
-  )
-})
-SelectValue.displayName = "SelectValue"
+    <div className={cn(
+      "absolute z-50 min-w-[8rem] w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-80 mt-1",
+      className
+    )}>
+      <div className="p-1">
+        {React.Children.map(children, child => {
+          if (child.type === SelectItem) {
+            return React.cloneElement(child, {
+              onClick: () => {
+                onValueChange(child.props.value);
+                onClose();
+              }
+            });
+          }
+          return child;
+        })}
+      </div>
+    </div>
+  );
+}
 
-const SelectContent = React.forwardRef(({ className, children, ...props }, ref) => {
+export function SelectItem({ className, value, onClick, children }) {
   return (
     <div
-      ref={ref}
       className={cn(
-        "absolute top-full left-0 z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
-        "animate-in fade-in-80 dark:bg-gray-800 dark:border-gray-700",
+        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className
       )}
-      {...props}
+      onClick={onClick}
     >
-      <div className="p-1">{children}</div>
+      {children}
     </div>
-  )
-})
-SelectContent.displayName = "SelectContent"
-
-const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "relative flex cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none",
-        "focus:bg-accent focus:text-accent-foreground dark:hover:bg-gray-700 dark:hover:text-white",
-        className
-      )}
-      {...props}
-    >
-      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-        {/* <Check className="h-4 w-4" /> */}
-      </span>
-      <span className="pl-2">{children}</span>
-    </div>
-  )
-})
-SelectItem.displayName = "SelectItem"
-
-export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } 
+  );
+} 

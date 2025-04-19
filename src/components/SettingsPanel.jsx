@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Download, FileText, Share2, Palette, AlertTriangle } from 'lucide-react';
+import { Download, FileText, Share2, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
@@ -88,7 +88,7 @@ const SettingsPanel = ({
   return (
     <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
       <CardHeader>
-        <CardTitle className={theme === 'dark' ? 'text-white' : ''}>Settings</CardTitle>
+        <CardTitle className={theme === 'dark' ? 'text-white' : ''}>Goal Settings</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -184,36 +184,6 @@ const SettingsPanel = ({
             </div>
           </div>
           
-          <div className="space-y-2">
-            <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
-              Theme Color
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {['blue', 'green', 'red', 'purple', 'orange'].map(color => (
-                <button
-                  key={color}
-                  onClick={() => onThemeColorChange(color)}
-                  className={`w-8 h-8 rounded-full transition-all ${
-                    themeColor === color ? 'ring-2 ring-offset-2 ring-opacity-50' : ''
-                  } ${theme === 'dark' ? 'ring-white ring-offset-gray-800' : 'ring-gray-800 ring-offset-white'}`}
-                  style={{ 
-                    background: 
-                      color === 'blue' ? '#3b82f6' : 
-                      color === 'green' ? '#10b981' : 
-                      color === 'red' ? '#ef4444' : 
-                      color === 'purple' ? '#8b5cf6' : 
-                      '#f97316',
-                    transform: themeColor === color ? 'scale(1.1)' : 'scale(1)'
-                  }}
-                  title={`${color.charAt(0).toUpperCase() + color.slice(1)} theme`}
-                />
-              ))}
-            </div>
-            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              Customize the app's accent color
-            </p>
-          </div>
-          
           <div className="pt-2 space-y-2">
             <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
               Data Management
@@ -264,88 +234,80 @@ const SettingsPanel = ({
                 onClick={generateSharingImage}
               >
                 <Share2 size={16} className="mr-2" />
-                Share Progress
+                Share Image
               </Button>
             </div>
-            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              Generate reports or share your progress on social media
-            </p>
           </div>
-          
-          <div className={`pt-2 space-y-2 border-t border-dashed border-gray-200 dark:border-gray-700 mt-4`}>
-            <div className={`p-4 rounded-md border-2 border-red-500 ${theme === 'dark' ? 'bg-red-900/20' : 'bg-red-50'}`}>
-              <Label className={`text-lg ${theme === 'dark' ? 'text-red-300' : 'text-red-600'} flex items-center gap-2`}>
-                <AlertTriangle size={20} />
-                Danger Zone
-              </Label>
-              <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} my-3`}>
-                These actions are destructive and cannot be undone. Be careful!
-              </p>
-              
-              <Button 
-                variant="destructive" 
-                size="lg"
-                className="w-full text-base py-6 font-bold"
+
+          <div className="pt-2 space-y-2">
+            <Label className={theme === 'dark' ? 'text-gray-300' : ''}>
+              Reset Data
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full"
                 onClick={() => setShowConfirmReset(true)}
               >
-                <AlertTriangle className="mr-2" size={20} />
-                Delete All Savings Data
+                <AlertTriangle size={16} className="mr-2" />
+                Reset All Data
               </Button>
             </div>
-            
-            <Dialog open={showConfirmReset} onOpenChange={setShowConfirmReset}>
-              <DialogContent className={theme === 'dark' ? 'bg-gray-800 text-white border-gray-700' : ''}>
-                <DialogHeader>
-                  <DialogTitle className="text-red-500 flex items-center gap-2">
-                    <AlertTriangle size={18} />
-                    Warning: Data Deletion
-                  </DialogTitle>
-                  <DialogDescription className={theme === 'dark' ? 'text-gray-300' : ''}>
-                    <div className="py-3">
-                      <p>You are about to delete <strong>ALL</strong> of your savings data. This action <strong>cannot</strong> be undone.</p>
-                      <div className={`mt-4 p-3 border border-red-200 rounded-md ${theme === 'dark' ? 'bg-red-900/20' : 'bg-red-50'}`}>
-                        <p className="text-sm font-medium mb-2">To confirm deletion, type "CONFIRM" below:</p>
-                        <Input
-                          type="text"
-                          value={confirmText}
-                          onChange={(e) => {
-                            setConfirmText(e.target.value);
-                            setConfirmError(false);
-                          }}
-                          placeholder="Type CONFIRM here"
-                          className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''} ${confirmError ? 'border-red-500' : ''}`}
-                        />
-                        {confirmError && (
-                          <p className="text-xs text-red-500 mt-1">Please type CONFIRM exactly as shown</p>
-                        )}
-                      </div>
-                      <p className="text-xs mt-4">
-                        <strong>Pro tip:</strong> Consider exporting a backup of your data before resetting.
-                      </p>
-                    </div>
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => {
-                    setShowConfirmReset(false);
-                    setConfirmText('');
-                    setConfirmError(false);
-                  }}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    onClick={handleReset}
-                    disabled={confirmText !== 'CONFIRM'}
-                  >
-                    Delete All Data
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <p className={`text-xs ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`}>
+              Warning: This will delete all your saved data and cannot be undone.
+            </p>
           </div>
         </div>
       </CardContent>
+
+      {/* Confirm Reset Dialog */}
+      {showConfirmReset && (
+        <Dialog open={showConfirmReset} onOpenChange={setShowConfirmReset}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                <span className="flex items-center text-red-500">
+                  <AlertTriangle className="mr-2" />
+                  Reset All Data
+                </span>
+              </DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. All your saved data will be permanently deleted.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <p className="text-sm mb-4">
+                Type <strong>CONFIRM</strong> to proceed with reset:
+              </p>
+              <Input
+                type="text"
+                value={confirmText}
+                onChange={(e) => {
+                  setConfirmText(e.target.value);
+                  setConfirmError(false);
+                }}
+                className={confirmError ? 'border-red-500' : ''}
+              />
+              {confirmError && (
+                <p className="text-red-500 text-xs mt-1">
+                  Please type CONFIRM to proceed
+                </p>
+              )}
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowConfirmReset(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleReset}>
+                Reset Data
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 };

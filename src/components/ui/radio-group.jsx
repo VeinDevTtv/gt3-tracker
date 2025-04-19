@@ -1,34 +1,57 @@
-import * as React from "react"
-import * as RadioGroupPrimitives from "@radix-ui/react-radio-group"
-import { cn } from "../../lib/utils"
+import React from 'react';
+import { cn } from "../../lib/utils";
 
-const RadioGroup = React.forwardRef(({ className, ...props }, ref) => {
+export function RadioGroup({ defaultValue, value, onValueChange, className, children }) {
+  const [selectedValue, setSelectedValue] = React.useState(value || defaultValue);
+  
+  React.useEffect(() => {
+    if (value !== undefined) {
+      setSelectedValue(value);
+    }
+  }, [value]);
+  
+  const handleValueChange = (newValue) => {
+    setSelectedValue(newValue);
+    if (onValueChange) {
+      onValueChange(newValue);
+    }
+  };
+  
   return (
-    <RadioGroupPrimitives.Root
-      className={cn("grid gap-2", className)}
-      {...props}
-      ref={ref}
-    />
-  )
-})
-RadioGroup.displayName = RadioGroupPrimitives.Root.displayName
+    <div className={cn("space-y-2", className)}>
+      {React.Children.map(children, child => {
+        // Find the RadioGroupItem within each div
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child, {
+            children: React.Children.map(child.props.children, innerChild => {
+              if (innerChild.type === RadioGroupItem) {
+                return React.cloneElement(innerChild, {
+                  checked: selectedValue === innerChild.props.value,
+                  onChange: () => handleValueChange(innerChild.props.value)
+                });
+              }
+              return innerChild;
+            })
+          });
+        }
+        return child;
+      })}
+    </div>
+  );
+}
 
-const RadioGroupItem = React.forwardRef(({ className, ...props }, ref) => {
+export function RadioGroupItem({ value, id, checked, onChange, className }) {
   return (
-    <RadioGroupPrimitives.Item
-      ref={ref}
+    <input
+      type="radio"
+      id={id}
+      value={value}
+      checked={checked}
+      onChange={onChange}
       className={cn(
-        "aspect-square h-4 w-4 rounded-full border border-primary-color text-primary-color ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "h-4 w-4 rounded-full border border-input bg-background text-primary ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
-      {...props}
-    >
-      <RadioGroupPrimitives.Indicator className="flex items-center justify-center">
-        <div className="h-2 w-2 rounded-full bg-current" />
-      </RadioGroupPrimitives.Indicator>
-    </RadioGroupPrimitives.Item>
-  )
-})
-RadioGroupItem.displayName = RadioGroupPrimitives.Item.displayName
-
-export { RadioGroup, RadioGroupItem } 
+    />
+  );
+} 

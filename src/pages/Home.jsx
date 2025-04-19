@@ -74,11 +74,20 @@ export default function Home({
     if (selectedWeek && profitAmount) {
       const weekIndex = selectedWeek - 1;
       const amount = parseFloat(profitAmount);
+      
       if (!isNaN(amount)) {
+        console.log(`Adding profit of ${amount} to week ${selectedWeek}`);
+        
+        // Call the handler function from props
         handleProfitChange(weekIndex, amount);
+        
+        // Reset form fields
         setShowProfitModal(false);
         setProfitAmount('');
         setSelectedWeek(null);
+        
+        // Show toast notification
+        setToast && setToast(`Added ${formatMoney(amount)} for Week ${selectedWeek}`, '💰');
       }
     }
   };

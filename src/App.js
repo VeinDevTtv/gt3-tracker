@@ -14,7 +14,7 @@ import PrivateRoute from './components/auth/PrivateRoute';
 import NavMenu from './components/NavMenu';
 import { Toaster } from 'react-hot-toast';
 import goalManager from './services/GoalManager';
-import achievementManager from './services/AchievementManager';
+import achievementManager from '@/services/AchievementManager';
 import { GoalsProvider } from './contexts/GoalsContext';
 import { TooltipProvider } from './components/ui/tooltip';
 import { AIProvider } from './contexts/AIContext';
@@ -100,6 +100,7 @@ export default function GT3Tracker() {
   useEffect(() => {
     goalManager.initialize();
     achievementManager.initialize();
+    achievementManager.checkTimeBasedAchievements();
   }, []);
   
   // Load active goal data
@@ -274,27 +275,35 @@ export default function GT3Tracker() {
 
   // Memoized profit change handler
   const handleProfitChange = (weekIndex, profit) => {
-    const profitNum = parseFloat(profit) || 0;
+    console.log(`handleProfitChange called: week ${weekIndex + 1}, profit ${profit}`);
+    const profitNum = Math.abs(parseFloat(profit)) || 0; // Ensure we're using positive values
     
     // Create a new weeks array with the updated profit
     const updatedWeeks = [...weeks];
     updatedWeeks[weekIndex] = {
       ...updatedWeeks[weekIndex],
-      profit: profitNum
+      profit: profitNum,
+      week: weekIndex + 1 // Ensure week number is correct
     };
     
     // Recalculate the cumulative profits
     let cumulative = 0;
     for (let i = 0; i < updatedWeeks.length; i++) {
-      cumulative += updatedWeeks[i].profit;
+      cumulative += updatedWeeks[i].profit || 0; // Handle any undefined profit values
       updatedWeeks[i].cumulative = cumulative;
+      
+      // Ensure week number is correctly set
+      updatedWeeks[i].week = i + 1;
     }
     
+    console.log('Updated weeks:', updatedWeeks);
     setWeeks(updatedWeeks);
     
     // Check for milestones
     if (profitNum > 0) {
-      const totalProfit = updatedWeeks.reduce((sum, week) => sum + week.profit, 0);
+      const totalProfit = updatedWeeks.reduce((sum, week) => sum + (week.profit || 0), 0);
+      console.log('Total profit after update:', totalProfit);
+      
       const newMilestone = MILESTONES.find(milestone => 
         totalProfit >= milestone && milestone > lastMilestone
       );
@@ -320,6 +329,7 @@ export default function GT3Tracker() {
     
     // Save to goal manager
     if (activeGoal?.id) {
+      console.log('Saving updated weeks to goal manager');
       goalManager.updateGoal(activeGoal.id, { 
         weeks: updatedWeeks,
         lastMilestone
@@ -331,6 +341,8 @@ export default function GT3Tracker() {
         activeGoal: goalManager.getActiveGoal(),
         weeks: updatedWeeks
       });
+    } else {
+      console.warn('No active goal to save profit to');
     }
   };
 
