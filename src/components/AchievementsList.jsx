@@ -2,7 +2,7 @@ import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import achievementManager from '@/services/AchievementManager';
+import achievementManager from '../../services/AchievementManager';
 
 /**
  * Component to display a list of achievements

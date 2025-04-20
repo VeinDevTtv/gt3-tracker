@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Lock, Award, CheckCircle, Filter, Search } from 'lucide-react';
+import { Trophy, Lock, Award, CheckCircle, Filter, Search, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { 
   Select, 
   SelectContent, 
@@ -11,7 +12,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '../ui/select';
-import achievementManager from '@/services/AchievementManager';
+import achievementManager from '../../services/AchievementManager';
 import { format } from 'date-fns';
 
 // Debug import
@@ -40,6 +41,41 @@ const AchievementsList = ({ theme }) => {
   const [error, setError] = useState(null);
   
   console.log("AchievementsList render");
+  
+  // Force a refresh of achievement data
+  const refreshAchievements = () => {
+    try {
+      console.log("Refreshing achievements data");
+      
+      // Ensure achievement manager is initialized
+      if (!achievementManager.initialized) {
+        console.log("Initializing achievement manager from refreshAchievements");
+        achievementManager.initialize();
+      }
+      
+      // Get all achievement definitions
+      console.log("Getting fresh achievements...");
+      const achievements = achievementManager.getAchievements();
+      console.log("Fresh achievements loaded:", achievements);
+      const achievementsArray = Object.values(achievements);
+      setAllAchievements(achievementsArray);
+      
+      // Get earned achievements
+      console.log("Getting fresh earned achievements...");
+      const earned = achievementManager.getEarnedAchievements();
+      console.log("Fresh earned achievements:", earned);
+      setEarnedAchievements(earned);
+      
+      // Get total points
+      console.log("Getting fresh total points...");
+      const points = achievementManager.getTotalPoints();
+      console.log("Fresh total points:", points);
+      setTotalPoints(points);
+    } catch (err) {
+      console.error("Error refreshing achievements:", err);
+      setError(err.message || "Failed to refresh achievements");
+    }
+  };
   
   // Load achievements on mount
   useEffect(() => {
@@ -70,6 +106,10 @@ const AchievementsList = ({ theme }) => {
       const points = achievementManager.getTotalPoints();
       console.log("Total points:", points);
       setTotalPoints(points);
+      
+      // Check for time-based achievements
+      console.log("Checking for time-based achievements...");
+      achievementManager.checkTimeBasedAchievements();
     } catch (err) {
       console.error("Error loading achievements:", err);
       setError(err.message || "Failed to load achievements");
@@ -153,6 +193,41 @@ const AchievementsList = ({ theme }) => {
           <div className="p-4 border border-red-300 bg-red-50 text-red-700 rounded-md">
             <h3 className="font-semibold">Error loading achievements</h3>
             <p>{error}</p>
+            <Button 
+              onClick={refreshAchievements} 
+              variant="outline" 
+              className="mt-4"
+            >
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Check if we have any achievements
+  if (allAchievements.length === 0) {
+    return (
+      <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-primary" />
+            Achievements
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Trophy className="h-8 w-8 text-muted-foreground/60" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No Achievements Found</h3>
+            <p className="text-muted-foreground mb-4">
+              Achievements will appear here as you use the app and make progress toward your goals.
+            </p>
+            <Button onClick={refreshAchievements} variant="outline">
+              Refresh Achievements
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -178,6 +253,13 @@ const AchievementsList = ({ theme }) => {
               <Trophy className="h-4 w-4 text-yellow-500" />
               {totalPoints} points
             </Badge>
+            <Button size="sm" variant="ghost" onClick={refreshAchievements}>
+              <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M16 10L12 14L8 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Refresh
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -231,6 +313,12 @@ const AchievementsList = ({ theme }) => {
                 <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} text-sm`}>
                   No achievements match your filters.
                 </p>
+                <Button onClick={() => {
+                  setSearchQuery('');
+                  setFilterStatus('all');
+                }} variant="ghost" size="sm" className="mt-2">
+                  Clear Filters
+                </Button>
               </div>
             ) : (
               <div className="space-y-6">
@@ -264,6 +352,9 @@ const AchievementsList = ({ theme }) => {
                   <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} text-sm`}>
                     No achievements match your filters.
                   </p>
+                  <Button onClick={() => setFilterStatus('all')} variant="ghost" size="sm" className="mt-2">
+                    Show All
+                  </Button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -286,16 +377,17 @@ const AchievementsList = ({ theme }) => {
 
 // Achievement card component
 const AchievementCard = ({ achievement, theme }) => {
-  const { title, description, icon, points, isEarned, earnedDate } = achievement;
+  const { id, title, description, icon, points, isEarned, earnedDate, category } = achievement;
   
   const getBorderColor = () => {
     if (isEarned) {
-      switch (achievement.category) {
+      switch (category) {
         case 'milestone': return 'border-blue-500';
         case 'consistency': return 'border-green-500';
         case 'special': return 'border-purple-500';
         case 'multi-goal': return 'border-orange-500';
         case 'time': return 'border-indigo-500';
+        case 'starter': return 'border-green-400';
         default: return 'border-primary';
       }
     }
@@ -304,17 +396,20 @@ const AchievementCard = ({ achievement, theme }) => {
   
   const getIconClass = () => {
     if (isEarned) {
-      switch (achievement.category) {
+      switch (category) {
         case 'milestone': return 'text-blue-500';
         case 'consistency': return 'text-green-500';
         case 'special': return 'text-purple-500';
         case 'multi-goal': return 'text-orange-500';
         case 'time': return 'text-indigo-500';
+        case 'starter': return 'text-green-400';
         default: return 'text-primary';
       }
     }
     return 'text-gray-400';
   };
+  
+  console.log(`Rendering achievement card: ${title}, earned: ${isEarned}`);
   
   return (
     <div className={`relative p-4 rounded-lg border-2 ${getBorderColor()} transition-colors ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
@@ -347,10 +442,15 @@ const AchievementCard = ({ achievement, theme }) => {
               )}
             </div>
             
-            {isEarned && (
+            {isEarned ? (
               <div className="flex items-center text-green-500">
                 <CheckCircle className="h-4 w-4 mr-1" />
                 <span className="text-xs">Unlocked</span>
+              </div>
+            ) : (
+              <div className="flex items-center text-muted-foreground">
+                <Info className="h-4 w-4 mr-1" />
+                <span className="text-xs">Locked</span>
               </div>
             )}
           </div>

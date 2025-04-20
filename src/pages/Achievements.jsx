@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Award, Trophy, Target, Calendar, Zap, Tool, Clock, Sparkles } from 'lucide-react';
 import AchievementsList from '@/components/AchievementsList';
-import achievementManager from '@/services/AchievementManager';
+import achievementManager from '../services/AchievementManager';
 
 const Achievements = ({ theme }) => {
   const [showUnearned, setShowUnearned] = useState(true);

@@ -14,7 +14,7 @@ import PrivateRoute from './components/auth/PrivateRoute';
 import NavMenu from './components/NavMenu';
 import { Toaster } from 'react-hot-toast';
 import goalManager from './services/GoalManager';
-import achievementManager from '@/services/AchievementManager';
+import achievementManager from './services/AchievementManager';
 import { GoalsProvider } from './contexts/GoalsContext';
 import { TooltipProvider } from './components/ui/tooltip';
 import { AIProvider } from './contexts/AIContext';

@@ -17,14 +17,28 @@ const GoalList = ({ onGoalChange }) => {
   const [editingGoal, setEditingGoal] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [goalToDelete, setGoalToDelete] = useState(null);
+  const [error, setError] = useState(null);
+
+  // Debug flag to log state for troubleshooting
+  const DEBUG = true;
 
   useEffect(() => {
-    // Load all goals and active goal ID
-    const loadedGoals = goalManager.getGoals();
-    const activeId = goalManager.getActiveGoalId();
-    
-    setGoals(loadedGoals);
-    setActiveGoalId(activeId);
+    try {
+      // Load all goals and active goal ID
+      const loadedGoals = goalManager.getGoals();
+      const activeId = goalManager.getActiveGoalId();
+      
+      if (DEBUG) {
+        console.log('GoalList - loadedGoals:', loadedGoals);
+        console.log('GoalList - activeId:', activeId);
+      }
+      
+      setGoals(loadedGoals);
+      setActiveGoalId(activeId);
+    } catch (err) {
+      console.error('Error loading goals:', err);
+      setError('Failed to load goals');
+    }
   }, []);
 
   // Calculate total progress for each goal
@@ -36,76 +50,135 @@ const GoalList = ({ onGoalChange }) => {
   };
 
   const handleSelectGoal = (goalId) => {
-    if (goalManager.setActiveGoal(goalId)) {
-      setActiveGoalId(goalId);
-      // Notify parent component of goal change
-      if (onGoalChange) {
-        onGoalChange(goalId);
+    try {
+      if (DEBUG) console.log('Selecting goal:', goalId);
+      
+      if (goalManager.setActiveGoal(goalId)) {
+        setActiveGoalId(goalId);
+        // Notify parent component of goal change
+        if (onGoalChange) {
+          onGoalChange(goalId);
+        }
+        toast.success('Goal switched successfully');
       }
-      toast.success('Goal switched successfully');
+    } catch (err) {
+      console.error('Error selecting goal:', err);
+      toast.error('Failed to switch goals');
     }
   };
 
   const handleCreateGoal = (newGoalData) => {
-    const newGoalId = goalManager.createGoal(newGoalData);
-    
-    // Refresh goals list
-    setGoals(goalManager.getGoals());
-    setShowNewGoalDialog(false);
-    
-    toast.success('New goal created successfully!');
-    return newGoalId;
+    try {
+      if (DEBUG) console.log('Creating new goal:', newGoalData);
+      
+      // Ensure we have the required fields
+      if (!newGoalData.name || !newGoalData.target) {
+        toast.error('Goal name and target amount are required');
+        return null;
+      }
+      
+      const newGoalId = goalManager.createGoal(newGoalData);
+      
+      if (DEBUG) console.log('New goal created with ID:', newGoalId);
+      
+      // Refresh goals list
+      setGoals(goalManager.getGoals());
+      setShowNewGoalDialog(false);
+      
+      toast.success('New goal created successfully!');
+      
+      // Automatically select the new goal
+      if (newGoalId) {
+        handleSelectGoal(newGoalId);
+      }
+      
+      return newGoalId;
+    } catch (err) {
+      console.error('Error creating goal:', err);
+      toast.error('Failed to create new goal');
+      return null;
+    }
   };
 
   const handleUpdateGoal = (goalId, updates) => {
-    if (goalManager.updateGoal(goalId, updates)) {
-      // Refresh goals list
-      setGoals(goalManager.getGoals());
-      setEditingGoal(null);
+    try {
+      if (DEBUG) console.log(`Updating goal ${goalId}:`, updates);
       
-      toast.success('Goal updated successfully!');
-      
-      // Notify parent component if the active goal was updated
-      if (goalId === activeGoalId && onGoalChange) {
-        onGoalChange(goalId);
+      if (goalManager.updateGoal(goalId, updates)) {
+        // Refresh goals list
+        setGoals(goalManager.getGoals());
+        setEditingGoal(null);
+        
+        toast.success('Goal updated successfully!');
+        
+        // Notify parent component if the active goal was updated
+        if (goalId === activeGoalId && onGoalChange) {
+          onGoalChange(goalId);
+        }
+      } else {
+        toast.error('Failed to update goal');
       }
-    } else {
+    } catch (err) {
+      console.error('Error updating goal:', err);
       toast.error('Failed to update goal');
     }
   };
 
   const handleDeleteGoal = (goalId) => {
-    if (deleteConfirmText !== 'DELETE') {
-      toast.error('Please type DELETE to confirm');
-      return;
-    }
-    
-    if (goals.length <= 1) {
-      toast.error('Cannot delete the only goal. Create another goal first.');
-      return;
-    }
-    
-    if (goalManager.deleteGoal(goalId)) {
-      // Refresh goals list
-      const updatedGoals = goalManager.getGoals();
-      setGoals(updatedGoals);
-      setGoalToDelete(null);
-      setDeleteConfirmText('');
-      
-      // If the active goal was deleted, onGoalChange would have been
-      // called by the goal manager already
-      const newActiveId = goalManager.getActiveGoalId();
-      setActiveGoalId(newActiveId);
-      
-      if (goalId === activeGoalId && onGoalChange) {
-        onGoalChange(newActiveId);
+    try {
+      if (deleteConfirmText !== 'DELETE') {
+        toast.error('Please type DELETE to confirm');
+        return;
       }
       
-      toast.success('Goal deleted successfully');
-    } else {
+      if (goals.length <= 1) {
+        toast.error('Cannot delete the only goal. Create another goal first.');
+        return;
+      }
+      
+      if (DEBUG) console.log('Deleting goal:', goalId);
+      
+      if (goalManager.deleteGoal(goalId)) {
+        // Refresh goals list
+        const updatedGoals = goalManager.getGoals();
+        setGoals(updatedGoals);
+        setGoalToDelete(null);
+        setDeleteConfirmText('');
+        
+        // If the active goal was deleted, onGoalChange would have been
+        // called by the goal manager already
+        const newActiveId = goalManager.getActiveGoalId();
+        setActiveGoalId(newActiveId);
+        
+        if (goalId === activeGoalId && onGoalChange) {
+          onGoalChange(newActiveId);
+        }
+        
+        toast.success('Goal deleted successfully');
+      } else {
+        toast.error('Failed to delete goal');
+      }
+    } catch (err) {
+      console.error('Error deleting goal:', err);
       toast.error('Failed to delete goal');
     }
   };
+
+  if (error) {
+    return (
+      <div className="p-4 border border-red-300 bg-red-50 text-red-700 rounded-md">
+        <h3 className="font-semibold">Error loading goals</h3>
+        <p>{error}</p>
+        <Button 
+          onClick={() => window.location.reload()} 
+          variant="outline" 
+          className="mt-2"
+        >
+          Reload page
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -124,6 +197,12 @@ const GoalList = ({ onGoalChange }) => {
         {goals.length === 0 ? (
           <div className="text-center py-6 border rounded-lg bg-muted/30">
             <p>No goals yet. Create your first goal!</p>
+            <Button 
+              onClick={() => setShowNewGoalDialog(true)} 
+              className="mt-4 bg-primary text-primary-foreground"
+            >
+              <Plus className="mr-1 h-4 w-4" /> Create Goal
+            </Button>
           </div>
         ) : (
           goals.map(goal => {
@@ -252,7 +331,7 @@ const GoalList = ({ onGoalChange }) => {
               Cancel
             </Button>
             <Button 
-              variant="destructive"
+              variant="destructive" 
               onClick={() => handleDeleteGoal(goalToDelete.id)}
               disabled={deleteConfirmText !== 'DELETE'}
             >

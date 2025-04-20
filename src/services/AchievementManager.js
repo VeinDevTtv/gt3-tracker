@@ -1,131 +1,21 @@
 import { toast } from 'react-hot-toast';
 import { 
-  Trophy, Award, Target, Calendar, Sunrise, CheckCircle 
+  Trophy, Award, Target, Calendar, Sunrise, CheckCircle, 
+  Sparkles, BarChart4, Clock
 } from 'lucide-react';
-
-// Debug to see if loaded
-console.log('AchievementManager module loaded');
+import React from 'react';
 
 /**
  * AchievementManager service
- * Handles milestone achievements and celebrations
+ * Manages user achievements and provides functions to check and unlock them
+ * Complete rewrite for reliability
  */
 class AchievementManager {
   constructor() {
-    console.log('AchievementManager constructor called');
-    // Initialize with a default set of achievements
-    this.achievements = {
-      'first-goal': {
-        id: 'first-goal',
-        title: 'Dream Starter',
-        description: 'Create your first savings goal',
-        icon: <Target />,
-        points: 10,
-        category: 'starter',
-        condition: (state) => state.goals && state.goals.length > 0
-      },
-      'multi-goal': {
-        id: 'multi-goal',
-        title: 'Goal Collector',
-        description: 'Create 3 or more saving goals',
-        icon: <Trophy />,
-        points: 20,
-        category: 'multi-goal',
-        condition: (state) => state.goals && state.goals.length >= 3
-      },
-      'first-entry': {
-        id: 'first-entry',
-        title: 'First Step',
-        description: 'Add your first saving entry',
-        icon: <CheckCircle />,
-        points: 10,
-        category: 'starter',
-        condition: (state) => {
-          const weeks = state.activeGoal?.weeks || [];
-          return weeks.some(week => week.profit > 0);
-        }
-      },
-      'consistent-1': {
-        id: 'consistent-1',
-        title: 'Consistent Saver',
-        description: 'Add savings for 4 weeks in a row',
-        icon: <Calendar />,
-        points: 25,
-        category: 'consistency',
-        condition: (state) => {
-          const weeks = state.activeGoal?.weeks || [];
-          let streak = 0;
-          for (let i = 0; i < weeks.length; i++) {
-            if (weeks[i].profit > 0) {
-              streak++;
-              if (streak >= 4) return true;
-            } else {
-              streak = 0;
-            }
-          }
-          return false;
-        }
-      },
-      'milestone-10k': {
-        id: 'milestone-10k',
-        title: '$10K Milestone',
-        description: 'Reach $10,000 in savings',
-        icon: <Award />,
-        points: 50,
-        category: 'milestone',
-        condition: (state) => {
-          const weeks = state.activeGoal?.weeks || [];
-          const total = weeks.reduce((sum, week) => sum + (week.profit || 0), 0);
-          return total >= 10000;
-        }
-      },
-      'milestone-50k': {
-        id: 'milestone-50k',
-        title: '$50K Milestone',
-        description: 'Reach $50,000 in savings',
-        icon: <Award />,
-        points: 100,
-        category: 'milestone',
-        condition: (state) => {
-          const weeks = state.activeGoal?.weeks || [];
-          const total = weeks.reduce((sum, week) => sum + (week.profit || 0), 0);
-          return total >= 50000;
-        }
-      },
-      'milestone-100k': {
-        id: 'milestone-100k',
-        title: '$100K Milestone',
-        description: 'Reach $100,000 in savings',
-        icon: <Trophy />,
-        points: 200,
-        category: 'milestone',
-        condition: (state) => {
-          const weeks = state.activeGoal?.weeks || [];
-          const total = weeks.reduce((sum, week) => sum + (week.profit || 0), 0);
-          return total >= 100000;
-        }
-      },
-      'night-owl': {
-        id: 'night-owl',
-        title: 'Night Owl',
-        description: 'Use the app between midnight and 5 AM',
-        icon: <Sunrise />,
-        points: 15,
-        category: 'time',
-      },
-      'early-bird': {
-        id: 'early-bird',
-        title: 'Early Bird',
-        description: 'Use the app between 5 AM and 7 AM',
-        icon: <Sunrise />,
-        points: 15,
-        category: 'time',
-      }
-    };
-    this.milestones = [10000, 25000, 50000, 75000, 100000, 150000, 200000, 250000];
     this.initialized = false;
-    this.STORAGE_KEY = 'earnedAchievements';
-    this.ACHIEVEMENTS_STORAGE_KEY = 'savings-tracker-achievements';
+    this.EARNED_STORAGE_KEY = 'gt3_tracker_earned_achievements_v2';
+    
+    console.log('AchievementManager constructor called');
   }
 
   /**
@@ -133,135 +23,419 @@ class AchievementManager {
    */
   initialize() {
     if (this.initialized) {
-      console.log('Achievement Manager already initialized, skipping');
+      console.log('AchievementManager already initialized');
       return this;
     }
-    this.initialized = true;
-    console.log('Achievement Manager initialized');
-    this.loadAchievements();
+
+    console.log('Initializing AchievementManager...');
+    
+    try {
+      // Check if we need to migrate old data
+      this.migrateFromOldFormat();
+      
+      // Initialize achievements
+      this.initializeAchievements();
+      
+      this.initialized = true;
+      console.log('AchievementManager initialized successfully');
+      
+      // Force a check on initialization to see if any should be unlocked
+      this.checkAppStatus();
+    } catch (error) {
+      console.error('Failed to initialize AchievementManager:', error);
+    }
+    
     return this;
   }
 
   /**
-   * Load achievements from local storage
+   * Initialize the achievements list
    */
-  loadAchievements() {
+  initializeAchievements() {
+    // Define all possible achievements
+    this.achievements = {
+      // Starter achievements
+      'first-goal': {
+        id: 'first-goal',
+        title: 'Dream Starter',
+        description: 'Create your first savings goal',
+        icon: <Target className="h-6 w-6" />,
+        points: 10,
+        category: 'starter',
+      },
+      'first-entry': {
+        id: 'first-entry',
+        title: 'First Step',
+        description: 'Add your first saving entry',
+        icon: <CheckCircle className="h-6 w-6" />,
+        points: 10,
+        category: 'starter',
+      },
+      
+      // Milestone achievements
+      'milestone-10k': {
+        id: 'milestone-10k',
+        title: '$10K Milestone',
+        description: 'Reach $10,000 in savings',
+        icon: <Award className="h-6 w-6" />,
+        points: 50,
+        category: 'milestone',
+      },
+      'milestone-50k': {
+        id: 'milestone-50k',
+        title: '$50K Milestone',
+        description: 'Reach $50,000 in savings',
+        icon: <Award className="h-6 w-6" />,
+        points: 100,
+        category: 'milestone',
+      },
+      'milestone-100k': {
+        id: 'milestone-100k',
+        title: '$100K Milestone',
+        description: 'Reach $100,000 in savings',
+        icon: <Trophy className="h-6 w-6" />,
+        points: 200,
+        category: 'milestone',
+      },
+      'milestone-150k': {
+        id: 'milestone-150k',
+        title: '$150K Club',
+        description: 'Reach $150,000 in savings',
+        icon: <Trophy className="h-6 w-6" />,
+        points: 250,
+        category: 'milestone',
+      },
+      'milestone-200k': {
+        id: 'milestone-200k',
+        title: 'GT3 Achiever',
+        description: 'Save enough for your GT3!',
+        icon: <Sparkles className="h-6 w-6" />,
+        points: 500,
+        category: 'milestone',
+      },
+      
+      // Consistency achievements
+      'consistent-1': {
+        id: 'consistent-1',
+        title: 'Consistent Saver',
+        description: 'Add savings for 4 weeks in a row',
+        icon: <Calendar className="h-6 w-6" />,
+        points: 25,
+        category: 'consistency',
+      },
+      'consistent-2': {
+        id: 'consistent-2',
+        title: 'Dedicated Saver',
+        description: 'Add savings for 8 weeks in a row',
+        icon: <Calendar className="h-6 w-6" />,
+        points: 50,
+        category: 'consistency',
+      },
+      
+      // Multi-goal achievements
+      'multi-goal': {
+        id: 'multi-goal',
+        title: 'Goal Collector',
+        description: 'Create 3 or more saving goals',
+        icon: <Trophy className="h-6 w-6" />,
+        points: 20,
+        category: 'multi-goal',
+      },
+      'multi-goal-5': {
+        id: 'multi-goal-5',
+        title: 'Dream Portfolio',
+        description: 'Create 5 or more saving goals',
+        icon: <BarChart4 className="h-6 w-6" />,
+        points: 50,
+        category: 'multi-goal',
+      },
+      
+      // Time-based achievements
+      'night-owl': {
+        id: 'night-owl',
+        title: 'Night Owl',
+        description: 'Use the app between midnight and 5 AM',
+        icon: <Sunrise className="h-6 w-6" />,
+        points: 15,
+        category: 'time',
+      },
+      'early-bird': {
+        id: 'early-bird',
+        title: 'Early Bird',
+        description: 'Use the app between 5 AM and 7 AM',
+        icon: <Sunrise className="h-6 w-6" />,
+        points: 15,
+        category: 'time',
+      },
+      'weekend-warrior': {
+        id: 'weekend-warrior',
+        title: 'Weekend Warrior',
+        description: 'Log in on both Saturday and Sunday',
+        icon: <Clock className="h-6 w-6" />,
+        points: 20,
+        category: 'time',
+      }
+    };
+  }
+
+  /**
+   * Migrate from old format if needed
+   */
+  migrateFromOldFormat() {
     try {
-      const savedAchievements = localStorage.getItem(this.ACHIEVEMENTS_STORAGE_KEY);
-      if (savedAchievements) {
-        // Merge saved achievements with defaults to ensure new ones are included
-        const loaded = JSON.parse(savedAchievements);
-        if (typeof loaded === 'object' && loaded !== null && !Array.isArray(loaded)) {
-          this.achievements = { ...this.achievements, ...loaded };
+      // Check if old data exists
+      const oldEarnedJSON = localStorage.getItem('earnedAchievements');
+      if (oldEarnedJSON && !localStorage.getItem(this.EARNED_STORAGE_KEY)) {
+        console.log('Migrating earned achievements from old format...');
+        localStorage.setItem(this.EARNED_STORAGE_KEY, oldEarnedJSON);
+      }
+    } catch (error) {
+      console.error('Error migrating achievements data:', error);
+      // Continue with empty data
+    }
+  }
+
+  /**
+   * Check app status to trigger basic achievements
+   */
+  checkAppStatus() {
+    console.log('Checking app status for achievements...');
+    
+    try {
+      // Import GoalManager if needed
+      const goalManager = require('./GoalManager').default;
+      
+      // Trigger achievements based on app state
+      const goals = goalManager.getGoals();
+      const activeGoal = goalManager.getActiveGoal();
+      
+      // Check for first-goal achievement
+      if (goals && goals.length > 0) {
+        this.unlockAchievement('first-goal');
+        
+        // Check for multi-goal achievements
+        if (goals.length >= 3) {
+          this.unlockAchievement('multi-goal');
+        }
+        if (goals.length >= 5) {
+          this.unlockAchievement('multi-goal-5');
         }
       }
-    } catch (error) {
-      console.error('Error loading achievements:', error);
+      
+      // Check for first-entry and milestone achievements
+      if (activeGoal && activeGoal.weeks) {
+        // Check for first-entry achievement
+        const hasEntries = activeGoal.weeks.some(week => week.profit > 0);
+        if (hasEntries) {
+          this.unlockAchievement('first-entry');
+        }
+        
+        // Check for consistency achievements
+        this.checkConsistencyAchievements(activeGoal.weeks);
+        
+        // Check for milestone achievements based on total savings
+        const total = activeGoal.weeks.reduce((sum, week) => sum + (parseFloat(week.profit) || 0), 0);
+        this.checkMilestoneAchievements(total);
+      }
+      
+      // Always check time-based achievements
+      this.checkTimeBasedAchievements();
+      
+    } catch (err) {
+      console.error('Error in checkAppStatus:', err);
     }
   }
 
   /**
-   * Save achievements to local storage
+   * Check for milestone achievements based on total amount
    */
-  saveAchievements() {
-    try {
-      localStorage.setItem(this.ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(this.achievements));
-    } catch (error) {
-      console.error('Error saving achievements:', error);
+  checkMilestoneAchievements(total) {
+    console.log(`Checking milestone achievements for total: ${total}`);
+    
+    if (total >= 10000) this.unlockAchievement('milestone-10k');
+    if (total >= 50000) this.unlockAchievement('milestone-50k');
+    if (total >= 100000) this.unlockAchievement('milestone-100k');
+    if (total >= 150000) this.unlockAchievement('milestone-150k');
+    if (total >= 200000) this.unlockAchievement('milestone-200k');
+  }
+
+  /**
+   * Check for consistency achievements
+   */
+  checkConsistencyAchievements(weeks) {
+    if (!weeks || !Array.isArray(weeks)) return;
+    
+    let streak = 0;
+    for (let i = 0; i < weeks.length; i++) {
+      if (weeks[i].profit > 0) {
+        streak++;
+      } else {
+        streak = 0;
+      }
+      
+      // Check achievements based on streak
+      if (streak >= 4) this.unlockAchievement('consistent-1');
+      if (streak >= 8) this.unlockAchievement('consistent-2');
     }
   }
 
   /**
-   * Check if a milestone has been achieved
-   * @param {number} amount - The amount to check
-   * @returns {number|null} - The milestone achieved or null
+   * Check for time-based achievements
    */
-  checkMilestone(amount) {
-    // Find the highest milestone we've passed that hasn't been recorded yet
-    for (let i = this.milestones.length - 1; i >= 0; i--) {
-      const milestone = this.milestones[i];
-      if (amount >= milestone && !this.hasAchieved(milestone)) {
-        this.recordAchievement(milestone);
-        return milestone;
+  checkTimeBasedAchievements() {
+    const now = new Date();
+    const hour = now.getHours();
+    const day = now.getDay(); // 0 = Sunday, 6 = Saturday
+    
+    // Night owl: midnight to 5 AM
+    if (hour >= 0 && hour < 5) {
+      this.unlockAchievement('night-owl');
+    }
+    
+    // Early bird: 5 AM to 7 AM
+    if (hour >= 5 && hour < 7) {
+      this.unlockAchievement('early-bird');
+    }
+    
+    // Weekend warrior: track visits on Saturday and Sunday
+    if (day === 0 || day === 6) {
+      // Track weekend days visited in localStorage
+      const weekendDaysVisited = localStorage.getItem('gt3_tracker_weekend_days') || '';
+      
+      if (day === 0 && !weekendDaysVisited.includes('0')) {
+        localStorage.setItem('gt3_tracker_weekend_days', weekendDaysVisited + '0');
+      }
+      
+      if (day === 6 && !weekendDaysVisited.includes('6')) {
+        localStorage.setItem('gt3_tracker_weekend_days', weekendDaysVisited + '6');
+      }
+      
+      // Check if both days are visited
+      if (localStorage.getItem('gt3_tracker_weekend_days')?.includes('0') && 
+          localStorage.getItem('gt3_tracker_weekend_days')?.includes('6')) {
+        this.unlockAchievement('weekend-warrior');
       }
     }
-    return null;
   }
 
   /**
-   * Record a new achievement
-   * @param {number} milestone - The milestone achieved
+   * Check for goal-specific achievements
    */
-  recordAchievement(milestone) {
-    const milestoneId = `milestone-${milestone}`;
-    if (!this.achievements[milestoneId]) {
-      this.achievements[milestoneId] = {
-        id: milestoneId,
-        title: `$${milestone.toLocaleString()} Milestone`,
-        description: `Reach $${milestone.toLocaleString()} in savings`,
-        icon: milestone >= 100000 ? <Trophy /> : <Award />,
-        points: milestone / 1000,
-        category: 'milestone',
-        date: new Date().toISOString()
-      };
-      this.saveAchievements();
+  checkForAchievements(state) {
+    console.log('Checking for achievements with state:', state);
+    let newAchievements = [];
+    
+    try {
+      // First, check all basic status achievements
+      this.checkAppStatus();
+      
+      if (state?.goals) {
+        // Goal-related achievements
+        if (state.goals.length >= 3) {
+          if (this.unlockAchievement('multi-goal')) {
+            newAchievements.push(this.achievements['multi-goal']);
+          }
+        }
+        
+        if (state.goals.length >= 5) {
+          if (this.unlockAchievement('multi-goal-5')) {
+            newAchievements.push(this.achievements['multi-goal-5']);
+          }
+        }
+      }
+      
+      if (state?.activeGoal?.weeks) {
+        const weeks = state.activeGoal.weeks;
+        
+        // Check for first-entry achievement
+        const hasEntry = weeks.some(week => week.profit > 0);
+        if (hasEntry) {
+          if (this.unlockAchievement('first-entry')) {
+            newAchievements.push(this.achievements['first-entry']);
+          }
+        }
+        
+        // Check consistency
+        this.checkConsistencyAchievements(weeks);
+        
+        // Check for milestone achievements
+        const total = weeks.reduce((sum, week) => sum + (parseFloat(week.profit) || 0), 0);
+        
+        if (total >= 10000 && this.unlockAchievement('milestone-10k')) {
+          newAchievements.push(this.achievements['milestone-10k']);
+        }
+        
+        if (total >= 50000 && this.unlockAchievement('milestone-50k')) {
+          newAchievements.push(this.achievements['milestone-50k']);
+        }
+        
+        if (total >= 100000 && this.unlockAchievement('milestone-100k')) {
+          newAchievements.push(this.achievements['milestone-100k']);
+        }
+        
+        if (total >= 150000 && this.unlockAchievement('milestone-150k')) {
+          newAchievements.push(this.achievements['milestone-150k']);
+        }
+        
+        if (total >= 200000 && this.unlockAchievement('milestone-200k')) {
+          newAchievements.push(this.achievements['milestone-200k']);
+        }
+      }
+      
+    } catch (err) {
+      console.error('Error checking for achievements:', err);
     }
+    
+    return newAchievements;
   }
 
   /**
-   * Check if a milestone has already been achieved
-   * @param {number} milestone - The milestone to check
-   * @returns {boolean} - Whether the milestone has been achieved
-   */
-  hasAchieved(milestone) {
-    const milestoneId = `milestone-${milestone}`;
-    return !!this.achievements[milestoneId];
-  }
-
-  /**
-   * Get all achievements
-   * @returns {Object} - The achievements
+   * Get the list of all achievements
    */
   getAchievements() {
+    if (!this.initialized) {
+      this.initialize();
+    }
     return this.achievements;
   }
 
   /**
-   * Reset all achievements
+   * Get earned achievements from localStorage
    */
-  resetAchievements() {
-    // Only reset earned achievements, not the definitions
-    this.saveEarnedAchievements({});
-  }
-  
-  // Get only a specific category of achievements
-  getAchievementsByCategory(category) {
-    return Object.values(this.achievements).filter(
-      achievement => achievement.category === category
-    );
-  }
-  
-  // Get earned achievements from localStorage
   getEarnedAchievements() {
     try {
-      const earned = localStorage.getItem(this.STORAGE_KEY);
-      return earned ? JSON.parse(earned) : {};
+      const earnedJSON = localStorage.getItem(this.EARNED_STORAGE_KEY);
+      return earnedJSON ? JSON.parse(earnedJSON) : {};
     } catch (error) {
       console.error('Error getting earned achievements:', error);
       return {};
     }
   }
-  
-  // Save earned achievements to localStorage
+
+  /**
+   * Save earned achievements to localStorage
+   */
   saveEarnedAchievements(earnedAchievements) {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(earnedAchievements));
+      localStorage.setItem(this.EARNED_STORAGE_KEY, JSON.stringify(earnedAchievements));
+      return true;
     } catch (error) {
       console.error('Error saving earned achievements:', error);
+      return false;
     }
   }
-  
-  // Get total points earned
+
+  /**
+   * Check if an achievement has been earned
+   */
+  hasAchieved(achievementId) {
+    const earnedAchievements = this.getEarnedAchievements();
+    return !!earnedAchievements[achievementId];
+  }
+
+  /**
+   * Get total points from earned achievements
+   */
   getTotalPoints() {
     const earnedAchievements = this.getEarnedAchievements();
     let totalPoints = 0;
@@ -274,24 +448,38 @@ class AchievementManager {
     
     return totalPoints;
   }
-  
-  // Mark achievement as earned
+
+  /**
+   * Unlock a specific achievement
+   */
   unlockAchievement(achievementId) {
-    const earnedAchievements = this.getEarnedAchievements();
-    
-    // Check if already earned
-    if (earnedAchievements[achievementId]) {
-      return false; // Already earned, no need to do anything
+    // Skip if not initialized
+    if (!this.initialized) {
+      this.initialize();
     }
     
-    // Mark as earned with timestamp
-    earnedAchievements[achievementId] = new Date().toISOString();
-    this.saveEarnedAchievements(earnedAchievements);
-    
-    // Get achievement details for notification
-    const achievement = this.achievements[achievementId];
-    if (achievement) {
+    try {
+      console.log(`Attempting to unlock achievement: ${achievementId}`);
+      
+      // Check if already earned
+      if (this.hasAchieved(achievementId)) {
+        console.log(`Achievement ${achievementId} already earned`);
+        return false;
+      }
+      
+      // Check if the achievement exists
+      if (!this.achievements[achievementId]) {
+        console.error(`Achievement ${achievementId} does not exist`);
+        return false;
+      }
+      
+      // Mark as earned
+      const earnedAchievements = this.getEarnedAchievements();
+      earnedAchievements[achievementId] = new Date().toISOString();
+      this.saveEarnedAchievements(earnedAchievements);
+      
       // Show toast notification
+      const achievement = this.achievements[achievementId];
       toast.success(
         <div>
           <div className="text-lg font-bold">Achievement Unlocked!</div>
@@ -305,65 +493,47 @@ class AchievementManager {
         { duration: 5000 }
       );
       
-      return true; // Successfully unlocked
-    }
-    
-    return false;
-  }
-  
-  // Check for achievements based on app state
-  checkForAchievements(state) {
-    const earnedAchievements = this.getEarnedAchievements();
-    let newlyUnlocked = [];
-    
-    // Check each achievement's condition
-    Object.values(this.achievements).forEach(achievement => {
-      // Skip if already earned
-      if (earnedAchievements[achievement.id]) {
-        return;
-      }
-      
-      // If the achievement has a condition function, check it
-      if (achievement.condition && achievement.condition(state)) {
-        const unlocked = this.unlockAchievement(achievement.id);
-        if (unlocked) {
-          newlyUnlocked.push(achievement);
-        }
-      }
-    });
-    
-    return newlyUnlocked;
-  }
-  
-  // Manually trigger specific achievements (for actions like exports, imports, etc.)
-  triggerAchievement(achievementId, state) {
-    const earnedAchievements = this.getEarnedAchievements();
-    
-    // Skip if already earned
-    if (earnedAchievements[achievementId]) {
+      console.log(`Achievement unlocked: ${achievementId}`);
+      return true;
+    } catch (error) {
+      console.error(`Error unlocking achievement ${achievementId}:`, error);
       return false;
     }
-    
-    return this.unlockAchievement(achievementId);
   }
-  
-  // Check time-based special achievements
-  checkTimeBasedAchievements() {
-    const now = new Date();
-    const hour = now.getHours();
-    
-    if (hour >= 0 && hour < 5) {
-      // Night owl: after midnight and before 5 AM
-      this.triggerAchievement('night-owl');
-    } else if (hour >= 5 && hour < 7) {
-      // Early bird: between 5 AM and 7 AM
-      this.triggerAchievement('early-bird');
+
+  /**
+   * Reset all achievements
+   */
+  resetAchievements() {
+    console.log('Resetting all achievements...');
+    try {
+      localStorage.removeItem(this.EARNED_STORAGE_KEY);
+      localStorage.removeItem('gt3_tracker_weekend_days'); // Reset weekend tracking
+      toast.success('All achievements have been reset');
+      return true;
+    } catch (error) {
+      console.error('Error resetting achievements:', error);
+      return false;
     }
+  }
+
+  /**
+   * Debug function to unlock all achievements
+   */
+  debugUnlockAll() {
+    console.log('DEBUG: Unlocking all achievements');
+    const earnedAchievements = {};
+    
+    Object.keys(this.achievements).forEach(id => {
+      earnedAchievements[id] = new Date().toISOString();
+    });
+    
+    this.saveEarnedAchievements(earnedAchievements);
+    toast.success('All achievements unlocked!');
+    return true;
   }
 }
 
 // Create a singleton instance
 const achievementManager = new AchievementManager();
-console.log('AchievementManager singleton created');
-
 export default achievementManager; 
