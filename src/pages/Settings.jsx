@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGoals } from '../contexts/GoalsContext';
 import SettingsPanel from '../components/SettingsPanel';
 import { Button } from '../components/ui/button';
 import { ArrowLeft, Bell, KeyRound, Shield, Globe, Lock, CreditCard, Calendar, UserCog, MessageSquare } from 'lucide-react';
@@ -15,36 +16,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Input } from '../components/ui/input';
+import { toast } from 'react-hot-toast';
 
 export default function Settings({
   theme,
-  target, 
-  goalName, 
-  totalWeeks, 
-  visibleWeeks, 
-  showCumulative, 
-  startDate,
-  onTargetChange,
-  onGoalNameChange,
-  onTotalWeeksChange,
+  visibleWeeks,
+  showCumulative,
   onVisibleWeeksChange,
   onToggleCumulative,
-  onStartDateChange,
   showConfirmReset,
   setShowConfirmReset,
-  resetValues,
-  exportAsCSV,
-  exportAsJSON,
-  importJSON,
   themeColor,
   onThemeColorChange,
-  generatePdfReport,
-  generateSharingImage,
   setTheme,
-  customTarget,
-  setCustomTarget,
-  weeklyTarget,
-  setWeeklyTarget,
   openAIKey,
   setOpenAIKey,
   poeKey,
@@ -61,13 +45,22 @@ export default function Settings({
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
-  
-  // AI settings
+  const fileInputRef = useRef(null);
+
+  const { 
+    currentGoal,
+    resetGoalData,
+    exportGoalAsCSV,
+    exportAllDataAsJSON, 
+    importBackupFromJSON,
+    generatePdfReport,
+    generateSharingImage
+  } = useGoals();
+
   const [aiEnabled, setAiEnabled] = useState(() => {
     return localStorage.getItem('custom-ai-enabled') !== 'false';
   });
   
-  // Notification settings
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     return localStorage.getItem('notifications-enabled') === 'true';
   });
@@ -80,7 +73,6 @@ export default function Settings({
     return localStorage.getItem('milestone-alerts') !== 'false';
   });
   
-  // Privacy settings
   const [analyticsEnabled, setAnalyticsEnabled] = useState(() => {
     return localStorage.getItem('analytics-enabled') !== 'false';
   });
@@ -89,7 +81,6 @@ export default function Settings({
     return localStorage.getItem('auto-backup-enabled') === 'true';
   });
   
-  // Currency settings
   const [currency, setCurrency] = useState(() => {
     return localStorage.getItem('currency') || 'USD';
   });
@@ -98,7 +89,6 @@ export default function Settings({
     return localStorage.getItem('date-format') || 'MM/DD/YYYY';
   });
   
-  // Toggle handlers
   const toggleAiEnabled = (enabled) => {
     setAiEnabled(enabled);
     localStorage.setItem('custom-ai-enabled', enabled.toString());
@@ -108,7 +98,6 @@ export default function Settings({
     setNotificationsEnabled(enabled);
     localStorage.setItem('notifications-enabled', enabled.toString());
     
-    // Request permission if enabling
     if (enabled && "Notification" in window) {
       Notification.requestPermission();
     }
@@ -144,6 +133,75 @@ export default function Settings({
     localStorage.setItem('date-format', value);
   };
 
+  const handleResetData = useCallback(() => {
+    if (currentGoal?.id) {
+      if (window.confirm("Are you sure you want to reset all weekly profit data for the current goal? This cannot be undone.")) {
+         resetGoalData(currentGoal.id);
+         setShowConfirmReset(false);
+      }
+    } else {
+      toast.error("No active goal selected to reset.");
+      setShowConfirmReset(false);
+    }
+  }, [currentGoal, resetGoalData, setShowConfirmReset]);
+
+  const handleExportCSV = useCallback(() => {
+    if (currentGoal?.id) {
+      exportGoalAsCSV(currentGoal.id);
+    } else {
+       toast.error("No active goal selected to export CSV.");
+    }
+  }, [currentGoal, exportGoalAsCSV]);
+
+  const handleExportJSON = useCallback(() => {
+    exportAllDataAsJSON();
+  }, [exportAllDataAsJSON]);
+
+  const handleGeneratePDF = useCallback(() => {
+    if (currentGoal?.id) {
+        generatePdfReport(currentGoal.id);
+    } else {
+        toast.error("No active goal selected to generate PDF report.");
+    }
+  }, [currentGoal, generatePdfReport]);
+  
+  const handleGenerateImage = useCallback(() => {
+      generateSharingImage();
+  }, [generateSharingImage]);
+
+  const triggerImportJSON = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileImport = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target?.result;
+      if (typeof text === 'string') {
+        try {
+          await importBackupFromJSON(text);
+        } catch (error) {
+          console.error("Import failed in component:", error);
+        } finally {
+           if(fileInputRef.current) {
+               fileInputRef.current.value = "";
+           }
+        }
+      } else {
+        toast.error("Could not read file content.");
+      }
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read file.");
+    };
+    reader.readAsText(file);
+  }, [importBackupFromJSON]);
+
   return (
     <>
       <Helmet>
@@ -166,13 +224,20 @@ export default function Settings({
                 Settings
               </h1>
               <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                Configure your {goalName} tracker
+                Configure your {currentGoal?.name || 'GT3'} tracker
               </p>
             </div>
           </div>
         </header>
 
         <main className="max-w-7xl mx-auto p-4 md:p-8">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileImport}
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+          />
           <div className="mb-8">            
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
@@ -202,7 +267,6 @@ export default function Settings({
                 </TabsTrigger>
               </TabsList>
               
-              {/* General Settings Tab */}
               <TabsContent value="general" className="space-y-6">
                 {currentUser && (
                   <ProfilePanel />
@@ -210,36 +274,17 @@ export default function Settings({
                 
                 <SettingsPanel 
                   theme={theme}
-                  target={target}
-                  goalName={goalName}
-                  totalWeeks={totalWeeks}
-                  visibleWeeks={visibleWeeks}
-                  showCumulative={showCumulative}
-                  startDate={startDate}
-                  onTargetChange={onTargetChange}
-                  onGoalNameChange={onGoalNameChange}
-                  onTotalWeeksChange={onTotalWeeksChange}
-                  onVisibleWeeksChange={onVisibleWeeksChange}
-                  onToggleCumulative={onToggleCumulative}
-                  onStartDateChange={onStartDateChange}
+                  onResetData={handleResetData}
+                  onExportCSV={handleExportCSV}
+                  onExportJSON={handleExportJSON}
+                  onImportJSON={triggerImportJSON}
+                  onGeneratePDF={handleGeneratePDF}
+                  onGenerateImage={handleGenerateImage}
                   showConfirmReset={showConfirmReset}
                   setShowConfirmReset={setShowConfirmReset}
-                  resetValues={resetValues}
-                  exportAsCSV={exportAsCSV}
-                  exportAsJSON={exportAsJSON}
-                  importJSON={importJSON}
-                  themeColor={themeColor}
-                  onThemeColorChange={onThemeColorChange}
-                  generatePdfReport={generatePdfReport}
-                  generateSharingImage={generateSharingImage}
-                  customTarget={customTarget}
-                  setCustomTarget={setCustomTarget}
-                  weeklyTarget={weeklyTarget}
-                  setWeeklyTarget={setWeeklyTarget}
                 />
               </TabsContent>
               
-              {/* Appearance Settings Tab */}
               <TabsContent value="appearance" className="space-y-6">
                 <ThemeSettings 
                   theme={theme} 
@@ -276,7 +321,6 @@ export default function Settings({
                 </Card>
               </TabsContent>
               
-              {/* Notifications Tab */}
               <TabsContent value="notifications" className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -340,7 +384,6 @@ export default function Settings({
                 </Card>
               </TabsContent>
               
-              {/* Privacy Tab */}
               <TabsContent value="privacy" className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -382,7 +425,7 @@ export default function Settings({
                     </div>
                     
                     <div className="pt-4 border-t">
-                      <Button variant="outline" className="w-full" onClick={exportAsJSON}>
+                      <Button variant="outline" className="w-full" onClick={handleExportJSON}>
                         <Lock className="mr-2 h-4 w-4" />
                         Export Personal Data Backup
                       </Button>
@@ -391,7 +434,6 @@ export default function Settings({
                 </Card>
               </TabsContent>
               
-              {/* Preferences Tab */}
               <TabsContent value="preferences" className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -478,7 +520,6 @@ export default function Settings({
                 </Card>
               </TabsContent>
               
-              {/* AI Assistant Tab */}
               <TabsContent value="ai" className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -508,7 +549,7 @@ export default function Settings({
                       
                       <div className="space-y-3 border-t pt-4">
                         <Label htmlFor="ai-provider">AI Provider</Label>
-                        <Select value={aiProvider} onValueChange={setAiProvider}>
+                        <Select value={aiProvider} onValueChange={setAiProvider} disabled={!aiEnabled}>
                           <SelectTrigger id="ai-provider" disabled={!aiEnabled}>
                             <SelectValue placeholder="Select an AI provider" />
                           </SelectTrigger>
@@ -585,7 +626,7 @@ export default function Settings({
         </main>
         
         <footer className={`max-w-6xl mx-auto mt-12 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-          <p>{goalName} Savings Tracker © {new Date().getFullYear()}</p>
+          <p>{currentGoal?.name || 'GT3'} Savings Tracker © {new Date().getFullYear()}</p>
         </footer>
       </div>
     </>

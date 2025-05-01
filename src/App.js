@@ -255,12 +255,6 @@ export default function GT3Tracker() {
                             themeColor={themeColor}
                             onThemeColorChange={changeThemeColor}
                             setTheme={setTheme}
-                            resetValues={resetValues}
-                            exportAsCSV={exportAsCSV}
-                            exportAsJSON={exportAsJSON}
-                            importJSON={importJSON}
-                            generatePdfReport={generatePdfReport}
-                            generateSharingImage={generateSharingImage}
                             openAIKey={openAIKey}
                             setOpenAIKey={setOpenAIKey}
                             poeKey={poeKey}

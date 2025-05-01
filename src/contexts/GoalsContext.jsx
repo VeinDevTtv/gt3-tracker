@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import goalManager from '../services/GoalManager';
+import achievementManager from '../services/AchievementManager';
 import html2canvas from 'html2canvas';
 
 // Create the context
@@ -729,6 +730,140 @@ export const GoalsProvider = ({ children }) => {
   // Dependencies for useCallback
   }, [activeGoal, calculateProgress]); 
 
+  // Reset a specific goal's data
+  const resetGoalData = (goalId) => {
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) {
+        toast.error('Goal not found to reset');
+        return false;
+      }
+      
+      // Call the manager's reset function
+      const success = goalManager.resetGoalData(goalId);
+
+      if (success) {
+        // Update state
+        const updatedGoals = goalManager.getGoals();
+        setGoals(updatedGoals);
+        if (activeGoal && activeGoal.id === goalId) {
+          setActiveGoal(goalManager.getActiveGoal());
+        }
+        toast.success('Goal data has been reset.');
+        return true;
+      } else {
+        toast.error('Failed to reset goal data.');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error resetting goal data:', err);
+      toast.error('Failed to reset goal data.');
+      return false;
+    }
+  };
+
+  // Export all goals and achievements as JSON
+  const exportAllDataAsJSON = () => {
+    try {
+      const allGoals = goalManager.getGoals();
+      const earnedAchievements = achievementManager.getEarnedAchievements(); // Use imported manager
+      const activeId = goalManager.getActiveGoalId();
+      
+      const data = {
+        version: 2, // Current backup version
+        goals: allGoals,
+        activeGoalId: activeId,
+        achievements: earnedAchievements,
+        lastModified: new Date().toISOString()
+      };
+      
+      const jsonContent = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `gt3-tracker-backup-${new Date().toISOString().split('T')[0]}.json`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Backup created successfully!');
+      return true;
+    } catch (err) {
+      console.error('Error exporting data as JSON:', err);
+      toast.error('Failed to create backup.');
+      return false;
+    }
+  };
+
+  // Import data from JSON backup
+  const importBackupFromJSON = (jsonData) => {
+    return new Promise((resolve, reject) => {
+      try {
+        const data = JSON.parse(jsonData);
+        
+        // Basic validation
+        if (!data || data.version !== 2 || !Array.isArray(data.goals)) {
+          throw new Error('Invalid or incompatible backup file format.');
+        }
+
+        // Confirmation (optional but recommended)
+        if (!window.confirm("Importing this backup will replace ALL current goals and achievements. Are you sure?")) {
+          toast.error("Import cancelled.");
+          return resolve(false); 
+        }
+
+        // --- Save imported data --- 
+        localStorage.setItem(goalManager.GOALS_STORAGE_KEY, JSON.stringify(data.goals));
+        
+        // Set active goal
+        if (data.activeGoalId && data.goals.find(g => g.id === data.activeGoalId)) {
+          localStorage.setItem(goalManager.ACTIVE_GOAL_KEY, data.activeGoalId);
+        } else if (data.goals.length > 0) {
+          localStorage.setItem(goalManager.ACTIVE_GOAL_KEY, data.goals[0].id);
+        } else {
+          localStorage.removeItem(goalManager.ACTIVE_GOAL_KEY);
+        }
+
+        // Import achievements
+        if (data.achievements) {
+           localStorage.setItem(achievementManager.EARNED_STORAGE_KEY, JSON.stringify(data.achievements));
+        } else {
+           localStorage.removeItem(achievementManager.EARNED_STORAGE_KEY);
+        }
+        
+        toast.success('Data imported successfully! Reloading app...');
+        
+        // Resolve true before reloading to allow UI updates if needed
+        resolve(true);
+
+        // Force reload to apply all changes cleanly
+        setTimeout(() => window.location.reload(), 1000);
+
+      } catch (error) {
+        console.error('Error importing data from JSON:', error);
+        toast.error(`Import failed: ${error.message}`);
+        reject(error); // Reject the promise on error
+      }
+    });
+  };
+  
+  // Generate PDF Report (Placeholder - requires more complex implementation)
+  const generatePdfReport = (goalId) => {
+      console.warn("PDF Report generation is complex and not fully implemented here.");
+      toast.info("PDF report generation coming soon!");
+      // Basic info dump as example
+      const goal = goals.find(g => g.id === goalId);
+      if(goal) {
+          console.log("Data for PDF report for goal:", goal.name, goal);
+      } else {
+          toast.error("Goal not found for PDF report.")
+      }
+      // Actual implementation would use a library like jsPDF or html2pdf
+      // similar to generateSharingImage but with more structured content.
+  };
+
   // Context value
   const value = {
     goals,
@@ -748,7 +883,11 @@ export const GoalsProvider = ({ children }) => {
     calculateStreakInfo,
     calculateProgress,
     exportGoalAsCSV,
-    generateSharingImage
+    generateSharingImage,
+    resetGoalData,
+    exportAllDataAsJSON,
+    importBackupFromJSON,
+    generatePdfReport
   };
 
   return (
