@@ -37,7 +37,9 @@ export default function Home({
   setActiveTabIndex
 }) {
   const { currentUser } = useAuth();
-  const { currentGoal } = useGoals();
+  const goalsContextValue = useGoals();
+  console.log("Home.jsx - Goals Context Value:", goalsContextValue);
+  const { currentGoal } = goalsContextValue || {}; // Safely destructure
   const [showProfitModal, setShowProfitModal] = useState(false);
   const [profitAmount, setProfitAmount] = useState('');
   const [selectedWeek, setSelectedWeek] = useState(null);
