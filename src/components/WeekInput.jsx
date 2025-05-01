@@ -85,7 +85,7 @@ const WeekInput = ({
                       placeholder="0"
                       className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                     />
-                    {weeklyTargetAverage > 0 && (
+                    {typeof weeklyTargetAverage === 'number' && weeklyTargetAverage > 0 && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer">
@@ -93,7 +93,7 @@ const WeekInput = ({
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Target: ${weeklyTargetAverage.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                          <p>Avg. Weekly Target: ${(weeklyTargetAverage || 0).toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
                         </TooltipContent>
                       </Tooltip>
                     )}

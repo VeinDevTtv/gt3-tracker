@@ -85,7 +85,7 @@ const GoalStats = ({
           </div>
           <div className="flex justify-between mt-2 text-sm">
             <div>$0</div>
-            <div>${target.toLocaleString()}</div>
+            <div>${(typeof target === 'number' ? target : 0).toLocaleString()}</div>
           </div>
         </div>
         
@@ -93,14 +93,14 @@ const GoalStats = ({
           <StatCard 
             icon={Target} 
             title="Target" 
-            value={`$${target.toLocaleString()}`} 
+            value={`$${(typeof target === 'number' ? target : 0).toLocaleString()}`} 
             theme={theme}
           />
           
           <StatCard 
             icon={TrendingUp} 
             title="Total Saved" 
-            value={`$${totalProfit.toLocaleString()}`} 
+            value={`$${(typeof totalProfit === 'number' ? totalProfit : 0).toLocaleString()}`} 
             theme={theme}
             accent={true}
           />
@@ -124,7 +124,7 @@ const GoalStats = ({
         
         <div className="mt-6 p-3 border border-dashed rounded-lg text-center">
           <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            Weekly Target: <span className="font-semibold text-primary-color">${weeklyTargetAverage.toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
+            Weekly Target: <span className="font-semibold text-primary-color">${(typeof weeklyTargetAverage === 'number' ? weeklyTargetAverage : 0).toLocaleString(undefined, {maximumFractionDigits: 0})}</span>
           </p>
         </div>
       </CardContent>
