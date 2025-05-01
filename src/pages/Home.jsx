@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import ProgressBar from '../components/ProgressBar';
 import GoalStats from '../components/GoalStats';
 import ProfitGraph from '../components/ProfitGraph';
 import WeekInput from '../components/WeekInput';
 import Toast from '../components/Toast';
 import ComingSoon from '../components/ComingSoon';
-import { GoalSelector } from "../components/GoalSelector";
 import { Button } from "../components/ui/button";
 import { useGoals } from "../contexts/GoalsContext";
 import { BarChart3, Settings, Download, ArrowUpRight } from "lucide-react";
@@ -17,93 +15,130 @@ import { Label } from "../components/ui/label";
 
 export default function Home({
   theme,
-  goalName,
-  target,
-  totalProfit,
-  remaining,
-  progressPercentage,
-  currentWeek,
-  weeksRemaining,
-  weeklyTargetAverage,
-  prediction,
-  showCumulative,
-  weeks,
-  streakInfo,
   visibleWeeks,
-  handleProfitChange,
+  showCumulative,
   toast,
   setToast,
-  dataVisuals,
-  setActiveTabIndex
 }) {
   const { currentUser } = useAuth();
-  const goalsContextValue = useGoals();
-  console.log("Home.jsx - Goals Context Value:", goalsContextValue);
-  const { currentGoal } = goalsContextValue || {}; // Safely destructure
+  const { 
+    currentGoal, 
+    isLoading, 
+    error, 
+    updateWeekData, 
+    calculateProgress,
+    calculateStreakInfo
+  } = useGoals(); 
+
+  console.log("Home.jsx - Current Goal from Context:", currentGoal);
+
   const [showProfitModal, setShowProfitModal] = useState(false);
   const [profitAmount, setProfitAmount] = useState('');
   const [selectedWeek, setSelectedWeek] = useState(null);
-  
+
   const visibleWeeksData = visibleWeeks || 12;
-  
-  // Ensure weeks is valid and create a safe version for components
-  const visibleWeeksDataSafe = weeks && weeks.length > 0 
-    ? weeks.slice(0, visibleWeeksData) 
-    : Array.from({ length: visibleWeeksData }, (_, i) => ({
-      week: i + 1,
-      profit: 0,
-      cumulative: 0
-    }));
 
-  // Calculate remaining amount
-  const totalSaved = currentGoal?.weeks[currentGoal.weeks.length - 1]?.cumulative || 0;
-  const remainingAmount = currentGoal?.target - totalSaved;
-  
-  // Calculate progress percentage
-  const progressPercentageCalc = Math.min(100, (totalSaved / currentGoal?.target) * 100);
+  const goalDetails = useMemo(() => {
+    if (!currentGoal) {
+      return {
+        id: null,
+        name: 'Loading Goal...',
+        target: 0,
+        weeks: [],
+        startDate: null,
+        totalSaved: 0,
+        remaining: 0,
+        progressPercentage: 0,
+        streakInfo: { currentStreak: 0, longestStreak: 0 },
+      };
+    }
+    
+    const progress = calculateProgress(currentGoal.id);
+    const streak = calculateStreakInfo(currentGoal.id);
 
-  // Helper function to format money
+    return {
+      id: currentGoal.id,
+      name: currentGoal.name || 'Unnamed Goal',
+      target: currentGoal.target || 0,
+      weeks: currentGoal.weeks || [],
+      startDate: currentGoal.startDate,
+      totalSaved: progress.totalSaved,
+      remaining: progress.remaining,
+      progressPercentage: progress.percentComplete,
+      streakInfo: streak,
+    };
+  }, [currentGoal, calculateProgress, calculateStreakInfo]);
+
+  const weeksForInput = useMemo(() => {
+    const currentWeeks = goalDetails.weeks;
+    return currentWeeks && currentWeeks.length > 0 
+      ? currentWeeks.slice(0, Math.min(visibleWeeksData, currentWeeks.length)) 
+      : Array.from({ length: visibleWeeksData }, (_, i) => ({
+        week: i + 1,
+        profit: 0,
+        cumulative: 0
+      }));
+  }, [goalDetails.weeks, visibleWeeksData]);
+  
   const formatMoney = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       maximumFractionDigits: 0
-    }).format(amount);
+    }).format(amount || 0);
   };
 
-  // Handle profit submission
+  const handleWeekProfitUpdate = (weekIndex, profitValue) => {
+    if (!currentGoal || currentGoal.id === null) {
+      console.error("Cannot update profit: No active goal selected.");
+      setToast && setToast('Error: No goal selected.', '⚠️');
+      return;
+    }
+    updateWeekData(currentGoal.id, weekIndex, profitValue); 
+  };
+
   const handleProfitSubmit = () => {
-    if (selectedWeek && profitAmount) {
+    if (selectedWeek && profitAmount && currentGoal && currentGoal.id !== null) {
       const weekIndex = selectedWeek - 1;
       const amount = parseFloat(profitAmount);
-      
+
       if (!isNaN(amount)) {
-        console.log(`Adding profit of ${amount} to week ${selectedWeek}`);
-        
-        // Call the handler function from props
-        handleProfitChange(weekIndex, amount);
-        
-        // Reset form fields
+        console.log(`Adding profit of ${amount} to week ${selectedWeek} via modal`);
+        updateWeekData(currentGoal.id, weekIndex, amount);
+
         setShowProfitModal(false);
         setProfitAmount('');
         setSelectedWeek(null);
-        
-        // Show toast notification
-        setToast && setToast(`Added ${formatMoney(amount)} for Week ${selectedWeek}`, '💰');
+      } else {
+         setToast && setToast('Invalid amount entered.', '⚠️');
       }
+    } else {
+       setToast && setToast('Please select a week and enter an amount.', '⚠️');
     }
   };
+
+  if (isLoading) {
+    return <div className="p-6 text-center">Loading goal data...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-center text-red-600">Error loading goal data: {error}</div>;
+  }
+  
+  if (!currentGoal) {
+     return <div className="p-6 text-center">No goal selected or available. Please create or select a goal in Settings.</div>;
+  }
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gray-50'} p-6 transition-colors duration-200`}>
       <header className="max-w-6xl mx-auto mb-8 flex items-center justify-between">
         <div>
           <h1 className={`text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-porsche-black'}`}>
-            {goalName} Tracker
+            {goalDetails.name} Tracker
           </h1>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
             {currentUser ? `Hello, ${currentUser.username || currentUser.email?.split('@')[0]}! ` : ''}
-            Track your progress towards your {goalName} goal
+            Track your progress towards your {goalDetails.name} goal
           </p>
         </div>
         <div>
@@ -116,33 +151,27 @@ export default function Home({
       </header>
 
       <main className="max-w-6xl mx-auto">
-        {/* Goal Stats Section */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
           <div className="md:col-span-12">
             <GoalStats 
-              target={target}
-              totalProfit={totalProfit}
-              remaining={remaining}
-              progressPercentage={progressPercentage}
-              weeklyTargetAverage={weeklyTargetAverage}
-              prediction={prediction}
-              streakInfo={streakInfo}
+              target={goalDetails.target}
+              totalProfit={goalDetails.totalSaved}
+              remaining={goalDetails.remaining}
+              progressPercentage={goalDetails.progressPercentage}
+              streakInfo={goalDetails.streakInfo}
               theme={theme}
             />
           </div>
         </div>
 
-        {/* Progress Dashboard */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
-          {/* Progress and Graph Section */}
           <div className="md:col-span-8">
-            {/* Progress Card */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-xl font-bold">{currentGoal?.goalName}</h2>
+                  <h2 className="text-xl font-bold">{goalDetails.name}</h2>
                   <p className="text-gray-500 dark:text-gray-400">
-                    {Math.round(progressPercentageCalc)}% Complete
+                    {Math.round(goalDetails.progressPercentage)}% Complete
                   </p>
                 </div>
                 <Button className="gap-2" size="sm" onClick={() => setShowProfitModal(true)}>
@@ -153,48 +182,44 @@ export default function Home({
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-6">
                 <div 
                   className="bg-primary h-4 rounded-full transition-all duration-500 ease-in-out" 
-                  style={{ width: `${progressPercentageCalc}%` }}
+                  style={{ width: `${goalDetails.progressPercentage}%` }}
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
                   <p className="text-gray-500 dark:text-gray-400 text-sm mb-1">Saved</p>
-                  <p className="text-2xl font-bold">{formatMoney(totalSaved)}</p>
+                  <p className="text-2xl font-bold">{formatMoney(goalDetails.totalSaved)}</p>
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
                   <p className="text-gray-500 dark:text-gray-400 text-sm mb-1">Remaining</p>
-                  <p className="text-2xl font-bold">{formatMoney(remainingAmount)}</p>
+                  <p className="text-2xl font-bold">{formatMoney(goalDetails.remaining)}</p>
                 </div>
               </div>
             </div>
             
-            {/* Graph Section */}
             <ProfitGraph 
-              data={visibleWeeksDataSafe}
+              data={weeksForInput}
               showCumulative={showCumulative}
               theme={theme}
             />
           </div>
           
-          {/* Target and Actions Section */}
           <div className="md:col-span-4">
-            {/* Target Card */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
               <h2 className="text-xl font-bold mb-4">Target</h2>
-              <p className="text-3xl font-bold mb-6">{formatMoney(currentGoal?.target)}</p>
+              <p className="text-3xl font-bold mb-6">{formatMoney(goalDetails.target)}</p>
               
               <div className="flex flex-col gap-2">
-                <Button variant="outline" className="w-full gap-2 justify-start">
-                  <Download className="h-4 w-4" /> Export Data
+                <Button variant="outline" className="w-full gap-2 justify-start" disabled>
+                  <Download className="h-4 w-4" /> Export Data (WIP)
                 </Button>
-                <Button variant="outline" className="w-full gap-2 justify-start">
-                  <BarChart3 className="h-4 w-4" /> View Charts
+                <Button variant="outline" className="w-full gap-2 justify-start" disabled>
+                  <BarChart3 className="h-4 w-4" /> View Charts (WIP)
                 </Button>
               </div>
             </div>
             
-            {/* Community Features */}
             <ComingSoon 
               title="Community Features"
               description="Connect with other savers and compare progress"
@@ -203,25 +228,22 @@ export default function Home({
           </div>
         </div>
 
-        {/* Weekly Input Section */}
         <div className="grid grid-cols-1 gap-6">
           <div className="col-span-1">
             <WeekInput 
-              weeks={visibleWeeksDataSafe}
-              onProfitChange={handleProfitChange}
-              weeklyTargetAverage={weeklyTargetAverage}
+              weeks={weeksForInput}
+              onProfitChange={handleWeekProfitUpdate}
               theme={theme}
-              currentStreak={streakInfo.currentStreak}
+              currentStreak={goalDetails.streakInfo.currentStreak}
             />
           </div>
         </div>
       </main>
 
       <footer className={`max-w-6xl mx-auto mt-12 text-center text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-        <p>{goalName} Savings Tracker © {new Date().getFullYear()}</p>
+        <p>{goalDetails.name} Savings Tracker © {new Date().getFullYear()}</p>
       </footer>
       
-      {/* Add Profit Modal */}
       <Dialog open={showProfitModal} onOpenChange={setShowProfitModal}>
         <DialogContent>
           <DialogHeader>
@@ -236,7 +258,7 @@ export default function Home({
                 id="week"
                 type="number"
                 min="1"
-                max={weeks?.length || 52}
+                max={goalDetails.weeks?.length || 52}
                 value={selectedWeek || ''}
                 onChange={(e) => setSelectedWeek(parseInt(e.target.value) || null)}
                 className="col-span-3"
@@ -263,18 +285,15 @@ export default function Home({
         </DialogContent>
       </Dialog>
       
-      {/* AI Assistant floating component */}
       <CustomAIAssistant 
         theme={theme}
-        weeks={weeks}
-        goalName={goalName}
-        target={target}
-        totalProfit={totalProfit}
-        remaining={remaining}
-        progressPercentage={progressPercentage}
-        prediction={prediction}
-        streakInfo={streakInfo}
-        weeklyTargetAverage={weeklyTargetAverage}
+        weeks={goalDetails.weeks}
+        goalName={goalDetails.name}
+        target={goalDetails.target}
+        totalProfit={goalDetails.totalSaved}
+        remaining={goalDetails.remaining}
+        progressPercentage={goalDetails.progressPercentage}
+        streakInfo={goalDetails.streakInfo}
       />
       
       {toast && (

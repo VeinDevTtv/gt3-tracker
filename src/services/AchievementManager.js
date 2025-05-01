@@ -398,7 +398,7 @@ class AchievementManager {
     }
     return this.achievements;
   }
-
+  
   /**
    * Get earned achievements from localStorage
    */
@@ -411,7 +411,7 @@ class AchievementManager {
       return {};
     }
   }
-
+  
   /**
    * Save earned achievements to localStorage
    */
@@ -448,7 +448,7 @@ class AchievementManager {
     
     return totalPoints;
   }
-
+  
   /**
    * Unlock a specific achievement
    */
@@ -460,8 +460,8 @@ class AchievementManager {
     
     try {
       console.log(`Attempting to unlock achievement: ${achievementId}`);
-      
-      // Check if already earned
+    
+    // Check if already earned
       if (this.hasAchieved(achievementId)) {
         console.log(`Achievement ${achievementId} already earned`);
         return false;
@@ -475,9 +475,9 @@ class AchievementManager {
       
       // Mark as earned
       const earnedAchievements = this.getEarnedAchievements();
-      earnedAchievements[achievementId] = new Date().toISOString();
-      this.saveEarnedAchievements(earnedAchievements);
-      
+    earnedAchievements[achievementId] = new Date().toISOString();
+    this.saveEarnedAchievements(earnedAchievements);
+    
       // Show toast notification
       const achievement = this.achievements[achievementId];
       toast.success(
@@ -497,8 +497,8 @@ class AchievementManager {
       return true;
     } catch (error) {
       console.error(`Error unlocking achievement ${achievementId}:`, error);
-      return false;
-    }
+    return false;
+  }
   }
 
   /**
