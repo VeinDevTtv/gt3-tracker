@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import ComingSoonPage from './pages/ComingSoonPage';
+import Charts from './pages/Charts';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/auth/PrivateRoute';
 import NavMenu from './components/NavMenu';
@@ -233,6 +234,7 @@ export default function GT3Tracker() {
                       
                       {/* Protected routes */}
                       <Route element={<PrivateRoute />}>
+                        <Route path="/" element={<Home theme={theme} toast={toast} setToast={setToast} />} />
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/goals" element={
                           <ComingSoonPage 
@@ -241,6 +243,7 @@ export default function GT3Tracker() {
                             description="This section is under construction. Manage goals and view achievements here soon!"
                           />
                         } />
+                        <Route path="/charts" element={<Charts />} />
                         <Route path="/settings" element={
                           <Settings 
                             theme={theme}
@@ -263,30 +266,6 @@ export default function GT3Tracker() {
                             setOllamaModel={setOllamaModel}
                             aiProvider={aiProvider}
                             setAiProvider={setAiProvider}
-                          />
-                        } />
-                        <Route path="/" element={
-                          <Home 
-                            theme={theme}
-                            visibleWeeks={visibleWeeks}
-                            showCumulative={showCumulative}
-                            toast={toast}
-                            setToast={showToast}
-                            themeColor={themeColor}
-                          />
-                        } />
-                        <Route path="/charts" element={
-                          <ComingSoonPage 
-                            theme={theme}
-                            title="Detailed Charts & Analytics"
-                            description="More detailed charts and analysis tools are coming soon!"
-                          />
-                        } />
-                        <Route path="/leaderboards" element={
-                          <ComingSoonPage 
-                            theme={theme}
-                            title="Community Leaderboards"
-                            description="Competition features are coming soon"
                           />
                         } />
                       </Route>
