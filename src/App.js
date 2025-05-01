@@ -285,6 +285,13 @@ export default function GT3Tracker() {
                             themeColor={themeColor}
                           />
                         } />
+                        <Route path="/charts" element={
+                          <ComingSoonPage 
+                            theme={theme}
+                            title="Detailed Charts & Analytics"
+                            description="More detailed charts and analysis tools are coming soon!"
+                          />
+                        } />
                         <Route path="/leaderboards" element={
                           <ComingSoonPage 
                             theme={theme}

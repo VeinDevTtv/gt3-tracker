@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import GoalStats from '../components/GoalStats';
 import ProfitGraph from '../components/ProfitGraph';
 import WeekInput from '../components/WeekInput';
@@ -21,13 +22,15 @@ export default function Home({
   setToast,
 }) {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const { 
     currentGoal, 
     isLoading, 
     error, 
     updateWeekData, 
     calculateProgress,
-    calculateStreakInfo
+    calculateStreakInfo,
+    exportGoalAsCSV
   } = useGoals(); 
 
   console.log("Home.jsx - Current Goal from Context:", currentGoal);
@@ -115,6 +118,19 @@ export default function Home({
     } else {
        setToast && setToast('Please select a week and enter an amount.', '⚠️');
     }
+  };
+
+  const handleExportData = () => {
+    if (goalDetails.id) {
+      exportGoalAsCSV(goalDetails.id);
+    } else {
+      console.error("Cannot export: No active goal ID.");
+      setToast && setToast('Cannot export data: No goal selected.', '⚠️');
+    }
+  };
+  
+  const handleViewCharts = () => {
+    navigate('/charts');
   };
 
   if (isLoading) {
@@ -211,11 +227,11 @@ export default function Home({
               <p className="text-3xl font-bold mb-6">{formatMoney(goalDetails.target)}</p>
               
               <div className="flex flex-col gap-2">
-                <Button variant="outline" className="w-full gap-2 justify-start" disabled>
-                  <Download className="h-4 w-4" /> Export Data (WIP)
+                <Button variant="outline" className="w-full gap-2 justify-start" onClick={handleExportData} disabled={!goalDetails.id}>
+                  <Download className="h-4 w-4" /> Export Data
                 </Button>
-                <Button variant="outline" className="w-full gap-2 justify-start" disabled>
-                  <BarChart3 className="h-4 w-4" /> View Charts (WIP)
+                <Button variant="outline" className="w-full gap-2 justify-start" onClick={handleViewCharts}>
+                  <BarChart3 className="h-4 w-4" /> View Charts
                 </Button>
               </div>
             </div>

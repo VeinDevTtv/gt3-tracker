@@ -580,6 +580,43 @@ export const GoalsProvider = ({ children }) => {
     }
   };
 
+  // Export a specific goal as CSV
+  const exportGoalAsCSV = (goalId) => {
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) {
+        toast.error('Goal not found for export');
+        return false;
+      }
+      
+      const currentWeeks = goal.weeks || [];
+      const headers = ['Week', 'Weekly Profit', 'Cumulative'];
+      const csvContent = [
+        headers.join(','),
+        ...currentWeeks.map(week => 
+          [week.week, week.profit, week.cumulative].join(',')
+        )
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${goal.name.replace(/\s+/g, '-').toLowerCase()}-tracker-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Goal data exported as CSV');
+      return true;
+    } catch (err) {
+      console.error('Error exporting goal as CSV:', err);
+      toast.error('Failed to export goal data');
+      return false;
+    }
+  };
+
   // Context value
   const value = {
     goals,
@@ -597,7 +634,8 @@ export const GoalsProvider = ({ children }) => {
     importGoal,
     updateWeekData,
     calculateStreakInfo,
-    calculateProgress
+    calculateProgress,
+    exportGoalAsCSV
   };
 
   return (
