@@ -78,7 +78,8 @@ const WeekInput = ({
                 <div className="flex flex-col space-y-2">
                   <div className="relative">
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={week.profit === 0 ? "0" : week.profit || ""}
                       onChange={(e) => onProfitChange(index, e.target.value)}
                       placeholder="0"
