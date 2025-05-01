@@ -103,8 +103,6 @@ export default function GT3Tracker() {
     return savedShowCumulative ? savedShowCumulative === 'true' : true;
   });
   
-  const [showConfirmReset, setShowConfirmReset] = useState(false);
-  
   // AI Assistant settings
   const [openAIKey, setOpenAIKey] = useState(() => localStorage.getItem('openai-api-key') || '');
   const [poeKey, setPoeKey] = useState(() => localStorage.getItem('poe-api-key') || '');
@@ -250,8 +248,6 @@ export default function GT3Tracker() {
                             showCumulative={showCumulative}
                             onVisibleWeeksChange={handleVisibleWeeksChange}
                             onToggleCumulative={handleToggleCumulative}
-                            showConfirmReset={showConfirmReset}
-                            setShowConfirmReset={setShowConfirmReset}
                             themeColor={themeColor}
                             onThemeColorChange={changeThemeColor}
                             setTheme={setTheme}

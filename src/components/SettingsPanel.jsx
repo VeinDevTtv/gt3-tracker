@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,20 +34,13 @@ const SettingsPanel = ({
   setCustomTarget,
   weeklyTarget,
   setWeeklyTarget,
+  onResetAllData,
 }) => {
   const fileInputRef = React.useRef(null);
   const [confirmText, setConfirmText] = useState('');
   const [confirmError, setConfirmError] = useState(false);
+  const [showResetConfirmDialog, setShowResetConfirmDialog] = useState(false);
   
-  // Debug the resetValues function
-  useEffect(() => {
-    console.log("SettingsPanel: resetValues function exists?", !!resetValues);
-    console.log("SettingsPanel: resetValues type:", typeof resetValues);
-  }, [resetValues]);
-  
-  // Debug check
-  console.log("resetValues function available:", !!resetValues);
-
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
@@ -79,6 +72,19 @@ const SettingsPanel = ({
       setConfirmText('');
       setConfirmError(false);
       console.log("Reset completed");
+    } else {
+      console.log("Confirmation failed, setting error");
+      setConfirmError(true);
+    }
+  };
+
+  const handleResetAll = () => {
+    if (confirmText.trim().toUpperCase() === 'RESET ALL') {
+      console.log("Calling onResetAllData function");
+      onResetAllData();
+      setConfirmText('');
+      setConfirmError(false);
+      setShowResetConfirmDialog(false);
     } else {
       console.log("Confirmation failed, setting error");
       setConfirmError(true);
@@ -259,55 +265,67 @@ const SettingsPanel = ({
             </p>
           </div>
         </div>
-      </CardContent>
 
-      {/* Confirm Reset Dialog */}
-      {showConfirmReset && (
-        <Dialog open={showConfirmReset} onOpenChange={setShowConfirmReset}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                <span className="flex items-center text-red-500">
-                  <AlertTriangle className="mr-2" />
-                  Reset All Data
-                </span>
-              </DialogTitle>
-              <DialogDescription>
-                This action cannot be undone. All your saved data will be permanently deleted.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="py-4">
-              <p className="text-sm mb-4">
-                Type <strong>CONFIRM</strong> to proceed with reset:
-              </p>
-              <Input
-                type="text"
-                value={confirmText}
-                onChange={(e) => {
-                  setConfirmText(e.target.value);
-                  setConfirmError(false);
-                }}
-                className={confirmError ? 'border-red-500' : ''}
-              />
-              {confirmError && (
-                <p className="text-red-500 text-xs mt-1">
-                  Please type CONFIRM to proceed
-                </p>
-              )}
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowConfirmReset(false)}>
-                Cancel
+        <div className="pt-4 space-y-2 border-t border-dashed border-destructive/50 mt-6">
+          <Label className={`font-semibold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+            Reset Application Data
+          </Label>
+          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            This action will permanently delete all goals, achievements, and weekly progress. 
+            It cannot be undone. It is recommended to export a JSON backup first.
+          </p>
+          <Dialog open={showResetConfirmDialog} onOpenChange={setShowResetConfirmDialog}>
+            <DialogTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full"
+              >
+                <AlertTriangle size={16} className="mr-2" />
+                Reset All Application Data...
               </Button>
-              <Button variant="destructive" onClick={handleReset}>
-                Reset Data
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="text-destructive">Confirm Full Reset</DialogTitle>
+                <DialogDescription>
+                   This action is irreversible. To proceed, please type <strong className="text-foreground">RESET ALL</strong> in the box below.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="confirm-reset" className="text-right">
+                    Confirm
+                  </Label>
+                  <Input
+                    id="confirm-reset"
+                    value={confirmText}
+                    onChange={(e) => {
+                      setConfirmText(e.target.value);
+                      if (confirmError) setConfirmError(false);
+                    }}
+                    placeholder="Type RESET ALL"
+                    className={`col-span-3 font-mono uppercase ${confirmError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                  />
+                </div>
+                {confirmError && (
+                   <p className="col-span-4 text-center text-sm text-red-500">Confirmation text does not match.</p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowResetConfirmDialog(false)}>Cancel</Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleResetAll}
+                  disabled={confirmText.trim().toUpperCase() !== 'RESET ALL'}
+                >
+                  Confirm Reset
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardContent>
     </Card>
   );
 };

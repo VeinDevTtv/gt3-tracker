@@ -762,6 +762,39 @@ export const GoalsProvider = ({ children }) => {
     }
   };
 
+  // Reset ALL application data (Goals, Achievements)
+  const resetAllApplicationData = useCallback(() => {
+    if (window.confirm("DANGER! This will permanently delete ALL goals, achievements, and progress. Are you absolutely sure you want to start over?")) {
+      try {
+        console.warn("Resetting all application data...");
+        // Clear Goals Data
+        localStorage.removeItem(goalManager.GOALS_STORAGE_KEY);
+        localStorage.removeItem(goalManager.ACTIVE_GOAL_KEY);
+        
+        // Clear Achievements Data
+        localStorage.removeItem(achievementManager.EARNED_STORAGE_KEY);
+        // Add any other achievement-related keys if necessary (e.g., weekend tracking)
+        localStorage.removeItem('gt3_tracker_weekend_days');
+
+        // Clear other settings (Optional - decide scope)
+        // localStorage.removeItem('savings-tracker-theme');
+        // localStorage.removeItem('savings-tracker-theme-color');
+        // localStorage.removeItem('savings-tracker-visible-weeks');
+        // localStorage.removeItem('savings-tracker-show-cumulative');
+        // ... add other keys if desired ...
+
+        toast.success("Application Reset Successfully! Reloading...");
+
+        // Reload the page to apply changes and re-initialize
+        setTimeout(() => window.location.reload(), 1500);
+
+      } catch (error) {
+        console.error("Error resetting all application data:", error);
+        toast.error("Failed to reset application data.");
+      }
+    }
+  }, []); // No dependencies needed as it operates on localStorage
+
   // Export all goals and achievements as JSON
   const exportAllDataAsJSON = () => {
     try {
@@ -887,7 +920,8 @@ export const GoalsProvider = ({ children }) => {
     resetGoalData,
     exportAllDataAsJSON,
     importBackupFromJSON,
-    generatePdfReport
+    generatePdfReport,
+    resetAllApplicationData
   };
 
   return (

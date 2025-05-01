@@ -49,12 +49,7 @@ export default function Settings({
 
   const { 
     currentGoal,
-    resetGoalData,
-    exportGoalAsCSV,
-    exportAllDataAsJSON, 
-    importBackupFromJSON,
-    generatePdfReport,
-    generateSharingImage
+    resetAllApplicationData
   } = useGoals();
 
   const [aiEnabled, setAiEnabled] = useState(() => {
@@ -133,75 +128,6 @@ export default function Settings({
     localStorage.setItem('date-format', value);
   };
 
-  const handleResetData = useCallback(() => {
-    if (currentGoal?.id) {
-      if (window.confirm("Are you sure you want to reset all weekly profit data for the current goal? This cannot be undone.")) {
-         resetGoalData(currentGoal.id);
-         setShowConfirmReset(false);
-      }
-    } else {
-      toast.error("No active goal selected to reset.");
-      setShowConfirmReset(false);
-    }
-  }, [currentGoal, resetGoalData, setShowConfirmReset]);
-
-  const handleExportCSV = useCallback(() => {
-    if (currentGoal?.id) {
-      exportGoalAsCSV(currentGoal.id);
-    } else {
-       toast.error("No active goal selected to export CSV.");
-    }
-  }, [currentGoal, exportGoalAsCSV]);
-
-  const handleExportJSON = useCallback(() => {
-    exportAllDataAsJSON();
-  }, [exportAllDataAsJSON]);
-
-  const handleGeneratePDF = useCallback(() => {
-    if (currentGoal?.id) {
-        generatePdfReport(currentGoal.id);
-    } else {
-        toast.error("No active goal selected to generate PDF report.");
-    }
-  }, [currentGoal, generatePdfReport]);
-  
-  const handleGenerateImage = useCallback(() => {
-      generateSharingImage();
-  }, [generateSharingImage]);
-
-  const triggerImportJSON = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileImport = useCallback(async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const text = e.target?.result;
-      if (typeof text === 'string') {
-        try {
-          await importBackupFromJSON(text);
-        } catch (error) {
-          console.error("Import failed in component:", error);
-        } finally {
-           if(fileInputRef.current) {
-               fileInputRef.current.value = "";
-           }
-        }
-      } else {
-        toast.error("Could not read file content.");
-      }
-    };
-    reader.onerror = () => {
-      toast.error("Failed to read file.");
-    };
-    reader.readAsText(file);
-  }, [importBackupFromJSON]);
-
   return (
     <>
       <Helmet>
@@ -231,13 +157,6 @@ export default function Settings({
         </header>
 
         <main className="max-w-7xl mx-auto p-4 md:p-8">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileImport}
-            accept=".json,application/json"
-            style={{ display: 'none' }}
-          />
           <div className="mb-8">            
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
@@ -274,14 +193,7 @@ export default function Settings({
                 
                 <SettingsPanel 
                   theme={theme}
-                  onResetData={handleResetData}
-                  onExportCSV={handleExportCSV}
-                  onExportJSON={handleExportJSON}
-                  onImportJSON={triggerImportJSON}
-                  onGeneratePDF={handleGeneratePDF}
-                  onGenerateImage={handleGenerateImage}
-                  showConfirmReset={showConfirmReset}
-                  setShowConfirmReset={setShowConfirmReset}
+                  onResetAllData={resetAllApplicationData}
                 />
               </TabsContent>
               
@@ -422,13 +334,6 @@ export default function Settings({
                         checked={autoBackupEnabled}
                         onCheckedChange={toggleAutoBackup}
                       />
-                    </div>
-                    
-                    <div className="pt-4 border-t">
-                      <Button variant="outline" className="w-full" onClick={handleExportJSON}>
-                        <Lock className="mr-2 h-4 w-4" />
-                        Export Personal Data Backup
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
