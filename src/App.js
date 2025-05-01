@@ -276,7 +276,7 @@ export default function GT3Tracker() {
   // Memoized profit change handler
   const handleProfitChange = (weekIndex, profit) => {
     console.log(`handleProfitChange called: week ${weekIndex + 1}, profit ${profit}`);
-    const profitNum = Math.abs(parseFloat(profit)) || 0; // Ensure we're using positive values
+    const profitNum = parseFloat(profit) || 0; // Allow negative values
     
     // Create a new weeks array with the updated profit
     const updatedWeeks = [...weeks];
@@ -289,7 +289,7 @@ export default function GT3Tracker() {
     // Recalculate the cumulative profits
     let cumulative = 0;
     for (let i = 0; i < updatedWeeks.length; i++) {
-      cumulative += updatedWeeks[i].profit || 0; // Handle any undefined profit values
+      cumulative += updatedWeeks[i].profit || 0;
       updatedWeeks[i].cumulative = cumulative;
       
       // Ensure week number is correctly set
