@@ -67,6 +67,13 @@ const SettingsPanel = ({
             This action will permanently delete all goals, achievements, and weekly progress. 
             It cannot be undone. It is recommended to export a JSON backup first (available on the main dashboard).
           </p>
+          
+          {/* Temporarily render button outside Dialog for debugging */}
+           <Button variant="destructive" size="sm" className="w-full border border-yellow-400"> 
+             DEBUG BUTTON - Should be visible
+           </Button>
+
+          {/* Dialog wrapping the actual button */}
           <Dialog open={showResetConfirmDialog} onOpenChange={setShowResetConfirmDialog}>
             <DialogTrigger asChild>
               <Button
