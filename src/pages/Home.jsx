@@ -54,22 +54,60 @@ export default function Home({
         remaining: 0,
         progressPercentage: 0,
         streakInfo: { currentStreak: 0, longestStreak: 0 },
+        prediction: { insufficient: true, message: "Loading..." }
       };
     }
     
     const progress = calculateProgress(currentGoal.id);
     const streak = calculateStreakInfo(currentGoal.id);
+    const weeks = currentGoal.weeks || [];
+    const remaining = progress.remaining;
+
+    // --- Calculate Prediction --- 
+    let calculatedPrediction = { insufficient: true, message: "Calculating..." };
+    const weeksWithProfit = weeks.filter(week => week.profit > 0);
+
+    if (weeksWithProfit.length === 0) {
+      calculatedPrediction = { insufficient: true, message: "No savings data", reason: "start_saving" };
+    } else {
+      const avgWeeklyProfit = weeksWithProfit.reduce((sum, week) => sum + week.profit, 0) / weeksWithProfit.length;
+      
+      if (avgWeeklyProfit <= 0) {
+        calculatedPrediction = { insufficient: true, message: "Avg. profit ≤ 0", reason: "negative_profit", data: { avgWeeklyProfit } };
+      } else if (remaining <= 0) {
+         calculatedPrediction = { insufficient: false, message: "Goal Reached!" }; // Handle goal reached case
+      } else {
+        const weeksNeeded = Math.ceil(remaining / avgWeeklyProfit);
+        const today = new Date();
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + (weeksNeeded * 7));
+        const formattedDate = targetDate.toLocaleDateString(undefined, {
+          year: 'numeric', month: 'short', day: 'numeric' 
+        });
+        
+        calculatedPrediction = {
+          weeksNeeded,
+          targetDate: formattedDate,
+          avgWeeklyProfit,
+          confidence: weeksWithProfit.length === 1 ? "low" : weeksWithProfit.length < 4 ? "medium" : "high",
+          dataPoints: weeksWithProfit.length,
+          insufficient: false
+        };
+      }
+    }
+    // --- End Calculate Prediction ---
 
     return {
       id: currentGoal.id,
       name: currentGoal.name || 'Unnamed Goal',
       target: currentGoal.target || 0,
-      weeks: currentGoal.weeks || [],
+      weeks: weeks,
       startDate: currentGoal.startDate,
       totalSaved: progress.totalSaved,
-      remaining: progress.remaining,
+      remaining: remaining,
       progressPercentage: progress.percentComplete,
       streakInfo: streak,
+      prediction: calculatedPrediction
     };
   }, [currentGoal, calculateProgress, calculateStreakInfo]);
 
@@ -179,6 +217,7 @@ export default function Home({
               totalProfit={goalDetails.totalSaved}
               remaining={goalDetails.remaining}
               progressPercentage={goalDetails.progressPercentage}
+              prediction={goalDetails.prediction}
               streakInfo={goalDetails.streakInfo}
               theme={theme}
             />
@@ -317,6 +356,7 @@ export default function Home({
         totalProfit={goalDetails.totalSaved}
         remaining={goalDetails.remaining}
         progressPercentage={goalDetails.progressPercentage}
+        prediction={goalDetails.prediction}
         streakInfo={goalDetails.streakInfo}
       />
       
