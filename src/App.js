@@ -236,7 +236,13 @@ export default function GT3Tracker() {
                       {/* Protected routes */}
                       <Route element={<PrivateRoute />}>
                         <Route path="/profile" element={<Profile />} />
-                        <Route path="/goals" element={<Goals />} />
+                        <Route path="/goals" element={
+                          <ComingSoonPage 
+                            theme={theme}
+                            title="Goal & Achievement Management"
+                            description="This section is under construction. Manage goals and view achievements here soon!"
+                          />
+                        } />
                         <Route path="/settings" element={
                           <Settings 
                             theme={theme}
