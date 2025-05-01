@@ -75,12 +75,12 @@ const GoalStats = ({
         <div className="relative mb-6">
           <div className="flex justify-between mb-2">
             <div className={theme === 'dark' ? 'text-white' : ''}>Your progress</div>
-            <div className="font-semibold text-primary-color">{progressPercentage.toFixed(2)}%</div>
+            <div className="font-semibold text-primary-color">{(typeof progressPercentage === 'number' ? progressPercentage : 0).toFixed(2)}%</div>
           </div>
           <div className={`h-4 w-full rounded-full overflow-hidden ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
             <div 
               className="h-full bg-primary progress-bar" 
-              style={{ width: `${progressPercentage}%` }}
+              style={{ width: `${(typeof progressPercentage === 'number' ? progressPercentage : 0)}%` }}
             ></div>
           </div>
           <div className="flex justify-between mt-2 text-sm">
