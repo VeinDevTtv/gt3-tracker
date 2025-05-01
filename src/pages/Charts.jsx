@@ -221,7 +221,8 @@ const Charts = () => {
                   stroke="hsl(var(--muted-foreground))" 
                   fontSize={12} 
                   tickFormatter={formatCurrency}
-                  domain={[0, 'auto']} // Start Y-axis at 0 for cumulative
+                  domain={['auto', 'auto']} // Allow negative cumulative values
+                  allowDataOverflow={true} // Ensure line draws correctly if data goes below axis min
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsla(var(--muted), 0.3)' }}/>
                 <Legend />
