@@ -59,6 +59,7 @@ const SettingsPanel = ({
         <CardTitle className={theme === 'dark' ? 'text-white' : ''}>Danger Zone</CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Correct Reset Section Starts Here (Previously line 85) */}
         <div className="pt-4 space-y-2 border-t border-dashed border-destructive/50 mt-6">
           <Label className={`font-semibold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
             Reset Application Data
@@ -68,21 +69,16 @@ const SettingsPanel = ({
             It cannot be undone. It is recommended to export a JSON backup first (available on the main dashboard).
           </p>
           
-          {/* Temporarily render button outside Dialog for debugging */}
-           <Button variant="destructive" size="sm" className="w-full border border-yellow-400"> 
-             DEBUG BUTTON - Should be visible
-           </Button>
-
           {/* Dialog wrapping the actual button */}
           <Dialog open={showResetConfirmDialog} onOpenChange={setShowResetConfirmDialog}>
-            <DialogTrigger asChild>
+            <DialogTrigger>
               <Button
                 variant="destructive"
                 size="sm"
                 className="w-full"
               >
                 <AlertTriangle size={16} className="mr-2" />
-                Reset All Application Data...
+                Reset All Application Data... (Trigger Test)
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
