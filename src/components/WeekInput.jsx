@@ -99,7 +99,7 @@ const WeekInput = ({
                     )}
                   </div>
                   <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Cumulative: ${week.cumulative.toLocaleString()}
+                    Cumulative: ${(typeof week.cumulative === 'number' ? week.cumulative : 0).toLocaleString()}
                   </div>
                 </div>
               </div>
