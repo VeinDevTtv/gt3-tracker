@@ -24,6 +24,7 @@ export default function Home({
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { 
+    goals,
     currentGoal, 
     isLoading, 
     error, 
@@ -109,7 +110,7 @@ export default function Home({
       streakInfo: streak,
       prediction: calculatedPrediction
     };
-  }, [currentGoal, calculateProgress, calculateStreakInfo]);
+  }, [currentGoal, goals, calculateProgress, calculateStreakInfo]);
 
   const weeksForInput = useMemo(() => {
     const currentWeeks = goalDetails.weeks;
