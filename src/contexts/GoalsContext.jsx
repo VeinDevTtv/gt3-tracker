@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import goalManager from '../services/GoalManager';
+import html2canvas from 'html2canvas';
 
 // Create the context
 const GoalsContext = createContext();
@@ -617,6 +618,117 @@ export const GoalsProvider = ({ children }) => {
     }
   };
 
+  // Generate and download progress as an image
+  const generateSharingImage = useCallback(async () => {
+    if (!activeGoal) {
+      toast.error("No active goal selected to generate image.");
+      return;
+    }
+
+    const goal = activeGoal;
+    const progress = calculateProgress(goal.id);
+    // Get theme settings for styling the image
+    const theme = localStorage.getItem('savings-tracker-theme') || 'dark'; 
+    const themeColor = localStorage.getItem('savings-tracker-theme-color') || 'blue';
+
+    // Define color map based on themeColor
+    const colorMap = {
+      blue: '#3b82f6', green: '#10b981', red: '#ef4444',
+      purple: '#8b5cf6', orange: '#f97316'
+    };
+    const accentColor = colorMap[themeColor] || colorMap.blue;
+    // Define colors based on theme
+    const bgColor = theme === 'dark' ? '#1f2937' : '#f9fafb';
+    const textColor = theme === 'dark' ? '#e5e7eb' : '#374151';
+    const cardBgColor = theme === 'dark' ? '#374151' : '#ffffff';
+    const mutedTextColor = theme === 'dark' ? '#9ca3af' : '#6b7280';
+
+    // Create a temporary container div off-screen
+    const shareContainer = document.createElement('div');
+    shareContainer.style.width = '600px';
+    shareContainer.style.height = '315px'; 
+    shareContainer.style.padding = '25px';
+    shareContainer.style.fontFamily = "'Segoe UI', Roboto, sans-serif";
+    shareContainer.style.backgroundColor = bgColor;
+    shareContainer.style.color = textColor;
+    shareContainer.style.borderRadius = '12px';
+    shareContainer.style.overflow = 'hidden';
+    shareContainer.style.position = 'fixed';
+    shareContainer.style.left = '-9999px';
+    shareContainer.style.top = '-9999px';
+    shareContainer.style.boxSizing = 'border-box';
+    shareContainer.style.display = 'flex';
+    shareContainer.style.flexDirection = 'column';
+
+    // Populate the container with styled HTML
+    shareContainer.innerHTML = `
+        <div style="flex-shrink: 0; margin-bottom: 15px; text-align: center;">
+            <h2 style="font-size: 24px; font-weight: 600; margin: 0 0 5px 0; color: ${accentColor};">
+                ${goal.name || 'My Goal Progress'}
+            </h2>
+        </div>
+
+        <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 15px; margin-bottom: 15px;">
+            <div style="background-color: ${cardBgColor}; padding: 15px; border-radius: 8px; text-align: center;">
+                <p style="font-size: 13px; color: ${mutedTextColor}; margin: 0 0 5px 0;">Progress</p>
+                <p style="font-size: 36px; font-weight: 700; margin: 0; color: ${accentColor};">
+                    ${(progress.percentComplete || 0).toFixed(1)}%
+                </p>
+            </div>
+            <div style="display: flex; gap: 15px; justify-content: space-between;">
+                <div style="flex: 1; background-color: ${cardBgColor}; padding: 15px; border-radius: 8px; text-align: center;">
+                    <p style="font-size: 13px; color: ${mutedTextColor}; margin: 0 0 5px 0;">Saved</p>
+                    <p style="font-size: 20px; font-weight: 600; margin: 0;">
+                        $${(progress.totalSaved || 0).toLocaleString()}
+                    </p>
+                </div>
+                <div style="flex: 1; background-color: ${cardBgColor}; padding: 15px; border-radius: 8px; text-align: center;">
+                    <p style="font-size: 13px; color: ${mutedTextColor}; margin: 0 0 5px 0;">Remaining</p>
+                    <p style="font-size: 20px; font-weight: 600; margin: 0;">
+                        $${(progress.remaining || 0).toLocaleString()}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div style="flex-shrink: 0; text-align: center; font-size: 11px; color: ${mutedTextColor}; opacity: 0.7;">
+             GT3 Tracker
+        </div>
+    `;
+
+    // Append to body to render
+    document.body.appendChild(shareContainer);
+
+    try {
+        toast.loading('Generating image...');
+        // Render the container using html2canvas
+        const canvas = await html2canvas(shareContainer, {
+            scale: 2, // Increase resolution
+            logging: false,
+            useCORS: true,
+            backgroundColor: bgColor 
+        });
+        toast.dismiss();
+
+        // Trigger download
+        const link = document.createElement('a');
+        link.download = `${(goal.name || 'goal').replace(/\s+/g, '-')}-progress.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        toast.success('Progress image downloaded!');
+
+    } catch (error) {
+        console.error('Error generating sharing image:', error);
+        toast.error('Failed to generate image.');
+    } finally {
+        // Clean up: remove the temporary container
+        if (document.body.contains(shareContainer)) {
+            document.body.removeChild(shareContainer);
+        }
+    }
+  // Dependencies for useCallback
+  }, [activeGoal, calculateProgress]); 
+
   // Context value
   const value = {
     goals,
@@ -635,7 +747,8 @@ export const GoalsProvider = ({ children }) => {
     updateWeekData,
     calculateStreakInfo,
     calculateProgress,
-    exportGoalAsCSV
+    exportGoalAsCSV,
+    generateSharingImage
   };
 
   return (

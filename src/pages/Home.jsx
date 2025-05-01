@@ -8,7 +8,7 @@ import Toast from '../components/Toast';
 import ComingSoon from '../components/ComingSoon';
 import { Button } from "../components/ui/button";
 import { useGoals } from "../contexts/GoalsContext";
-import { BarChart3, Settings, Download, ArrowUpRight } from "lucide-react";
+import { BarChart3, Settings, Download, ArrowUpRight, Image } from "lucide-react";
 import CustomAIAssistant from '../components/CustomAIAssistant';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
@@ -30,7 +30,8 @@ export default function Home({
     updateWeekData, 
     calculateProgress,
     calculateStreakInfo,
-    exportGoalAsCSV
+    exportGoalAsCSV,
+    generateSharingImage
   } = useGoals(); 
 
   console.log("Home.jsx - Current Goal from Context:", currentGoal);
@@ -133,6 +134,10 @@ export default function Home({
     navigate('/charts');
   };
 
+  const handleGenerateImage = () => {
+    generateSharingImage();
+  };
+
   if (isLoading) {
     return <div className="p-6 text-center">Loading goal data...</div>;
   }
@@ -232,6 +237,9 @@ export default function Home({
                 </Button>
                 <Button variant="outline" className="w-full gap-2 justify-start" onClick={handleViewCharts}>
                   <BarChart3 className="h-4 w-4" /> View Charts
+                </Button>
+                <Button variant="outline" className="w-full gap-2 justify-start" onClick={handleGenerateImage} disabled={!goalDetails.id}>
+                  <Image className="h-4 w-4" /> Export as Image
                 </Button>
               </div>
             </div>
