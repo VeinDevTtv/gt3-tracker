@@ -142,7 +142,7 @@ The app includes a secure authentication system:
 ## Installation and Usage
 ```bash
 # Clone the repository
-git clone https://github.com/YourUsername/gt3-tracker.git
+git clone https://github.com/VeinDevTtv/gt3-tracker.git
 
 # Navigate to the project directory
 cd gt3-tracker
