@@ -268,15 +268,39 @@ export const GoalsProvider = ({ children }) => {
       const activeSet = goalManager.setActiveGoal(goalId);
       console.log('GoalsContext: Set as active goal:', activeSet);
       
-      // Update state
+      // Update state - create new array references to trigger re-renders
       const updatedGoals = goalManager.getGoals();
-      setGoals(updatedGoals);
+      setGoals([...updatedGoals]);
       
-      // Update active goal in state
-      const newActiveGoal = goalManager.getActiveGoal();
-      setActiveGoal(newActiveGoal);
+      // Create default milestones explicitly
+      try {
+        const milestoneService = require('../services/MilestoneService').default;
+        milestoneService.createDefaultMilestones(goalId, goalData.target);
+        console.log('GoalsContext: Created default milestones for goal');
+      } catch (err) {
+        console.error('Error creating milestones:', err);
+      }
       
-      console.log('GoalsContext: State updated with new goal and active goal set');
+      // Update active goal in state with the newly retrieved object
+      // This forces a complete refresh of the active goal
+      const newActiveGoal = goalManager.getGoalById(goalId);
+      setActiveGoal({...newActiveGoal});
+      
+      console.log('GoalsContext: State updated with new goal and active goal set:', newActiveGoal);
+      
+      // Check for achievements
+      try {
+        const achievementManager = require('../services/AchievementManager').default;
+        if (achievementManager) {
+          achievementManager.checkForAchievements({
+            goals: updatedGoals,
+            activeGoal: newActiveGoal,
+            weeks: newActiveGoal.weeks || []
+          });
+        }
+      } catch (err) {
+        console.log('Could not check achievements:', err);
+      }
       
       // Success notification
       toast.success('Goal created successfully!');

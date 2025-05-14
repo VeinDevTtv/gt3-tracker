@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trophy, Target, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { formatCurrency } from '../../utils/formatters';
@@ -9,7 +9,17 @@ import { Button } from '../ui/button';
 /**
  * Displays a horizontal map of milestone progress for a goal
  */
-const MilestoneProgressMap = ({ goalId = null }) => {
+const MilestoneProgressMap = ({ goalId = null, refreshKey }) => {
+  const [internalRefreshKey, setInternalRefreshKey] = useState(0);
+  
+  // Force refresh when refreshKey prop changes
+  useEffect(() => {
+    if (refreshKey) {
+      console.log('MilestoneProgressMap: External refresh triggered');
+      setInternalRefreshKey(prev => prev + 1);
+    }
+  }, [refreshKey]);
+
   const { 
     isLoading, 
     goal, 
@@ -23,8 +33,10 @@ const MilestoneProgressMap = ({ goalId = null }) => {
     if (goal && (!milestones || milestones.length === 0)) {
       console.log('No milestones found, creating defaults for goal:', goal.id);
       milestoneService.createDefaultMilestones(goal.id, goal.target);
+      // Force refresh
+      setInternalRefreshKey(prev => prev + 1);
     }
-  }, [goal, milestones]);
+  }, [goal, milestones, internalRefreshKey]);
 
   if (isLoading) {
     return (
@@ -56,9 +68,10 @@ const MilestoneProgressMap = ({ goalId = null }) => {
           size="sm" 
           variant="outline"
           onClick={() => {
+            console.log('Creating milestones for goal:', goal.id);
             milestoneService.createDefaultMilestones(goal.id, goal.target);
             // Force a refresh by updating the component state
-            window.location.reload();
+            setInternalRefreshKey(prev => prev + 1);
           }}
         >
           Create Milestones Now

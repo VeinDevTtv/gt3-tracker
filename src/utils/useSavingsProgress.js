@@ -31,6 +31,8 @@ const useSavingsProgress = (goalId = null) => {
       return;
     }
     
+    console.log('useSavingsProgress: Goal changed, updating progress data', currentGoal.id);
+    
     try {
       // Initialize the milestone service if needed
       milestoneService.initialize();
@@ -42,13 +44,23 @@ const useSavingsProgress = (goalId = null) => {
       // Get milestones for the goal
       const goalMilestones = milestoneService.getMilestonesForGoal(currentGoal.id);
       
-      // Sort milestones by amount
-      const sortedMilestones = [...goalMilestones].sort((a, b) => a.amount - b.amount);
-      setMilestones(sortedMilestones);
+      // Create default milestones if none exist
+      if (!goalMilestones || goalMilestones.length === 0) {
+        console.log('No milestones found, creating defaults for goal:', currentGoal.id);
+        milestoneService.createDefaultMilestones(currentGoal.id, currentGoal.target);
+        // Get the newly created milestones
+        const newMilestones = milestoneService.getMilestonesForGoal(currentGoal.id);
+        setMilestones(newMilestones);
+      } else {
+        // Sort milestones by amount
+        const sortedMilestones = [...goalMilestones].sort((a, b) => a.amount - b.amount);
+        setMilestones(sortedMilestones);
+      }
       
       // Find the next milestone to reach
-      const totalSaved = progressData.saved;
-      const upcoming = sortedMilestones
+      const totalSaved = progressData.saved || 0;
+      const milesToCheck = milestones.length > 0 ? milestones : goalMilestones;
+      const upcoming = milesToCheck
         .filter(m => m.amount > totalSaved)
         .sort((a, b) => a.amount - b.amount)[0];
       
@@ -58,7 +70,7 @@ const useSavingsProgress = (goalId = null) => {
       console.error('Error in useSavingsProgress:', err);
       setIsLoading(false);
     }
-  }, [currentGoal, goals]);
+  }, [currentGoal, calculateProgress, goals, activeGoal]);
   
   /**
    * Add a savings entry and update progress

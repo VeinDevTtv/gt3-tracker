@@ -136,7 +136,8 @@ const Goals = () => {
     try {
       console.log('Creating new goal:', goalData);
       
-      // Create the goal and get the new ID
+      // Create the goal and get the new ID through the context
+      // This will also set it as active and create milestones
       const newGoalId = addGoal(goalData);
       
       if (!newGoalId) {
@@ -145,39 +146,16 @@ const Goals = () => {
       
       console.log('Goal created successfully with ID:', newGoalId);
       
-      // Explicitly set this goal as active
-      const activeGoalSet = goalManager.setActiveGoal(newGoalId);
-      console.log('Set as active goal:', activeGoalSet);
-      
-      // Manually create milestones to ensure they're created
-      milestoneService.createDefaultMilestones(newGoalId, goalData.target);
-      console.log('Created default milestones for goal');
-      
       // Close the dialog
       setShowNewGoalDialog(false);
       
-      // Get the updated goal data
-      const updatedGoal = goalManager.getGoalById(newGoalId);
-      console.log('Updated goal data:', updatedGoal);
+      // Force refresh immediately
+      refreshComponents();
       
-      // Update the active goal in this component's state
-      // This ensures the UI updates properly
+      // Do another refresh after a short delay to ensure all state has propagated
       setTimeout(() => {
-        // Force refresh of components after a short delay
-        // This ensures all state updates have propagated
+        console.log('Refreshing components after goal creation');
         refreshComponents();
-        
-        // Check for achievements
-        const goals = goalManager.getGoals();
-        const activeGoal = goalManager.getActiveGoal();
-        
-        if (activeGoal) {
-          achievementManager.checkForAchievements({
-            goals,
-            activeGoal,
-            weeks: activeGoal.weeks || []
-          });
-        }
       }, 100);
       
       // Show success message
@@ -330,7 +308,7 @@ const Goals = () => {
             <TabsContent value="goals" className="space-y-6">
               {/* Milestone Progress Map */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
-                <MilestoneProgressMap key={`milestone-map-${refreshTrigger}`} />
+                <MilestoneProgressMap key={`milestone-map-${refreshTrigger}`} refreshKey={refreshTrigger} />
               </div>
               
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
