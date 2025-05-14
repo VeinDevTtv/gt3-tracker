@@ -252,17 +252,39 @@ export const GoalsProvider = ({ children }) => {
   // Add a new goal
   const addGoal = (goalData) => {
     try {
+      console.log('GoalsContext: Creating new goal with data:', goalData);
+      
+      // Create the goal in the manager
       const goalId = goalManager.createGoal(goalData);
+      
+      if (!goalId) {
+        console.error('GoalManager did not return a valid goal ID');
+        throw new Error('Failed to create goal - no ID returned from service');
+      }
+      
+      console.log('GoalsContext: Goal created with ID:', goalId);
+      
+      // Set this goal as active
+      const activeSet = goalManager.setActiveGoal(goalId);
+      console.log('GoalsContext: Set as active goal:', activeSet);
       
       // Update state
       const updatedGoals = goalManager.getGoals();
       setGoals(updatedGoals);
       
+      // Update active goal in state
+      const newActiveGoal = goalManager.getActiveGoal();
+      setActiveGoal(newActiveGoal);
+      
+      console.log('GoalsContext: State updated with new goal and active goal set');
+      
+      // Success notification
       toast.success('Goal created successfully!');
+      
       return goalId;
     } catch (err) {
       console.error('Error adding goal:', err);
-      toast.error('Failed to create goal');
+      toast.error('Failed to create goal: ' + err.message);
       return null;
     }
   };

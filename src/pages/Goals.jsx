@@ -134,20 +134,57 @@ const Goals = () => {
   // Handle goal creation
   const handleCreateGoal = (goalData) => {
     try {
-      // Create the goal
-      addGoal(goalData);
+      console.log('Creating new goal:', goalData);
+      
+      // Create the goal and get the new ID
+      const newGoalId = addGoal(goalData);
+      
+      if (!newGoalId) {
+        throw new Error('Failed to create goal - no ID returned');
+      }
+      
+      console.log('Goal created successfully with ID:', newGoalId);
+      
+      // Explicitly set this goal as active
+      const activeGoalSet = goalManager.setActiveGoal(newGoalId);
+      console.log('Set as active goal:', activeGoalSet);
+      
+      // Manually create milestones to ensure they're created
+      milestoneService.createDefaultMilestones(newGoalId, goalData.target);
+      console.log('Created default milestones for goal');
       
       // Close the dialog
       setShowNewGoalDialog(false);
       
-      // Force refresh of components
-      refreshComponents();
+      // Get the updated goal data
+      const updatedGoal = goalManager.getGoalById(newGoalId);
+      console.log('Updated goal data:', updatedGoal);
+      
+      // Update the active goal in this component's state
+      // This ensures the UI updates properly
+      setTimeout(() => {
+        // Force refresh of components after a short delay
+        // This ensures all state updates have propagated
+        refreshComponents();
+        
+        // Check for achievements
+        const goals = goalManager.getGoals();
+        const activeGoal = goalManager.getActiveGoal();
+        
+        if (activeGoal) {
+          achievementManager.checkForAchievements({
+            goals,
+            activeGoal,
+            weeks: activeGoal.weeks || []
+          });
+        }
+      }, 100);
       
       // Show success message
       toast.success(`Goal "${goalData.name}" created!`);
     } catch (err) {
       console.error('Error creating goal:', err);
-      toast.error('Failed to create goal');
+      toast.error('Failed to create goal: ' + err.message);
     }
   };
   
