@@ -6,11 +6,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { formatCurrency } from '../../utils/formatters';
-import goalManager from '../../services/GoalManager';
+import { useGoals } from '../../contexts/GoalsContext';
 import NewGoalForm from './NewGoalForm';
 import { cn } from '../../lib/utils';
 
 const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
+  // Get context data
+  const { 
+    goals: contextGoals, 
+    activeGoal: contextActiveGoal,
+    switchGoal,
+    addGoal,
+    updateGoal,
+    deleteGoal,
+    calculateProgress
+  } = useGoals();
+  
+  // Local state
   const [goals, setGoals] = useState([]);
   const [activeGoalId, setActiveGoalId] = useState(null);
   const [showNewGoalDialog, setShowNewGoalDialog] = useState(false);
@@ -20,46 +32,36 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
   const [error, setError] = useState(null);
 
   // Debug flag to log state for troubleshooting
-  const DEBUG = false;
+  const DEBUG = true;
 
+  // Sync local state with context when it changes
   useEffect(() => {
     try {
-      // Load all goals and active goal ID
-      const loadedGoals = goalManager.getGoals();
-      const activeId = goalManager.getActiveGoalId();
-      
+      // Use context data instead of direct service calls
       if (DEBUG) {
-        console.log('GoalList - loadedGoals:', loadedGoals);
-        console.log('GoalList - activeId:', activeId);
+        console.log('GoalList - contextGoals:', contextGoals);
+        console.log('GoalList - contextActiveGoal:', contextActiveGoal);
       }
       
-      setGoals(loadedGoals);
-      setActiveGoalId(activeId);
+      setGoals(contextGoals || []);
+      setActiveGoalId(contextActiveGoal?.id || null);
     } catch (err) {
-      console.error('Error loading goals:', err);
-      setError('Failed to load goals');
+      console.error('Error syncing with context:', err);
+      setError('Failed to sync goals from context');
     }
-  }, [refreshTrigger, DEBUG]);
-
-  // Calculate total progress for each goal
-  const calculateProgress = (goal) => {
-    if (!goal.weeks || goal.weeks.length === 0 || !goal.target) return 0;
-    
-    const totalSaved = goal.weeks.reduce((sum, week) => sum + (week.profit || 0), 0);
-    return Math.min(100, (totalSaved / goal.target) * 100);
-  };
+  }, [contextGoals, contextActiveGoal, refreshTrigger, DEBUG]);
 
   const handleSelectGoal = (goalId) => {
     try {
       if (DEBUG) console.log('Selecting goal:', goalId);
       
-      if (goalManager.setActiveGoal(goalId)) {
+      // Use context function
+      if (switchGoal(goalId)) {
         setActiveGoalId(goalId);
         // Notify parent component of goal change
         if (onGoalChange) {
           onGoalChange(goalId);
         }
-        toast.success('Goal switched successfully');
       }
     } catch (err) {
       console.error('Error selecting goal:', err);
@@ -77,20 +79,13 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
         return null;
       }
       
-      const newGoalId = goalManager.createGoal(newGoalData);
+      // Use context function
+      const newGoalId = addGoal(newGoalData);
       
       if (DEBUG) console.log('New goal created with ID:', newGoalId);
       
-      // Refresh goals list
-      setGoals(goalManager.getGoals());
+      // Dialog will be closed by parent
       setShowNewGoalDialog(false);
-      
-      toast.success('New goal created successfully!');
-      
-      // Automatically select the new goal
-      if (newGoalId) {
-        handleSelectGoal(newGoalId);
-      }
       
       return newGoalId;
     } catch (err) {
@@ -104,19 +99,14 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
     try {
       if (DEBUG) console.log(`Updating goal ${goalId}:`, updates);
       
-      if (goalManager.updateGoal(goalId, updates)) {
-        // Refresh goals list
-        setGoals(goalManager.getGoals());
+      // Use context function
+      if (updateGoal(goalId, updates)) {
         setEditingGoal(null);
-        
-        toast.success('Goal updated successfully!');
         
         // Notify parent component if the active goal was updated
         if (goalId === activeGoalId && onGoalChange) {
           onGoalChange(goalId);
         }
-      } else {
-        toast.error('Failed to update goal');
       }
     } catch (err) {
       console.error('Error updating goal:', err);
@@ -138,25 +128,18 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
       
       if (DEBUG) console.log('Deleting goal:', goalId);
       
-      if (goalManager.deleteGoal(goalId)) {
-        // Refresh goals list
-        const updatedGoals = goalManager.getGoals();
-        setGoals(updatedGoals);
+      // Use context function
+      if (deleteGoal(goalId)) {
         setGoalToDelete(null);
         setDeleteConfirmText('');
         
-        // If the active goal was deleted, onGoalChange would have been
-        // called by the goal manager already
-        const newActiveId = goalManager.getActiveGoalId();
-        setActiveGoalId(newActiveId);
-        
+        // Handle active goal change
         if (goalId === activeGoalId && onGoalChange) {
-          onGoalChange(newActiveId);
+          const newActiveGoal = contextGoals.find(g => g.id !== goalId);
+          if (newActiveGoal) {
+            onGoalChange(newActiveGoal.id);
+          }
         }
-        
-        toast.success('Goal deleted successfully');
-      } else {
-        toast.error('Failed to delete goal');
       }
     } catch (err) {
       console.error('Error deleting goal:', err);

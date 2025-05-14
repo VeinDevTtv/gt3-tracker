@@ -25,8 +25,21 @@ const useSavingsProgress = (goalId = null) => {
     ? goals.find(g => g.id === goalId)
     : activeGoal;
   
+  // Debug state for troubleshooting
+  const DEBUG = true;
+
   useEffect(() => {
+    if (DEBUG) {
+      console.log('useSavingsProgress state:', {
+        goalId,
+        activeGoal: activeGoal ? { id: activeGoal.id, name: activeGoal.name } : null,
+        goalsCount: goals ? goals.length : 0,
+        currentGoal: currentGoal ? { id: currentGoal.id, name: currentGoal.name } : null
+      });
+    }
+  
     if (!currentGoal) {
+      if (DEBUG) console.log('useSavingsProgress: No current goal found');
       setIsLoading(false);
       return;
     }

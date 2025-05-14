@@ -10,6 +10,8 @@ import { Button } from '../ui/button';
  * Displays a horizontal map of milestone progress for a goal
  */
 const MilestoneProgressMap = ({ goalId = null, refreshKey }) => {
+  console.log('MilestoneProgressMap rendered with:', { goalId, refreshKey });
+  
   const [internalRefreshKey, setInternalRefreshKey] = useState(0);
   
   // Force refresh when refreshKey prop changes
@@ -27,6 +29,15 @@ const MilestoneProgressMap = ({ goalId = null, refreshKey }) => {
     milestones, 
     nextMilestone 
   } = useSavingsProgress(goalId);
+  
+  // Debug goal changes
+  useEffect(() => {
+    console.log('MilestoneProgressMap: Goal changed', {
+      id: goal?.id,
+      name: goal?.name,
+      target: goal?.target
+    });
+  }, [goal]);
 
   // Create default milestones if none exist
   useEffect(() => {

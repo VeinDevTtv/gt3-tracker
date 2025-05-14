@@ -947,6 +947,7 @@ export const GoalsProvider = ({ children }) => {
   const value = {
     goals,
     currentGoal: activeGoal,
+    activeGoal: activeGoal,
     isLoading,
     error,
     templates: GOAL_TEMPLATES,

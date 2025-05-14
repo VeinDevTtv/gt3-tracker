@@ -169,8 +169,19 @@ const Goals = () => {
   // Get progress for active goal
   const progress = activeGoal ? calculateProgress(activeGoal.id) : { percentComplete: 0 };
   
-  // Check if we should show an empty state
-  const showEmptyState = (!contextLoading && !activeGoal) || (goals && goals.length === 0);
+  // Debug empty state condition
+  console.log('Goals component state debug:', {
+    contextLoading,
+    isLoading,
+    activeGoal: activeGoal ? { id: activeGoal.id, name: activeGoal.name } : null,
+    goalsLength: goals ? goals.length : 0,
+    showEmptyState: (!contextLoading && !activeGoal) || (goals && goals.length === 0)
+  });
+  
+  // Check if we should show an empty state - only when fully loaded and no goals exist
+  const showEmptyState = !isLoading && !contextLoading && 
+    ((!activeGoal && (!goals || goals.length === 0)) || 
+    (goals && goals.length === 0));
   
   if (error) {
     return (
@@ -308,7 +319,11 @@ const Goals = () => {
             <TabsContent value="goals" className="space-y-6">
               {/* Milestone Progress Map */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
-                <MilestoneProgressMap key={`milestone-map-${refreshTrigger}`} refreshKey={refreshTrigger} />
+                <MilestoneProgressMap 
+                  key={`milestone-map-${refreshTrigger}`} 
+                  refreshKey={refreshTrigger}
+                  goalId={activeGoal ? activeGoal.id : null} 
+                />
               </div>
               
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
