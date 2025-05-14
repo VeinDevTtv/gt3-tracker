@@ -10,12 +10,14 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import ComingSoonPage from './pages/ComingSoonPage';
 import Charts from './pages/Charts';
+import Milestones from './pages/Milestones';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/auth/PrivateRoute';
 import NavMenu from './components/NavMenu';
 import { Toaster } from 'react-hot-toast';
 import goalManager from './services/GoalManager';
 import achievementManager from './services/AchievementManager';
+import milestoneService from './services/MilestoneService';
 import { GoalsProvider } from './contexts/GoalsContext';
 import { TooltipProvider } from './components/ui/tooltip';
 import { AIProvider } from './contexts/AIContext';
@@ -90,6 +92,7 @@ export default function GT3Tracker() {
   useEffect(() => {
     goalManager.initialize();
     achievementManager.initialize();
+    milestoneService.initialize();
     achievementManager.checkTimeBasedAchievements();
   }, []);
   
@@ -243,6 +246,7 @@ export default function GT3Tracker() {
                             description="This section is under construction. Manage goals and view achievements here soon!"
                           />
                         } />
+                        <Route path="/milestones" element={<Milestones />} />
                         <Route path="/charts" element={<Charts />} />
                         <Route path="/settings" element={
                           <Settings 
