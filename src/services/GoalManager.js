@@ -1,5 +1,6 @@
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
+import milestoneService from './MilestoneService';
 
 /**
  * GoalManager - Handles all goal-related operations
@@ -26,6 +27,9 @@ class GoalManager {
     console.log('Initializing GoalManager...');
     
     try {
+      // Initialize milestone service
+      milestoneService.initialize();
+
       // Check if we need to migrate old data
       this.migrateFromOldFormat();
       
@@ -248,46 +252,30 @@ class GoalManager {
    */
   createGoal(goalData) {
     try {
-      const goals = this.getGoals();
-      
-      // Generate unique ID and timestamps
-      const newGoalId = uuidv4();
-      const timestamp = new Date().toISOString();
-      
-      // Create new goal object with defaults for missing fields
+      // Create a new goal
       const newGoal = {
-        id: newGoalId,
-        createdAt: timestamp,
-        updatedAt: timestamp,
+        id: uuidv4(),
         name: goalData.name || 'New Goal',
-        target: goalData.target ? parseFloat(goalData.target) : 200000,
-        startDate: goalData.startDate || timestamp.split('T')[0],
-        weeks: goalData.weeks || this.createEmptyWeeks(52)
+        target: goalData.target || 0,
+        startDate: goalData.startDate || new Date().toISOString().split('T')[0],
+        deadline: goalData.deadline || null,
+        description: goalData.description || '',
+        weeks: this.createEmptyWeeks(52),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       
-      console.log('Creating new goal:', newGoal);
-      
       // Add to goals list
+      const goals = this.getGoals();
       goals.push(newGoal);
+      
+      // Save updated list
       this.saveGoals(goals);
       
-      // Set as active goal
-      this.setActiveGoal(newGoalId);
+      // Create default milestones for this goal
+      milestoneService.createDefaultMilestones(newGoal.id, newGoal.target);
       
-      // Trigger achievement check
-      try {
-        const achievementManager = require('./AchievementManager').default;
-        if (achievementManager) {
-          achievementManager.checkForAchievements({
-            goals: goals,
-            activeGoal: newGoal
-          });
-        }
-      } catch (err) {
-        console.log('Could not check achievements when creating goal:', err);
-      }
-      
-      return newGoalId;
+      return newGoal.id;
     } catch (error) {
       console.error('Error creating goal:', error);
       return null;
@@ -299,53 +287,39 @@ class GoalManager {
    */
   updateGoal(goalId, updates) {
     try {
+      // Get current goals
       const goals = this.getGoals();
-      const goalIndex = goals.findIndex(goal => goal.id === goalId);
       
+      // Find the goal to update
+      const goalIndex = goals.findIndex(goal => goal.id === goalId);
       if (goalIndex === -1) {
-        console.error(`Goal with ID ${goalId} not found`);
+        console.error('Goal not found:', goalId);
         return false;
       }
       
-      // Process numeric values
-      const processedUpdates = { ...updates };
-      if (updates.target) {
-        processedUpdates.target = parseFloat(updates.target);
-      }
-      
-      // Process weeks
-      if (updates.weeks) {
-        processedUpdates.weeks = updates.weeks.map(week => ({
-          ...week,
-          week: parseInt(week.week) || 0,
-          profit: parseFloat(week.profit) || 0,
-          cumulative: parseFloat(week.cumulative) || 0
-        }));
-      }
+      // Store the old target amount to check if it changed
+      const oldTarget = goals[goalIndex].target;
       
       // Update the goal
       goals[goalIndex] = {
         ...goals[goalIndex],
-        ...processedUpdates,
+        ...updates,
         updatedAt: new Date().toISOString()
       };
       
-      // Save and check for achievements
+      // Update goal weeks if needed
+      if (updates.weeks) {
+        goals[goalIndex].weeks = updates.weeks;
+      }
+      
+      // Save updated goals
       this.saveGoals(goals);
       
-      // Check for achievements if weeks were updated
-      if (updates.weeks && goalId === this.getActiveGoalId()) {
-        try {
-          const achievementManager = require('./AchievementManager').default;
-          if (achievementManager) {
-            achievementManager.checkForAchievements({
-              goals: goals,
-              activeGoal: goals[goalIndex]
-            });
-          }
-        } catch (err) {
-          console.log('Could not check achievements when updating goal:', err);
-        }
+      // If target amount changed, update milestones
+      if (updates.target && updates.target !== oldTarget) {
+        // Reset and recreate milestones with the new target
+        milestoneService.resetMilestones(goalId);
+        milestoneService.createDefaultMilestones(goalId, updates.target);
       }
       
       return true;
@@ -360,22 +334,33 @@ class GoalManager {
    */
   deleteGoal(goalId) {
     try {
+      // Get current goals
       const goals = this.getGoals();
-      const filteredGoals = goals.filter(goal => goal.id !== goalId);
       
-      // Check if anything was removed
-      if (filteredGoals.length === goals.length) {
-        console.error(`Goal with ID ${goalId} not found`);
+      // Ensure we don't delete the only goal
+      if (goals.length <= 1) {
+        console.error('Cannot delete the only goal');
         return false;
       }
       
-      // If we're deleting the active goal, set a new one
+      // Filter out the goal to delete
+      const updatedGoals = goals.filter(goal => goal.id !== goalId);
+      
+      // Check if the active goal is being deleted
       const activeGoalId = this.getActiveGoalId();
+      if (activeGoalId === goalId) {
+        // Set another goal as active
+        this.setActiveGoal(updatedGoals[0].id);
+      }
       
-      this.saveGoals(filteredGoals);
+      // Save updated goals
+      this.saveGoals(updatedGoals);
       
-      if (activeGoalId === goalId && filteredGoals.length > 0) {
-        this.setActiveGoal(filteredGoals[0].id);
+      // Delete associated milestones
+      const allMilestones = milestoneService.getAllMilestones();
+      if (allMilestones[goalId]) {
+        delete allMilestones[goalId];
+        milestoneService.saveAllMilestones(allMilestones);
       }
       
       return true;
@@ -388,43 +373,75 @@ class GoalManager {
   /**
    * Update profit for a specific week
    */
-  updateWeekProfit(goalId, weekIndex, profit) {
+  updateWeekProfit(goalId, weekIndex, profit, additionalData = {}) {
     try {
+      // Get goal data
       const goal = this.getGoalById(goalId);
       if (!goal) {
-        console.error(`Goal with ID ${goalId} not found`);
+        console.error('Goal not found:', goalId);
         return false;
       }
       
-      // Ensure weeks array exists and is long enough
-      if (!goal.weeks || goal.weeks.length <= weekIndex) {
-        console.error(`Week ${weekIndex + 1} not found in goal`);
+      // Ensure weeks array exists
+      if (!goal.weeks) {
+        goal.weeks = this.createEmptyWeeks(52);
+      }
+      
+      // Ensure the weekIndex is valid
+      if (weekIndex < 0 || weekIndex >= goal.weeks.length) {
+        console.error('Invalid week index:', weekIndex);
         return false;
       }
       
-      // Parse profit as a number
-      const profitNum = parseFloat(profit) || 0;
+      // Calculate the old cumulative amount
+      const oldCumulative = goal.weeks[weekIndex].cumulative;
       
-      // Update the week's profit
-      const updatedWeeks = [...goal.weeks];
-      updatedWeeks[weekIndex] = {
-        ...updatedWeeks[weekIndex],
-        profit: profitNum,
-        week: weekIndex + 1
+      // Calculate new cumulative by adjusting all subsequent weeks
+      const profitChange = profit - goal.weeks[weekIndex].profit;
+      
+      // Update the specific week
+      goal.weeks[weekIndex] = {
+        ...goal.weeks[weekIndex],
+        profit,
+        ...additionalData,
       };
       
-      // Recalculate cumulative values
-      let cumulative = 0;
-      updatedWeeks.forEach((week, i) => {
-        cumulative += parseFloat(week.profit) || 0;
-        updatedWeeks[i].cumulative = cumulative;
-      });
+      // Recalculate all cumulative values
+      this.recalculateCumulativeValues(goal.weeks);
       
       // Update the goal
-      return this.updateGoal(goalId, { weeks: updatedWeeks });
+      const goals = this.getGoals();
+      const goalIndex = goals.findIndex(g => g.id === goalId);
+      goals[goalIndex] = {
+        ...goal,
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Save updated goals
+      this.saveGoals(goals);
+      
+      // Calculate total saved to check milestones
+      const totalSaved = goal.weeks.reduce((sum, week) => sum + (week.profit || 0), 0);
+      
+      // Check if any milestones are achieved with this update
+      milestoneService.checkMilestones(goalId, totalSaved);
+      
+      return true;
     } catch (error) {
       console.error('Error updating week profit:', error);
       return false;
+    }
+  }
+
+  /**
+   * Recalculate cumulative values for all weeks
+   * @param {Array} weeks - Array of week objects
+   */
+  recalculateCumulativeValues(weeks) {
+    let cumulativeAmount = 0;
+    for (let i = 0; i < weeks.length; i++) {
+      cumulativeAmount += (weeks[i].profit || 0);
+      weeks[i].cumulative = cumulativeAmount;
     }
   }
 
@@ -433,17 +450,27 @@ class GoalManager {
    */
   resetGoalData(goalId) {
     try {
+      // Get goal
       const goal = this.getGoalById(goalId);
       if (!goal) {
-        console.error(`Goal with ID ${goalId} not found`);
+        console.error('Goal not found:', goalId);
         return false;
       }
       
-      // Reset weeks to empty values
-      const resetWeeks = this.createEmptyWeeks(goal.weeks.length || 52);
+      // Reset weeks data
+      goal.weeks = this.createEmptyWeeks(52);
+      goal.updatedAt = new Date().toISOString();
       
-      // Update the goal
-      return this.updateGoal(goalId, { weeks: resetWeeks });
+      // Update in storage
+      const goals = this.getGoals();
+      const goalIndex = goals.findIndex(g => g.id === goalId);
+      goals[goalIndex] = goal;
+      this.saveGoals(goals);
+      
+      // Reset milestone achievements
+      milestoneService.resetMilestones(goalId);
+      
+      return true;
     } catch (error) {
       console.error('Error resetting goal data:', error);
       return false;

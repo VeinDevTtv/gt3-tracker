@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import GoalStats from '../components/GoalStats';
 import ProfitGraph from '../components/ProfitGraph';
 import WeekInput from '../components/WeekInput';
@@ -13,6 +13,7 @@ import CustomAIAssistant from '../components/CustomAIAssistant';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { checkGoalsSystemStatus, checkMilestoneProgressMapRendering } from '../utils/checks';
 
 export default function Home({
   theme,
@@ -368,6 +369,109 @@ export default function Home({
           onClose={() => setToast(null)} 
         />
       )}
+
+      {/* Add the GoalsSystemStatus component at the end of the dashboard */}
+      <GoalsSystemStatus />
     </div>
   );
-} 
+}
+
+// Status indicator component for the Goals system 
+const GoalsSystemStatus = () => {
+  const [status, setStatus] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  useEffect(() => {
+    // Run the checks
+    const goalsStatus = checkGoalsSystemStatus();
+    const milestoneMapStatus = checkMilestoneProgressMapRendering();
+    
+    setStatus({
+      goalsSystem: goalsStatus,
+      milestoneMap: milestoneMapStatus
+    });
+  }, []);
+
+  if (!status) {
+    return null;
+  }
+
+  const { goalsSystem, milestoneMap } = status;
+  
+  const getStatusColor = (statusValue) => {
+    switch (statusValue) {
+      case 'operational':
+        return 'text-green-500 dark:text-green-400';
+      case 'initialized_but_empty':
+        return 'text-yellow-500 dark:text-yellow-400';
+      case 'error':
+      case 'failed_initialization':
+        return 'text-red-500 dark:text-red-400';
+      default:
+        return 'text-gray-500 dark:text-gray-400';
+    }
+  };
+
+  return (
+    <div className="mt-4 p-4 bg-muted/20 rounded-md">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Goals System Status</h3>
+        <span className={`text-sm font-medium ${getStatusColor(goalsSystem.status)}`}>
+          {goalsSystem.status === 'operational' ? 'Operational' : 
+           goalsSystem.status === 'initialized_but_empty' ? 'Initialized (No Goals)' : 
+           goalsSystem.status === 'error' ? 'Error' : 'Not Ready'}
+        </span>
+      </div>
+      
+      <button 
+        onClick={() => setShowDetails(!showDetails)}
+        className="text-xs text-primary hover:underline mt-1"
+      >
+        {showDetails ? 'Hide Details' : 'Show Details'}
+      </button>
+      
+      {showDetails && (
+        <div className="mt-2 space-y-2 text-xs">
+          <div className="flex justify-between">
+            <span>Services Initialized:</span>
+            <span className={goalsSystem.initialized ? 'text-green-500' : 'text-red-500'}>
+              {goalsSystem.initialized ? 'Yes' : 'No'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Goals Exist:</span>
+            <span className={goalsSystem.goalsExist ? 'text-green-500' : 'text-red-500'}>
+              {goalsSystem.goalsExist ? 'Yes' : 'No'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Active Goal Set:</span>
+            <span className={goalsSystem.activeGoalSet ? 'text-green-500' : 'text-red-500'}>
+              {goalsSystem.activeGoalSet ? 'Yes' : 'No'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Milestones Exist:</span>
+            <span className={goalsSystem.milestonesExist ? 'text-green-500' : 'text-red-500'}>
+              {goalsSystem.milestonesExist ? 'Yes' : 'No'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>MilestoneProgressMap Rendering:</span>
+            <span className={milestoneMap ? 'text-green-500' : 'text-red-500'}>
+              {milestoneMap ? 'Ready' : 'Not Ready'}
+            </span>
+          </div>
+          
+          <div className="pt-2">
+            <Link to="/goals">
+              <Button size="sm" variant="outline" className="w-full">
+                Go to Goals Page
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}; 

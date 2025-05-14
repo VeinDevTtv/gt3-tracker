@@ -1,52 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Trophy, Target } from 'lucide-react';
+import { Trophy, Target, Calendar, ListChecks, Award } from 'lucide-react';
 import GoalList from '../components/GoalManager/GoalList';
+import WeeklyEntryList from '../components/GoalManager/WeeklyEntryList';
 import AchievementsList from '../components/Achievements/AchievementsList';
+import MilestoneProgressMap from '../components/milestones/MilestoneProgressMap';
 import goalManager from '../services/GoalManager';
 import achievementManager from '../services/AchievementManager';
-import { Button } from '../components/ui/button';
+import milestoneService from '../services/MilestoneService';
+import { useGoals } from '../contexts/GoalsContext';
+import { toast } from 'react-hot-toast';
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 
+/**
+ * Goals page component that displays and manages all goal-related functionality
+ */
 const Goals = () => {
+  const { activeGoal, goals, calculateProgress } = useGoals();
   const [activeTab, setActiveTab] = useState('goals');
+  const [activeSection, setActiveSection] = useState('list');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [theme, setTheme] = useState('dark'); // Default to dark theme
-  const [debugMode, setDebugMode] = useState(false);
   
-  // Handle debug mode activation (press D + E + B + U + G keys in sequence)
-  useEffect(() => {
-    const keys = [];
-    const debugCode = ['d', 'e', 'b', 'u', 'g'];
-    
-    const handleKeyPress = (e) => {
-      keys.push(e.key.toLowerCase());
-      if (keys.length > debugCode.length) {
-        keys.shift();
-      }
-      
-      if (keys.join('') === debugCode.join('')) {
-        setDebugMode(true);
-        console.log('Debug mode activated!');
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
-  
-  // Debug function to unlock all achievements
-  const unlockAllAchievements = () => {
-    try {
-      console.log('Unlocking all achievements for debugging');
-      achievementManager.debugUnlockAll();
-      setRefreshTrigger(prev => prev + 1);
-    } catch (err) {
-      console.error('Error unlocking achievements:', err);
-    }
-  };
-  
+  // Initialize on component mount
   useEffect(() => {
     try {
       console.log('Goals component mounted');
@@ -56,22 +34,15 @@ const Goals = () => {
       setTheme(savedTheme || 'dark');
       
       // Initialize managers on component mount
-      console.log('Initializing goal manager...');
+      console.log('Initializing services...');
       goalManager.initialize();
-      
-      console.log('Initializing achievement manager...');
       achievementManager.initialize();
+      milestoneService.initialize();
       
       // Check for achievements based on current data
-      console.log('Getting goals data...');
       const goals = goalManager.getGoals();
-      console.log('Goals:', goals);
-      
       const activeGoal = goalManager.getActiveGoal();
-      console.log('Active goal:', activeGoal);
-      
       const weeks = activeGoal?.weeks || [];
-      console.log('Weeks:', weeks);
       
       console.log('Checking for achievements...');
       achievementManager.checkForAchievements({
@@ -93,7 +64,7 @@ const Goals = () => {
     try {
       console.log('Goal changed:', goalId);
       
-      // Force a refresh on the achievements tab
+      // Force a refresh 
       setRefreshTrigger(prev => prev + 1);
       
       // Re-check achievements
@@ -107,56 +78,58 @@ const Goals = () => {
         activeGoal,
         weeks
       });
+      
+      // Show notification
+      toast.success(`Goal ${activeGoal ? `"${activeGoal.name}"` : ''} activated!`);
     } catch (err) {
       console.error('Error handling goal change:', err);
       setError(err.message || 'An error occurred updating goals');
     }
   };
   
+  // Get progress for active goal
+  const progress = activeGoal ? calculateProgress(activeGoal.id) : { percentComplete: 0 };
+  
   if (error) {
     return (
-      <div className="container max-w-4xl py-6 space-y-6">
+      <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
         <h1 className="text-2xl font-bold">Goals & Achievements</h1>
-        <div className="p-4 border border-red-300 bg-red-50 text-red-700 rounded-md">
-          <h2 className="text-lg font-semibold">Error</h2>
-          <p>{error}</p>
-        </div>
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       </div>
     );
   }
   
   if (isLoading) {
     return (
-      <div className="container max-w-4xl py-6 space-y-6">
+      <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
         <h1 className="text-2xl font-bold">Goals & Achievements</h1>
-        <div className="p-4 text-center">Loading...</div>
+        <div className="p-8 text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+          <p className="mt-4 text-muted-foreground">Loading goals and achievements...</p>
+        </div>
       </div>
     );
   }
   
   return (
-    <main className="container max-w-4xl py-6 space-y-6">
-      <h1 className="text-2xl font-bold">Goals & Achievements</h1>
-      
-      {debugMode && (
-        <div className="bg-yellow-100 border-yellow-300 border p-2 rounded-md">
-          <p className="text-yellow-800 text-sm mb-2">Debug Mode Active</p>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={unlockAllAchievements}>
-              Unlock All Achievements
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => achievementManager.resetAchievements()}>
-              Reset Achievements
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => {
-              setDebugMode(false);
-              setRefreshTrigger(prev => prev + 1);
-            }}>
-              Exit Debug Mode
-            </Button>
-          </div>
+    <main className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Goals & Achievements</h1>
+        <div className="text-sm text-muted-foreground">
+          {activeGoal ? (
+            <span>
+              <span className="font-medium">{activeGoal.name}</span>
+              <span className="mx-2">•</span>
+              <span>{Math.round(progress.percentComplete)}% complete</span>
+            </span>
+          ) : (
+            <span>No active goal</span>
+          )}
         </div>
-      )}
+      </div>
       
       <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
@@ -172,13 +145,38 @@ const Goals = () => {
         
         <div className="mt-6">
           <TabsContent value="goals" className="space-y-6">
-            <div className="bg-white dark:bg-gray-950 rounded-lg shadow p-6 border">
-              <GoalList onGoalChange={handleGoalChange} />
+            {/* Milestone Progress Map */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
+              <MilestoneProgressMap key={`milestone-map-${refreshTrigger}`} />
+            </div>
+            
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
+              {/* Sub tabs for Goal List vs Weekly Entries */}
+              <Tabs defaultValue={activeSection} onValueChange={setActiveSection} className="mb-6">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="list" className="flex items-center gap-2">
+                    <ListChecks className="h-4 w-4" /> 
+                    My Goals
+                  </TabsTrigger>
+                  <TabsTrigger value="entries" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" /> 
+                    Weekly Entries
+                  </TabsTrigger>
+                </TabsList>
+              
+                <TabsContent value="list" className="mt-4">
+                  <GoalList onGoalChange={handleGoalChange} />
+                </TabsContent>
+              
+                <TabsContent value="entries" className="mt-4">
+                  <WeeklyEntryList key={`entries-${refreshTrigger}`} />
+                </TabsContent>
+              </Tabs>
             </div>
           </TabsContent>
           
           <TabsContent value="achievements" className="space-y-6">
-            <div className="bg-white dark:bg-gray-950 rounded-lg shadow p-6 border">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
               {/* Force a refresh when tab changes or goal changes */}
               <AchievementsList key={`achievements-${refreshTrigger}`} theme={theme} />
             </div>

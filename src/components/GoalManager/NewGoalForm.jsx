@@ -4,12 +4,15 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { DialogFooter } from '../ui/dialog';
 import { formatCurrency } from '../../utils/formatters';
+import { Textarea } from '../ui/textarea';
 
 const NewGoalForm = ({ onSubmit, onCancel, initialValues, isEditing = false }) => {
   const [formValues, setFormValues] = useState({
     name: initialValues?.name || '',
     target: initialValues?.target || '',
     startDate: initialValues?.startDate || new Date().toISOString().split('T')[0],
+    deadline: initialValues?.deadline || '',
+    description: initialValues?.description || '',
   });
   
   const [errors, setErrors] = useState({});
@@ -44,6 +47,11 @@ const NewGoalForm = ({ onSubmit, onCancel, initialValues, isEditing = false }) =
       newErrors.startDate = 'Start date is required';
     }
     
+    // If deadline is provided, validate it's after start date
+    if (formValues.deadline && formValues.startDate && formValues.deadline < formValues.startDate) {
+      newErrors.deadline = 'Deadline must be after start date';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -60,6 +68,8 @@ const NewGoalForm = ({ onSubmit, onCancel, initialValues, isEditing = false }) =
       name: formValues.name.trim(),
       target: parseFloat(formValues.target),
       startDate: formValues.startDate,
+      deadline: formValues.deadline || null,
+      description: formValues.description.trim(),
     };
     
     onSubmit(goalData);
@@ -107,17 +117,46 @@ const NewGoalForm = ({ onSubmit, onCancel, initialValues, isEditing = false }) =
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="startDate">Start Date</Label>
-        <Input
-          id="startDate"
-          name="startDate"
-          type="date"
-          value={formValues.startDate}
+        <Label htmlFor="description">Description (Optional)</Label>
+        <Textarea
+          id="description"
+          name="description"
+          value={formValues.description}
           onChange={handleChange}
+          placeholder="Describe your savings goal..."
+          rows={3}
         />
-        {errors.startDate && (
-          <p className="text-sm text-destructive">{errors.startDate}</p>
-        )}
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="startDate">Start Date</Label>
+          <Input
+            id="startDate"
+            name="startDate"
+            type="date"
+            value={formValues.startDate}
+            onChange={handleChange}
+          />
+          {errors.startDate && (
+            <p className="text-sm text-destructive">{errors.startDate}</p>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="deadline">Deadline (Optional)</Label>
+          <Input
+            id="deadline"
+            name="deadline"
+            type="date"
+            value={formValues.deadline}
+            onChange={handleChange}
+            min={formValues.startDate}
+          />
+          {errors.deadline && (
+            <p className="text-sm text-destructive">{errors.deadline}</p>
+          )}
+        </div>
       </div>
       
       <DialogFooter className="mt-6">
