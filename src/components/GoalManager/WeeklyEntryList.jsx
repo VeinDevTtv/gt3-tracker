@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Edit, Trash2, Calendar, TrendingUp, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar, TrendingUp, DollarSign, Calculator } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { formatCurrency, formatDate } from '../../utils/formatters';
@@ -11,7 +11,7 @@ import { cn } from '../../lib/utils';
 /**
  * Component for displaying and managing weekly savings entries for a goal
  */
-const WeeklyEntryList = ({ goalId }) => {
+const WeeklyEntryList = ({ goalId, onEntryChange }) => {
   const { 
     updateWeekData,
     calculateProgress,
@@ -30,8 +30,12 @@ const WeeklyEntryList = ({ goalId }) => {
   
   if (!goal) {
     return (
-      <div className="text-center p-6 bg-muted/20 rounded-lg border">
-        <p>No goal selected. Please select or create a goal first.</p>
+      <div className="text-center p-12 bg-muted/20 rounded-lg border flex flex-col items-center">
+        <Calendar className="w-12 h-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium mb-2">No Active Goal Selected</h3>
+        <p className="text-muted-foreground mb-6 max-w-md">
+          Please select or create a goal to track your weekly savings entries.
+        </p>
       </div>
     );
   }
@@ -57,6 +61,11 @@ const WeeklyEntryList = ({ goalId }) => {
       setShowEntryForm(false);
       setEditingEntry(null);
       
+      // Notify parent component
+      if (onEntryChange) {
+        onEntryChange();
+      }
+      
       toast.success('Savings entry added successfully!');
     } catch (err) {
       console.error('Error adding savings entry:', err);
@@ -73,12 +82,20 @@ const WeeklyEntryList = ({ goalId }) => {
       });
       
       setEntryToDelete(null);
+      
+      // Notify parent component
+      if (onEntryChange) {
+        onEntryChange();
+      }
+      
       toast.success('Entry deleted successfully');
     } catch (err) {
       console.error('Error deleting entry:', err);
       toast.error('Failed to delete entry');
     }
   };
+  
+  const hasEntries = weeks.some(w => w.profit > 0);
   
   return (
     <div className="space-y-4">
@@ -103,7 +120,7 @@ const WeeklyEntryList = ({ goalId }) => {
         <div className="flex items-center ml-4">
           <TrendingUp className="h-4 w-4 text-muted-foreground mr-1" />
           <span className="text-sm font-medium">Progress: </span>
-          <span className="ml-1 text-sm">{Math.round(progress.percentage)}%</span>
+          <span className="ml-1 text-sm">{Math.round(progress.percentComplete)}%</span>
         </div>
         
         <div className="flex items-center ml-4">
@@ -122,17 +139,19 @@ const WeeklyEntryList = ({ goalId }) => {
       </div>
       
       <div className="space-y-2 mt-4">
-        {weeks.length === 0 || !weeks.some(w => w.profit > 0) ? (
-          <div className="text-center py-6 border rounded-lg bg-muted/20">
-            <p className="text-muted-foreground">No savings entries yet.</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add your first entry to start tracking your progress!
+        {!hasEntries ? (
+          <div className="text-center py-12 border rounded-lg bg-muted/20 flex flex-col items-center">
+            <Calculator className="w-12 h-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Savings Entries Yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              Track your progress by adding weekly savings entries. Each entry represents money you've saved toward your goal.
             </p>
             <Button 
               onClick={() => setShowEntryForm(true)} 
-              className="mt-4 bg-primary text-primary-foreground"
+              className="bg-primary text-primary-foreground"
+              size="lg"
             >
-              <Plus className="mr-1 h-4 w-4" /> Add First Entry
+              <Plus className="mr-2 h-4 w-4" /> Add First Entry
             </Button>
           </div>
         ) : (

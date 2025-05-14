@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Trophy, Target, Calendar, ListChecks, Award } from 'lucide-react';
+import { Trophy, Target, Calendar, ListChecks, Award, AlertCircle } from 'lucide-react';
 import GoalList from '../components/GoalManager/GoalList';
 import WeeklyEntryList from '../components/GoalManager/WeeklyEntryList';
 import AchievementsList from '../components/Achievements/AchievementsList';
@@ -11,35 +11,61 @@ import milestoneService from '../services/MilestoneService';
 import { useGoals } from '../contexts/GoalsContext';
 import { toast } from 'react-hot-toast';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import NewGoalForm from '../components/GoalManager/NewGoalForm';
+import { Button } from '../components/ui/button';
 
 /**
  * Goals page component that displays and manages all goal-related functionality
  */
 const Goals = () => {
-  const { activeGoal, goals, calculateProgress } = useGoals();
+  // Get global context
+  const { 
+    activeGoal, 
+    goals, 
+    calculateProgress, 
+    createDefaultGoal,
+    addGoal,
+    isLoading: contextLoading
+  } = useGoals();
+  
+  // Local state
   const [activeTab, setActiveTab] = useState('goals');
   const [activeSection, setActiveSection] = useState('list');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [theme, setTheme] = useState('dark'); // Default to dark theme
+  const [theme, setTheme] = useState('dark');
+  const [showNewGoalDialog, setShowNewGoalDialog] = useState(false);
   
+  // Force a refresh of child components
+  const refreshComponents = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
   // Initialize on component mount
   useEffect(() => {
     try {
       console.log('Goals component mounted');
       
-      // Get theme from localStorage or default to 'dark'
+      // Get theme from localStorage
       const savedTheme = localStorage.getItem('savings-tracker-theme');
       setTheme(savedTheme || 'dark');
       
-      // Initialize managers on component mount
+      // Initialize services
       console.log('Initializing services...');
       goalManager.initialize();
       achievementManager.initialize();
       milestoneService.initialize();
       
-      // Check for achievements based on current data
+      // Check if we need to create a default goal
+      const existingGoals = goalManager.getGoals();
+      if (existingGoals.length === 0) {
+        console.log('No goals found, creating default goal');
+        createDefaultGoal();
+      }
+      
+      // Check for achievements
       const goals = goalManager.getGoals();
       const activeGoal = goalManager.getActiveGoal();
       const weeks = activeGoal?.weeks || [];
@@ -57,6 +83,24 @@ const Goals = () => {
       setError(err.message || 'An error occurred loading goals');
       setIsLoading(false);
     }
+  }, [createDefaultGoal]);
+  
+  // Listen for theme changes
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const savedTheme = localStorage.getItem('savings-tracker-theme');
+      setTheme(savedTheme || 'dark');
+    };
+    
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'savings-tracker-theme') {
+        handleThemeChange();
+      }
+    });
+    
+    return () => {
+      window.removeEventListener('storage', handleThemeChange);
+    };
   }, []);
   
   // Handle goal changes (selection, creation, update, delete)
@@ -64,8 +108,8 @@ const Goals = () => {
     try {
       console.log('Goal changed:', goalId);
       
-      // Force a refresh 
-      setRefreshTrigger(prev => prev + 1);
+      // Force a refresh
+      refreshComponents();
       
       // Re-check achievements
       const goals = goalManager.getGoals();
@@ -87,14 +131,38 @@ const Goals = () => {
     }
   };
   
+  // Handle goal creation
+  const handleCreateGoal = (goalData) => {
+    try {
+      // Create the goal
+      addGoal(goalData);
+      
+      // Close the dialog
+      setShowNewGoalDialog(false);
+      
+      // Force refresh of components
+      refreshComponents();
+      
+      // Show success message
+      toast.success(`Goal "${goalData.name}" created!`);
+    } catch (err) {
+      console.error('Error creating goal:', err);
+      toast.error('Failed to create goal');
+    }
+  };
+  
   // Get progress for active goal
   const progress = activeGoal ? calculateProgress(activeGoal.id) : { percentComplete: 0 };
+  
+  // Check if we should show an empty state
+  const showEmptyState = (!contextLoading && !activeGoal) || (goals && goals.length === 0);
   
   if (error) {
     return (
       <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
         <h1 className="text-2xl font-bold">Goals & Achievements</h1>
         <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -102,13 +170,36 @@ const Goals = () => {
     );
   }
   
-  if (isLoading) {
+  if (isLoading || contextLoading) {
     return (
       <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
         <h1 className="text-2xl font-bold">Goals & Achievements</h1>
         <div className="p-8 text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
           <p className="mt-4 text-muted-foreground">Loading goals and achievements...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showEmptyState) {
+    return (
+      <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+        <h1 className="text-2xl font-bold">Goals & Achievements</h1>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Target className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">No Savings Goals</h2>
+          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+            Create your first savings goal to start tracking your progress toward your Porsche GT3 or other financial goals.
+          </p>
+          <Button 
+            onClick={() => setShowNewGoalDialog(true)}
+            className="bg-primary text-primary-foreground"
+          >
+            Create Your First Goal
+          </Button>
         </div>
       </div>
     );
@@ -165,11 +256,18 @@ const Goals = () => {
                 </TabsList>
               
                 <TabsContent value="list" className="mt-4">
-                  <GoalList onGoalChange={handleGoalChange} />
+                  <GoalList 
+                    onGoalChange={handleGoalChange}
+                    onCreateNewGoal={() => setShowNewGoalDialog(true)}
+                    refreshTrigger={refreshTrigger}
+                  />
                 </TabsContent>
               
                 <TabsContent value="entries" className="mt-4">
-                  <WeeklyEntryList key={`entries-${refreshTrigger}`} />
+                  <WeeklyEntryList 
+                    key={`entries-${refreshTrigger}`}
+                    onEntryChange={refreshComponents}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
@@ -183,6 +281,19 @@ const Goals = () => {
           </TabsContent>
         </div>
       </Tabs>
+      
+      {/* Goal Creation Dialog */}
+      <Dialog open={showNewGoalDialog} onOpenChange={setShowNewGoalDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Goal</DialogTitle>
+          </DialogHeader>
+          <NewGoalForm 
+            onSubmit={handleCreateGoal}
+            onCancel={() => setShowNewGoalDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </main>
   );
 };

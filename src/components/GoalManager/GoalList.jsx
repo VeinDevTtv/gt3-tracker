@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Trophy, Check, Edit, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, Trophy, Check, Edit, Trash2, ExternalLink, ListPlus } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { formatCurrency } from '../../utils/formatters';
@@ -10,7 +10,7 @@ import goalManager from '../../services/GoalManager';
 import NewGoalForm from './NewGoalForm';
 import { cn } from '../../lib/utils';
 
-const GoalList = ({ onGoalChange }) => {
+const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
   const [goals, setGoals] = useState([]);
   const [activeGoalId, setActiveGoalId] = useState(null);
   const [showNewGoalDialog, setShowNewGoalDialog] = useState(false);
@@ -20,7 +20,7 @@ const GoalList = ({ onGoalChange }) => {
   const [error, setError] = useState(null);
 
   // Debug flag to log state for troubleshooting
-  const DEBUG = true;
+  const DEBUG = false;
 
   useEffect(() => {
     try {
@@ -39,7 +39,7 @@ const GoalList = ({ onGoalChange }) => {
       console.error('Error loading goals:', err);
       setError('Failed to load goals');
     }
-  }, []);
+  }, [refreshTrigger, DEBUG]);
 
   // Calculate total progress for each goal
   const calculateProgress = (goal) => {
@@ -164,9 +164,18 @@ const GoalList = ({ onGoalChange }) => {
     }
   };
 
+  // Forward to parent's create goal handler if available
+  const handleNewGoalClick = () => {
+    if (onCreateNewGoal) {
+      onCreateNewGoal();
+    } else {
+      setShowNewGoalDialog(true);
+    }
+  };
+
   if (error) {
     return (
-      <div className="p-4 border border-red-300 bg-red-50 text-red-700 rounded-md">
+      <div className="p-4 border border-red-300 bg-red-50 text-red-700 rounded-md dark:bg-red-900/20 dark:border-red-800">
         <h3 className="font-semibold">Error loading goals</h3>
         <p>{error}</p>
         <Button 
@@ -185,7 +194,7 @@ const GoalList = ({ onGoalChange }) => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">My Goals</h2>
         <Button 
-          onClick={() => setShowNewGoalDialog(true)} 
+          onClick={handleNewGoalClick} 
           size="sm" 
           className="bg-primary text-primary-foreground"
         >
@@ -195,13 +204,15 @@ const GoalList = ({ onGoalChange }) => {
       
       <div className="space-y-3">
         {goals.length === 0 ? (
-          <div className="text-center py-6 border rounded-lg bg-muted/30">
-            <p>No goals yet. Create your first goal!</p>
+          <div className="text-center py-12 border rounded-lg bg-muted/30 flex flex-col items-center">
+            <ListPlus className="w-12 h-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-6">No goals yet. Create your first goal to start tracking your savings progress!</p>
             <Button 
-              onClick={() => setShowNewGoalDialog(true)} 
-              className="mt-4 bg-primary text-primary-foreground"
+              onClick={handleNewGoalClick} 
+              className="bg-primary text-primary-foreground"
+              size="lg"
             >
-              <Plus className="mr-1 h-4 w-4" /> Create Goal
+              <Plus className="mr-2 h-4 w-4" /> Create First Goal
             </Button>
           </div>
         ) : (
@@ -213,7 +224,7 @@ const GoalList = ({ onGoalChange }) => {
               <div 
                 key={goal.id} 
                 className={cn(
-                  "p-3 rounded-md border cursor-pointer transition-all",
+                  "p-4 rounded-md border cursor-pointer transition-all",
                   isActive ? "border-primary bg-primary/10" : "hover:bg-accent/50"
                 )}
                 onClick={() => !isActive && handleSelectGoal(goal.id)}
@@ -254,22 +265,25 @@ const GoalList = ({ onGoalChange }) => {
                   </div>
                 </div>
                 
-                <div className="text-sm text-muted-foreground">
-                  Target: {formatCurrency(goal.target)}
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-muted-foreground">Target:</span>
+                  <span className="font-medium">{formatCurrency(goal.target)}</span>
                 </div>
                 
-                <div className="w-full h-2 bg-secondary mt-2 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary rounded-full transition-all duration-500"
+                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-primary h-full rounded-full"
                     style={{ width: `${progress}%` }}
-                  />
+                  ></div>
                 </div>
                 
-                <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                  <span>{Math.round(progress)}% complete</span>
-                  {!isActive && (
-                    <span className="text-primary">Click to activate</span>
-                  )}
+                <div className="flex justify-between items-center mt-2 text-xs">
+                  <span className="text-muted-foreground">
+                    Started: {new Date(goal.startDate).toLocaleDateString()}
+                  </span>
+                  <span>
+                    {Math.round(progress)}% complete
+                  </span>
                 </div>
               </div>
             );
@@ -277,27 +291,32 @@ const GoalList = ({ onGoalChange }) => {
         )}
       </div>
       
-      {/* New Goal Dialog */}
-      <Dialog open={showNewGoalDialog} onOpenChange={setShowNewGoalDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Create New Goal</DialogTitle>
-          </DialogHeader>
-          <NewGoalForm onSubmit={handleCreateGoal} onCancel={() => setShowNewGoalDialog(false)} />
-        </DialogContent>
-      </Dialog>
+      {/* Create Goal Dialog */}
+      {!onCreateNewGoal && (
+        <Dialog open={showNewGoalDialog} onOpenChange={setShowNewGoalDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Create New Goal</DialogTitle>
+            </DialogHeader>
+            <NewGoalForm 
+              onSubmit={handleCreateGoal}
+              onCancel={() => setShowNewGoalDialog(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
       
       {/* Edit Goal Dialog */}
       <Dialog open={!!editingGoal} onOpenChange={(open) => !open && setEditingGoal(null)}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Edit Goal</DialogTitle>
           </DialogHeader>
           {editingGoal && (
             <NewGoalForm 
-              initialValues={editingGoal}
               onSubmit={(updates) => handleUpdateGoal(editingGoal.id, updates)}
               onCancel={() => setEditingGoal(null)}
+              initialValues={editingGoal}
               isEditing
             />
           )}
@@ -310,28 +329,31 @@ const GoalList = ({ onGoalChange }) => {
           <DialogHeader>
             <DialogTitle className="text-destructive">Delete Goal</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p>
-              Are you sure you want to delete <strong>{goalToDelete?.name}</strong>?
-              This action cannot be undone.
+          <div className="py-4">
+            <p className="mb-4">
+              Are you sure you want to delete the goal "{goalToDelete?.name}"? This action cannot be undone.
             </p>
-            
-            <div className="rounded-md bg-destructive/10 p-3 text-destructive text-sm">
-              <p>To confirm, type <strong>DELETE</strong> below:</p>
+            <div className="mb-4">
+              <Label htmlFor="confirm" className="text-sm font-medium mb-2 block">
+                Type DELETE to confirm
+              </Label>
+              <Input
+                id="confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+              />
             </div>
-            
-            <Input
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder="Type DELETE to confirm"
-            />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setGoalToDelete(null)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setGoalToDelete(null)}
+            >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => handleDeleteGoal(goalToDelete.id)}
               disabled={deleteConfirmText !== 'DELETE'}
             >

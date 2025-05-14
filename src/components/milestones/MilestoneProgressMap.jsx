@@ -1,8 +1,10 @@
-import React from 'react';
-import { Trophy, Target, Check, LucideIcon } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Trophy, Target, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { formatCurrency } from '../../utils/formatters';
 import useSavingsProgress from '../../utils/useSavingsProgress';
+import milestoneService from '../../services/MilestoneService';
+import { Button } from '../ui/button';
 
 /**
  * Displays a horizontal map of milestone progress for a goal
@@ -16,6 +18,14 @@ const MilestoneProgressMap = ({ goalId = null }) => {
     nextMilestone 
   } = useSavingsProgress(goalId);
 
+  // Create default milestones if none exist
+  useEffect(() => {
+    if (goal && (!milestones || milestones.length === 0)) {
+      console.log('No milestones found, creating defaults for goal:', goal.id);
+      milestoneService.createDefaultMilestones(goal.id, goal.target);
+    }
+  }, [goal, milestones]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40 bg-muted/20 animate-pulse rounded-lg">
@@ -26,19 +36,33 @@ const MilestoneProgressMap = ({ goalId = null }) => {
 
   if (!goal) {
     return (
-      <div className="flex items-center justify-center h-40 bg-muted/20 rounded-lg">
+      <div className="flex flex-col items-center justify-center h-40 bg-muted/20 rounded-lg">
+        <Target className="h-8 w-8 text-muted-foreground mb-2" />
         <span className="text-muted-foreground">No goal selected</span>
+        <p className="text-xs text-muted-foreground mt-1">Create or select a goal to track your milestones</p>
       </div>
     );
   }
 
-  if (milestones.length === 0) {
+  if (!milestones || milestones.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-40 bg-muted/20 rounded-lg">
-        <span className="text-muted-foreground">No milestones found</span>
-        <p className="text-sm text-muted-foreground mt-2">
-          Create milestones to track your progress
+        <Trophy className="h-8 w-8 text-muted-foreground mb-2" />
+        <span className="text-muted-foreground font-medium">Setting up milestones...</span>
+        <p className="text-xs text-muted-foreground mt-2 mb-4">
+          We're creating default milestones for your goal
         </p>
+        <Button 
+          size="sm" 
+          variant="outline"
+          onClick={() => {
+            milestoneService.createDefaultMilestones(goal.id, goal.target);
+            // Force a refresh by updating the component state
+            window.location.reload();
+          }}
+        >
+          Create Milestones Now
+        </Button>
       </div>
     );
   }
@@ -52,7 +76,7 @@ const MilestoneProgressMap = ({ goalId = null }) => {
         <div>
           <h3 className="text-lg font-medium">Milestone Progress</h3>
           <p className="text-sm text-muted-foreground">
-            {progress.percentage >= 100 
+            {progress.percentComplete >= 100 
               ? "Congratulations! You've reached your goal!"
               : nextMilestone 
                 ? `Next milestone: ${nextMilestone.title} at ${formatCurrency(nextMilestone.amount)}`
@@ -65,7 +89,7 @@ const MilestoneProgressMap = ({ goalId = null }) => {
             {formatCurrency(progress.saved)} / {formatCurrency(goal.target)}
           </div>
           <p className="text-sm text-muted-foreground">
-            {Math.round(progress.percentage)}% complete
+            {Math.round(progress.percentComplete)}% complete
           </p>
         </div>
       </div>
@@ -76,7 +100,7 @@ const MilestoneProgressMap = ({ goalId = null }) => {
         <div className="h-2 bg-muted rounded-full mb-3">
           <div 
             className="h-full bg-primary rounded-full transition-all duration-500"
-            style={{ width: `${progress.percentage > 100 ? 100 : progress.percentage}%` }}
+            style={{ width: `${progress.percentComplete > 100 ? 100 : progress.percentComplete}%` }}
           />
         </div>
         
