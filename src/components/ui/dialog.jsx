@@ -1,11 +1,17 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { cn } from "../../lib/utils";
 
 export function Dialog({ open, onOpenChange, children }) {
   if (!open) return null;
   
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+  // Using React Portal to ensure the dialog is rendered at the root level
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={(e) => {
+      if (e.target === e.currentTarget) {
+        onOpenChange(false);
+      }
+    }}>
       <div className="relative bg-white rounded-lg shadow-lg max-w-md w-full max-h-[85vh] overflow-auto dark:bg-gray-800 dark:text-white">
         {children}
         <button 
@@ -15,7 +21,8 @@ export function Dialog({ open, onOpenChange, children }) {
           ×
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

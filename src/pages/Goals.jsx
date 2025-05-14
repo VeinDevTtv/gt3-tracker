@@ -159,131 +159,190 @@ const Goals = () => {
   
   if (error) {
     return (
-      <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
-        <h1 className="text-2xl font-bold">Goals & Achievements</h1>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </div>
+      <>
+        <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+          <h1 className="text-2xl font-bold">Goals & Achievements</h1>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+        
+        {/* Always include the dialog */}
+        <Dialog open={showNewGoalDialog} onOpenChange={setShowNewGoalDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Create New Goal</DialogTitle>
+            </DialogHeader>
+            <NewGoalForm 
+              onSubmit={handleCreateGoal}
+              onCancel={() => setShowNewGoalDialog(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
   
   if (isLoading || contextLoading) {
     return (
-      <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
-        <h1 className="text-2xl font-bold">Goals & Achievements</h1>
-        <div className="p-8 text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-          <p className="mt-4 text-muted-foreground">Loading goals and achievements...</p>
+      <>
+        <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+          <h1 className="text-2xl font-bold">Goals & Achievements</h1>
+          <div className="p-8 text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+            <p className="mt-4 text-muted-foreground">Loading goals and achievements...</p>
+          </div>
         </div>
-      </div>
+        
+        {/* Always include the dialog */}
+        <Dialog open={showNewGoalDialog} onOpenChange={setShowNewGoalDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Create New Goal</DialogTitle>
+            </DialogHeader>
+            <NewGoalForm 
+              onSubmit={handleCreateGoal}
+              onCancel={() => setShowNewGoalDialog(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
   if (showEmptyState) {
     return (
-      <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
-        <h1 className="text-2xl font-bold">Goals & Achievements</h1>
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border text-center">
-          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-            <Target className="h-8 w-8 text-muted-foreground" />
+      <>
+        <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+          <h1 className="text-2xl font-bold">Goals & Achievements</h1>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Target className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">No Savings Goals</h2>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Create your first savings goal to start tracking your progress toward your Porsche GT3 or other financial goals.
+            </p>
+            <Button 
+              onClick={() => {
+                console.log('Opening new goal dialog');
+                setShowNewGoalDialog(true);
+              }}
+              className="bg-primary text-primary-foreground"
+            >
+              Create Your First Goal
+            </Button>
           </div>
-          <h2 className="text-xl font-bold mb-2">No Savings Goals</h2>
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Create your first savings goal to start tracking your progress toward your Porsche GT3 or other financial goals.
-          </p>
-          <Button 
-            onClick={() => setShowNewGoalDialog(true)}
-            className="bg-primary text-primary-foreground"
-          >
-            Create Your First Goal
-          </Button>
         </div>
-      </div>
+        
+        {/* Always include the dialog */}
+        <Dialog 
+          open={showNewGoalDialog} 
+          onOpenChange={(open) => {
+            console.log('Dialog onOpenChange:', open);
+            setShowNewGoalDialog(open);
+          }}
+        >
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Create New Goal</DialogTitle>
+            </DialogHeader>
+            <NewGoalForm 
+              onSubmit={handleCreateGoal}
+              onCancel={() => setShowNewGoalDialog(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
   
   return (
-    <main className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Goals & Achievements</h1>
-        <div className="text-sm text-muted-foreground">
-          {activeGoal ? (
-            <span>
-              <span className="font-medium">{activeGoal.name}</span>
-              <span className="mx-2">•</span>
-              <span>{Math.round(progress.percentComplete)}% complete</span>
-            </span>
-          ) : (
-            <span>No active goal</span>
-          )}
+    <>
+      <main className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Goals & Achievements</h1>
+          <div className="text-sm text-muted-foreground">
+            {activeGoal ? (
+              <span>
+                <span className="font-medium">{activeGoal.name}</span>
+                <span className="mx-2">•</span>
+                <span>{Math.round(progress.percentComplete)}% complete</span>
+              </span>
+            ) : (
+              <span>No active goal</span>
+            )}
+          </div>
         </div>
-      </div>
-      
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="goals" className="flex items-center gap-2">
-            <Target className="h-4 w-4" /> 
-            Goals
-          </TabsTrigger>
-          <TabsTrigger value="achievements" className="flex items-center gap-2">
-            <Trophy className="h-4 w-4" /> 
-            Achievements
-          </TabsTrigger>
-        </TabsList>
         
-        <div className="mt-6">
-          <TabsContent value="goals" className="space-y-6">
-            {/* Milestone Progress Map */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
-              <MilestoneProgressMap key={`milestone-map-${refreshTrigger}`} />
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
-              {/* Sub tabs for Goal List vs Weekly Entries */}
-              <Tabs defaultValue={activeSection} onValueChange={setActiveSection} className="mb-6">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="list" className="flex items-center gap-2">
-                    <ListChecks className="h-4 w-4" /> 
-                    My Goals
-                  </TabsTrigger>
-                  <TabsTrigger value="entries" className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" /> 
-                    Weekly Entries
-                  </TabsTrigger>
-                </TabsList>
-              
-                <TabsContent value="list" className="mt-4">
-                  <GoalList 
-                    onGoalChange={handleGoalChange}
-                    onCreateNewGoal={() => setShowNewGoalDialog(true)}
-                    refreshTrigger={refreshTrigger}
-                  />
-                </TabsContent>
-              
-                <TabsContent value="entries" className="mt-4">
-                  <WeeklyEntryList 
-                    key={`entries-${refreshTrigger}`}
-                    onEntryChange={refreshComponents}
-                  />
-                </TabsContent>
-              </Tabs>
-            </div>
-          </TabsContent>
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="goals" className="flex items-center gap-2">
+              <Target className="h-4 w-4" /> 
+              Goals
+            </TabsTrigger>
+            <TabsTrigger value="achievements" className="flex items-center gap-2">
+              <Trophy className="h-4 w-4" /> 
+              Achievements
+            </TabsTrigger>
+          </TabsList>
           
-          <TabsContent value="achievements" className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
-              {/* Force a refresh when tab changes or goal changes */}
-              <AchievementsList key={`achievements-${refreshTrigger}`} theme={theme} />
-            </div>
-          </TabsContent>
-        </div>
-      </Tabs>
+          <div className="mt-6">
+            <TabsContent value="goals" className="space-y-6">
+              {/* Milestone Progress Map */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
+                <MilestoneProgressMap key={`milestone-map-${refreshTrigger}`} />
+              </div>
+              
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
+                {/* Sub tabs for Goal List vs Weekly Entries */}
+                <Tabs defaultValue={activeSection} onValueChange={setActiveSection} className="mb-6">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="list" className="flex items-center gap-2">
+                      <ListChecks className="h-4 w-4" /> 
+                      My Goals
+                    </TabsTrigger>
+                    <TabsTrigger value="entries" className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" /> 
+                      Weekly Entries
+                    </TabsTrigger>
+                  </TabsList>
+                
+                  <TabsContent value="list" className="mt-4">
+                    <GoalList 
+                      onGoalChange={handleGoalChange}
+                      onCreateNewGoal={() => setShowNewGoalDialog(true)}
+                      refreshTrigger={refreshTrigger}
+                    />
+                  </TabsContent>
+                
+                  <TabsContent value="entries" className="mt-4">
+                    <WeeklyEntryList 
+                      key={`entries-${refreshTrigger}`}
+                      onEntryChange={refreshComponents}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="achievements" className="space-y-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
+                {/* Force a refresh when tab changes or goal changes */}
+                <AchievementsList key={`achievements-${refreshTrigger}`} theme={theme} />
+              </div>
+            </TabsContent>
+          </div>
+        </Tabs>
+      </main>
       
-      {/* Goal Creation Dialog */}
-      <Dialog open={showNewGoalDialog} onOpenChange={setShowNewGoalDialog}>
+      {/* Goal Creation Dialog - always in the DOM */}
+      <Dialog 
+        open={showNewGoalDialog} 
+        onOpenChange={setShowNewGoalDialog}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Create New Goal</DialogTitle>
@@ -294,7 +353,7 @@ const Goals = () => {
           />
         </DialogContent>
       </Dialog>
-    </main>
+    </>
   );
 };
 
