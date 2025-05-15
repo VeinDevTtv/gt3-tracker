@@ -190,15 +190,30 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
   
   const handleTradeEntry = (entry, weekNum) => {
     try {
+      console.log(`WeeklyEntryList handling trade entry for week ${weekNum}:`, entry);
+      
       // Add the trade entry
-      addTradeEntry(currentGoal.id, entry, weekNum);
+      const success = addTradeEntry(currentGoal.id, entry, weekNum);
       
-      // Notify parent component
-      if (onEntryChange) {
-        onEntryChange();
+      if (success) {
+        // Verify the update by checking if the profit was updated
+        const updatedGoal = goals.find(g => g.id === currentGoal.id);
+        if (updatedGoal) {
+          const weekIndex = weekNum - 1;
+          const updatedWeek = updatedGoal.weeks[weekIndex];
+          console.log(`Trade entry verification - Week ${weekNum}: Profit=${updatedWeek.profit}`);
+        }
+        
+        // Notify parent component to refresh UI
+        if (onEntryChange) {
+          console.log('Calling onEntryChange to propagate UI updates');
+          onEntryChange();
+        }
+        
+        toast.success('Trade entry added successfully!');
+      } else {
+        toast.error('Failed to add trade entry');
       }
-      
-      toast.success('Trade entry added successfully!');
     } catch (err) {
       console.error('Error adding trade entry:', err);
       toast.error('Failed to add trade entry');

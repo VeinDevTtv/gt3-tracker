@@ -22,27 +22,29 @@ export default function Home({
   toast,
   setToast,
 }) {
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { 
     goals,
     currentGoal, 
+    activeGoal,
     isLoading, 
     error, 
     updateWeekData, 
     calculateProgress,
     calculateStreakInfo,
     exportGoalAsCSV,
-    generateSharingImage
+    generateSharingImage,
+    addTradeEntry
   } = useGoals(); 
 
   console.log("Home.jsx - Current Goal from Context:", currentGoal);
 
   const [showProfitModal, setShowProfitModal] = useState(false);
-  const [profitAmount, setProfitAmount] = useState('');
   const [selectedWeek, setSelectedWeek] = useState(null);
-
-  const visibleWeeksData = visibleWeeks || 12;
+  const [profitAmount, setProfitAmount] = useState('');
+  const [visibleWeeksData, setVisibleWeeksData] = useState(parseInt(visibleWeeks) || 12);
+  const [goalDetailsUpdater, setGoalDetailsUpdater] = useState(0); // Force UI updates
 
   const goalDetails = useMemo(() => {
     if (!currentGoal) {
@@ -111,7 +113,7 @@ export default function Home({
       streakInfo: streak,
       prediction: calculatedPrediction
     };
-  }, [currentGoal, goals, calculateProgress, calculateStreakInfo]);
+  }, [currentGoal, goals, calculateProgress, calculateStreakInfo, goalDetailsUpdater]);
 
   const weeksForInput = useMemo(() => {
     const currentWeeks = goalDetails.weeks;
@@ -176,6 +178,31 @@ export default function Home({
 
   const handleGenerateImage = () => {
     generateSharingImage();
+  };
+
+  // Handle Trade Entry via Quick Entry Panel
+  const handleTradeEntry = (entry, weekNum) => {
+    if (!currentGoal) {
+      toast.error("Cannot add trade: No active goal selected.");
+      return;
+    }
+    
+    // Call addTradeEntry with validation and logging
+    console.log(`Adding trade entry to week ${weekNum}:`, entry);
+    const success = addTradeEntry(currentGoal.id, entry, weekNum);
+    
+    if (success) {
+      // Force UI refresh by updating goalDetailsUpdater state
+      setGoalDetailsUpdater(prev => prev + 1);
+      
+      // Display confirmation to user
+      toast.success(`Trade entry added to week ${weekNum}`);
+      
+      // Debug logging to confirm the update
+      console.log(`UI refreshed after trade entry. Total saved: ${calculateProgress(currentGoal.id).totalSaved}`);
+    } else {
+      toast.error("Failed to add trade entry. Please try again.");
+    }
   };
 
   if (isLoading) {
@@ -298,8 +325,10 @@ export default function Home({
             <WeekInput 
               weeks={weeksForInput}
               onProfitChange={handleWeekProfitUpdate}
+              onTradeEntry={handleTradeEntry}
               theme={theme}
               currentStreak={goalDetails.streakInfo.currentStreak}
+              goalStartDate={currentGoal.startDate}
             />
           </div>
         </div>

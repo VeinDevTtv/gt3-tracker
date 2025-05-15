@@ -37,7 +37,7 @@ export function RemindersPanel() {
           setBrowserNotificationsEnabled(true);
           toast.success('Notifications enabled!');
           // Send a test notification
-          new Notification('GT3 Tracker Notifications', {
+          new Notification('Goal Tracker Notifications', {
             body: 'You will now receive reminders about your savings goals!',
             icon: '/favicon.ico'
           });

@@ -36,7 +36,7 @@ const NavMenu = ({ theme, toggleTheme }) => {
     <header className="sticky top-0 z-30 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link to="/" className="font-bold text-xl text-primary-color">GT3 Tracker</Link>
+          <Link to="/" className="font-bold text-xl text-primary-color">Goal Tracker</Link>
           
           {/* Goal selector (only on desktop) */}
           {currentUser && (

@@ -121,7 +121,7 @@ class NotificationService {
     
     // Send browser notification if supported
     if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('GT3 Tracker Reminder', {
+      new Notification('Goal Tracker Reminder', {
         body: reminder.title,
         icon: '/favicon.ico'
       });

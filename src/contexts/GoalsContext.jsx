@@ -575,9 +575,13 @@ export const GoalsProvider = ({ children }) => {
   // Add a trade entry to a specific week
   const addTradeEntry = (goalId, entry, weekNum) => {
     try {
+      console.log(`--- Starting addTradeEntry ---`);
+      console.log(`Goal ID: ${goalId}, Week: ${weekNum}, Amount: ${entry.amount}`);
+      
       const goal = goals.find(g => g.id === goalId);
       
       if (!goal) {
+        console.error('Goal not found:', goalId);
         toast.error('Goal not found');
         return false;
       }
@@ -588,9 +592,14 @@ export const GoalsProvider = ({ children }) => {
       // Ensure weekNum is valid (1-based)
       const weekIndex = weekNum - 1;
       if (weekIndex < 0 || weekIndex >= updatedWeeks.length) {
+        console.error(`Invalid week index: ${weekIndex} (from weekNum ${weekNum})`);
         toast.error('Invalid week number');
         return false;
       }
+      
+      // Store pre-update values for validation
+      const originalProfit = updatedWeeks[weekIndex].profit || 0;
+      const originalCumulative = updatedWeeks[weekIndex].cumulative || 0;
       
       // Ensure entries array exists
       if (!updatedWeeks[weekIndex].entries) {
@@ -617,6 +626,14 @@ export const GoalsProvider = ({ children }) => {
           : updatedWeeks[i].profit;
       }
       
+      // Validate that profit was updated
+      const profitDifference = weekTotalProfit - originalProfit;
+      if (Math.abs(profitDifference) < 0.001) {
+        // If profit didn't change as expected, log a warning
+        console.warn(`WARNING: Week ${weekNum} profit did not change after adding entry.`);
+        console.warn(`Original: ${originalProfit}, New: ${weekTotalProfit}, Entry Amount: ${entry.amount}`);
+      }
+      
       // Get last milestone
       const lastMilestoneObject = goal.lastMilestone || null;
       
@@ -634,6 +651,11 @@ export const GoalsProvider = ({ children }) => {
         }
       }
       
+      // Log the update details before saving
+      console.log(`Week ${weekNum} before update: Profit=${originalProfit}, Cumulative=${originalCumulative}`);
+      console.log(`Week ${weekNum} after update: Profit=${weekTotalProfit}, Cumulative=${updatedWeeks[weekIndex].cumulative}`);
+      console.log(`Entry added: ${JSON.stringify(entry)}`);
+      
       // Save the updated goal
       const success = goalManager.updateGoal(goalId, {
         weeks: updatedWeeks,
@@ -643,15 +665,33 @@ export const GoalsProvider = ({ children }) => {
       if (success) {
         // Update state with fresh data from storage
         const updatedGoals = goalManager.getGoals();
-        setGoals(updatedGoals);
+        console.log(`Goals updated in storage. Re-fetched ${updatedGoals.length} goals.`);
+        
+        // Get the updated specific goal to verify changes
+        const updatedGoal = updatedGoals.find(g => g.id === goalId);
+        if (updatedGoal) {
+          const updatedWeek = updatedGoal.weeks[weekIndex];
+          console.log(`Verification - Week ${weekNum} after storage: Profit=${updatedWeek.profit}, Cumulative=${updatedWeek.cumulative}`);
+          
+          // Check if the update was successful
+          if (Math.abs(updatedWeek.profit - weekTotalProfit) > 0.001) {
+            console.error(`ERROR: Week profit not updated correctly in storage!`);
+            console.error(`Expected: ${weekTotalProfit}, Got: ${updatedWeek.profit}`);
+          }
+        }
+        
+        // Update state with fresh data
+        setGoals([...updatedGoals]);
         
         // If we're updating the active goal, refresh it
         if (activeGoal && activeGoal.id === goalId) {
-          setActiveGoal(goalManager.getActiveGoal());
+          const refreshedActiveGoal = goalManager.getActiveGoal();
+          setActiveGoal({...refreshedActiveGoal}); // Force new reference
         }
         
         // Log the update for debugging
         console.log(`Trade entry added to week ${weekNum}. Updated profit: ${weekTotalProfit}, Cumulative: ${updatedWeeks[weekIndex].cumulative}`);
+        console.log(`--- Finished addTradeEntry ---`);
         
         // Show milestone toast if there's a new milestone
         if (newMilestone) {
@@ -663,6 +703,7 @@ export const GoalsProvider = ({ children }) => {
         
         return true;
       } else {
+        console.error(`Failed to update goal in storage!`);
         toast.error('Failed to add trade entry');
         return false;
       }
@@ -1083,7 +1124,7 @@ export const GoalsProvider = ({ children }) => {
         </div>
 
         <div style="flex-shrink: 0; text-align: center; font-size: 11px; color: ${mutedTextColor}; opacity: 0.7;">
-             GT3 Tracker
+             Goal Tracker
         </div>
     `;
 
