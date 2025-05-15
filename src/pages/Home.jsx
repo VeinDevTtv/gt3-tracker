@@ -187,8 +187,10 @@ export default function Home({
       return;
     }
     
+    console.log(`Home.jsx: Adding trade entry to week ${weekNum} for goal ${currentGoal.name} (${currentGoal.id}):`);
+    console.log('Trade details:', entry);
+    
     // Call addTradeEntry with validation and logging
-    console.log(`Adding trade entry to week ${weekNum}:`, entry);
     const success = addTradeEntry(currentGoal.id, entry, weekNum);
     
     if (success) {
@@ -198,8 +200,17 @@ export default function Home({
       // Display confirmation to user
       toast.success(`Trade entry added to week ${weekNum}`);
       
-      // Debug logging to confirm the update
-      console.log(`UI refreshed after trade entry. Total saved: ${calculateProgress(currentGoal.id).totalSaved}`);
+      // Debug logging to confirm the update was applied
+      setTimeout(() => {
+        // Get fresh progress data to verify the update
+        const updatedProgress = calculateProgress(currentGoal.id);
+        console.log('Home.jsx: Verification after trade entry:');
+        console.log(`- Total saved: ${updatedProgress.totalSaved}`);
+        console.log(`- Progress %: ${updatedProgress.percentComplete.toFixed(2)}%`);
+        
+        // Force another UI refresh after a short delay
+        setGoalDetailsUpdater(prev => prev + 1);
+      }, 200);
     } else {
       toast.error("Failed to add trade entry. Please try again.");
     }

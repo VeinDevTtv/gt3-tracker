@@ -66,7 +66,9 @@ const WeekInput = ({
   const handleQuickEntrySubmit = (e) => {
     e.preventDefault();
     
+    // Validate input
     if (!quickEntry.amount || isNaN(parseFloat(quickEntry.amount))) {
+      alert("Please enter a valid amount");
       return;
     }
     
@@ -82,6 +84,8 @@ const WeekInput = ({
     if (weekNum < 1) weekNum = 1;
     if (weekNum > weeks.length) weekNum = weeks.length;
     
+    console.log(`WeekInput: Creating trade entry for Week ${weekNum}`);
+    
     // Create the entry with timestamp
     const entry = {
       timestamp: new Date().toISOString(),
@@ -90,21 +94,33 @@ const WeekInput = ({
       week: weekNum
     };
     
-    // Call the entry handler
+    // Call the entry handler with better error handling
     if (onTradeEntry) {
-      onTradeEntry(entry, weekNum);
-    }
-    
-    // Reset the form
-    setQuickEntry({
-      amount: '',
-      note: '',
-      selectedWeek: 'current'
-    });
-    
-    // Focus back on the amount input for quick successive entries
-    if (inputRef.current) {
-      inputRef.current.focus();
+      try {
+        console.log(`WeekInput: Submitting trade entry:`, entry);
+        onTradeEntry(entry, weekNum);
+        
+        // Provide user feedback
+        console.log(`WeekInput: Trade entry submitted for Week ${weekNum}`);
+        
+        // Reset the form
+        setQuickEntry({
+          amount: '',
+          note: '',
+          selectedWeek: 'current'
+        });
+        
+        // Focus back on the amount input for quick successive entries
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      } catch (error) {
+        console.error('Error submitting trade entry:', error);
+        alert(`Failed to add trade entry: ${error.message}`);
+      }
+    } else {
+      console.error('WeekInput: onTradeEntry handler is not defined');
+      alert("Trade entry handler is not available. Please try again later.");
     }
     
     setIsSubmitting(false);

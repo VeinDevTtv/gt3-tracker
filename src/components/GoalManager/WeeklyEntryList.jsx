@@ -190,33 +190,69 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
   
   const handleTradeEntry = (entry, weekNum) => {
     try {
-      console.log(`WeeklyEntryList handling trade entry for week ${weekNum}:`, entry);
+      console.log(`WeeklyEntryList: Processing trade entry for Week ${weekNum} in goal ${currentGoal.name} (${currentGoal.id})`);
+      console.log(`Entry amount: ${entry.amount}, Note: ${entry.note || 'none'}`);
       
-      // Add the trade entry
+      // Validate goal consistency
+      if (!currentGoal || !currentGoal.id) {
+        console.error('WeeklyEntryList: Cannot add trade - no current goal');
+        toast.error('No active goal selected');
+        return false;
+      }
+      
+      // Store initial values for verification
+      const originalWeeks = JSON.parse(JSON.stringify(currentGoal.weeks || []));
+      const weekIndex = weekNum - 1;
+      const originalProfit = weekIndex >= 0 && weekIndex < originalWeeks.length 
+        ? originalWeeks[weekIndex].profit || 0 
+        : 0;
+      
+      // Add the trade entry with full logging
+      console.log(`WeeklyEntryList: Calling addTradeEntry for goal ${currentGoal.id}`);
       const success = addTradeEntry(currentGoal.id, entry, weekNum);
       
       if (success) {
         // Verify the update by checking if the profit was updated
+        console.log('WeeklyEntryList: Trade entry added successfully, verifying update...');
+        
+        // Get the updated goal from context
         const updatedGoal = goals.find(g => g.id === currentGoal.id);
         if (updatedGoal) {
-          const weekIndex = weekNum - 1;
           const updatedWeek = updatedGoal.weeks[weekIndex];
-          console.log(`Trade entry verification - Week ${weekNum}: Profit=${updatedWeek.profit}`);
+          console.log(`WeeklyEntryList: Verification - Week ${weekNum} profit before: ${originalProfit}, after: ${updatedWeek.profit}`);
+          
+          // Calculate difference to confirm update
+          const difference = updatedWeek.profit - originalProfit;
+          if (Math.abs(difference - entry.amount) > 0.01) {
+            console.warn(`WeeklyEntryList: Unexpected profit difference. Expected ~${entry.amount}, got ${difference}`);
+          } else {
+            console.log(`WeeklyEntryList: Profit updated correctly by ${difference}`);
+          }
         }
         
         // Notify parent component to refresh UI
         if (onEntryChange) {
-          console.log('Calling onEntryChange to propagate UI updates');
+          console.log('WeeklyEntryList: Calling onEntryChange to propagate UI updates');
           onEntryChange();
+          
+          // Call it again after a delay to ensure renders complete
+          setTimeout(() => {
+            console.log('WeeklyEntryList: Calling delayed onEntryChange for final UI sync');
+            onEntryChange();
+          }, 200);
         }
         
-        toast.success('Trade entry added successfully!');
+        toast.success(`Trade entry added to Week ${weekNum}: ${formatCurrency(entry.amount)}`);
+        return true;
       } else {
+        console.error('WeeklyEntryList: addTradeEntry returned false');
         toast.error('Failed to add trade entry');
+        return false;
       }
     } catch (err) {
-      console.error('Error adding trade entry:', err);
+      console.error('WeeklyEntryList: Error adding trade entry:', err);
       toast.error('Failed to add trade entry');
+      return false;
     }
   };
   
@@ -274,6 +310,16 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
   
   // Check if any weeks are filled (have a profit value > 0)
   const hasEntries = weeks.some(w => w.profit > 0);
+  
+  // Helper function for consistent formatting
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD', 
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount || 0);
+  };
   
   return (
     <div className="space-y-6">
