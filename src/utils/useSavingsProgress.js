@@ -71,7 +71,7 @@ const useSavingsProgress = (goalId = null) => {
       }
       
       // Find the next milestone to reach
-      const totalSaved = progressData.saved || 0;
+      const totalSaved = progressData.totalSaved || 0;
       const milesToCheck = milestones.length > 0 ? milestones : goalMilestones;
       const upcoming = milesToCheck
         .filter(m => m.amount > totalSaved)
@@ -98,6 +98,9 @@ const useSavingsProgress = (goalId = null) => {
       const weeks = currentGoal.weeks || [];
       const weekNum = entryData.week || (Math.max(0, ...weeks.map(w => w.week)) + 1);
       
+      // Set isFilled based on profit value
+      const isFilled = parseFloat(entryData.profit) !== 0;
+      
       // Update the week data in the goal
       const success = await updateWeekData(
         currentGoal.id, 
@@ -105,7 +108,8 @@ const useSavingsProgress = (goalId = null) => {
         entryData.profit,
         {
           date: entryData.date,
-          notes: entryData.notes
+          notes: entryData.notes,
+          isFilled: isFilled
         }
       );
       

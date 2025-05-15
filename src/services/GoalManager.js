@@ -8,8 +8,8 @@ import milestoneService from './MilestoneService';
  */
 class GoalManager {
   constructor() {
-    this.GOALS_STORAGE_KEY = 'gt3_tracker_goals_v2';
-    this.ACTIVE_GOAL_KEY = 'gt3_tracker_active_goal_v2';
+    this.GOALS_STORAGE_KEY = 'gt3_tracker_goals_v3';
+    this.ACTIVE_GOAL_KEY = 'gt3_tracker_active_goal_v3';
     this.initialized = false;
 
     console.log('GoalManager created');
@@ -32,6 +32,9 @@ class GoalManager {
 
       // Check if we need to migrate old data
       this.migrateFromOldFormat();
+      
+      // Migrate to add isFilled flag to existing weeks
+      this.migrateToAddIsFilledFlag();
       
       // Ensure we have at least one goal
       const goals = this.getGoals();
@@ -92,7 +95,8 @@ class GoalManager {
     return Array.from({ length: count }, (_, i) => ({
       week: i + 1,
       profit: 0,
-      cumulative: 0
+      cumulative: 0,
+      isFilled: false
     }));
   }
 
@@ -150,6 +154,88 @@ class GoalManager {
     } catch (error) {
       console.error('Error migrating data:', error);
       // Don't throw, just continue with new empty data
+    }
+  }
+
+  /**
+   * Migrate to add isFilled flag to existing weeks
+   */
+  migrateToAddIsFilledFlag() {
+    try {
+      // Check for v2 data
+      const oldGoalsDataKey = 'gt3_tracker_goals_v2';
+      const oldActiveGoalKey = 'gt3_tracker_active_goal_v2';
+      const oldGoalsData = localStorage.getItem(oldGoalsDataKey);
+      const newGoalsData = localStorage.getItem(this.GOALS_STORAGE_KEY);
+      
+      // If we already have v3 data, don't migrate
+      if (newGoalsData) {
+        console.log('Already using latest storage format, no migration needed.');
+        return;
+      }
+      
+      if (oldGoalsData) {
+        console.log('Migrating goals from v2 to v3 to add isFilled flag...');
+        const oldGoals = JSON.parse(oldGoalsData);
+        
+        // Update each goal's weeks to include isFilled flag
+        const updatedGoals = oldGoals.map(goal => {
+          if (goal.weeks) {
+            goal.weeks = goal.weeks.map(week => ({
+              ...week,
+              isFilled: week.profit !== 0 // Set isFilled to true if profit is not 0
+            }));
+          }
+          return goal;
+        });
+        
+        // Save in new format
+        localStorage.setItem(this.GOALS_STORAGE_KEY, JSON.stringify(updatedGoals));
+        
+        // Migrate active goal
+        const oldActiveGoal = localStorage.getItem(oldActiveGoalKey);
+        if (oldActiveGoal) {
+          localStorage.setItem(this.ACTIVE_GOAL_KEY, oldActiveGoal);
+        }
+        
+        console.log('Data migrated to include isFilled flag successfully!');
+        return;
+      }
+      
+      // Check for v1 data if v2 doesn't exist
+      const v1GoalsDataKey = 'gt3_tracker_goals';
+      const v1ActiveGoalKey = 'gt3_tracker_active_goal';
+      const v1GoalsData = localStorage.getItem(v1GoalsDataKey);
+      
+      if (v1GoalsData) {
+        console.log('Migrating goals from v1 to v3 to add isFilled flag...');
+        const v1Goals = JSON.parse(v1GoalsData);
+        
+        // Update each goal's weeks to include isFilled flag
+        const updatedGoals = v1Goals.map(goal => {
+          if (goal.weeks) {
+            goal.weeks = goal.weeks.map(week => ({
+              ...week,
+              isFilled: week.profit !== 0 // Set isFilled to true if profit is not 0
+            }));
+          }
+          return goal;
+        });
+        
+        // Save in new format
+        localStorage.setItem(this.GOALS_STORAGE_KEY, JSON.stringify(updatedGoals));
+        
+        // Migrate active goal
+        const v1ActiveGoal = localStorage.getItem(v1ActiveGoalKey);
+        if (v1ActiveGoal) {
+          localStorage.setItem(this.ACTIVE_GOAL_KEY, v1ActiveGoal);
+        }
+        
+        console.log('Data migrated from v1 to v3 with isFilled flag successfully!');
+      }
+    } catch (error) {
+      console.error('Error migrating data to add isFilled flag:', error);
+      // Don't throw, just continue
     }
   }
 
@@ -403,6 +489,7 @@ class GoalManager {
       goal.weeks[weekIndex] = {
         ...goal.weeks[weekIndex],
         profit,
+        isFilled: profit !== 0,
         ...additionalData,
       };
       

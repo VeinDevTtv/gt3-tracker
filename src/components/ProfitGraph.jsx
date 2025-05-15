@@ -22,15 +22,22 @@ const ProfitGraph = ({ data, showCumulative, theme }) => {
     return savedShowMovingAvg === 'true';
   });
   
+  // Filter data to only include filled weeks
+  const filteredData = React.useMemo(() => {
+    if (!data || data.length === 0) return [];
+    // Use the isFilled property directly if available, or fallback to checking profit
+    return data.filter(week => week.isFilled !== undefined ? week.isFilled : week.profit !== 0);
+  }, [data]);
+  
   // Calculate moving average
   const dataWithMovingAverage = React.useMemo(() => {
-    if (!data || data.length === 0) return [];
+    if (!filteredData || filteredData.length === 0) return [];
     
-    return data.map((week, index) => {
+    return filteredData.map((week, index) => {
       // Calculate 4-week moving average
       let movingAvg = null;
       if (index >= 3) { // Need at least 4 weeks for a 4-week moving average
-        const lastFourWeeks = data.slice(index - 3, index + 1);
+        const lastFourWeeks = filteredData.slice(index - 3, index + 1);
         const sum = lastFourWeeks.reduce((acc, w) => acc + w.profit, 0);
         movingAvg = sum / 4;
       }
@@ -48,7 +55,7 @@ const ProfitGraph = ({ data, showCumulative, theme }) => {
         trend: trendValue
       };
     });
-  }, [data, showCumulative]);
+  }, [filteredData, showCumulative]);
   
   useEffect(() => {
     // Get the current theme color from CSS variables

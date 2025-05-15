@@ -167,6 +167,7 @@ const createInitialWeeks = (numberOfWeeks) => {
     week: i + 1,
     profit: 0,
     cumulative: 0,
+    isFilled: false
   }));
 };
 
@@ -464,14 +465,19 @@ export const GoalsProvider = ({ children }) => {
           profit: 0,
           cumulative: updatedWeeks.length > 0 
             ? updatedWeeks[updatedWeeks.length - 1].cumulative 
-            : 0
+            : 0,
+          isFilled: false // Default is not filled
         });
       }
       
-      // Update the profit for the specified week
+      // Parse profit value
+      const profitValue = parseFloat(profit);
+      
+      // Update the profit for the specified week and set isFilled flag
       updatedWeeks[weekIndex] = {
         ...updatedWeeks[weekIndex],
-        profit: parseFloat(profit)
+        profit: profitValue,
+        isFilled: profitValue !== 0 // Set to true for non-zero values
       };
       
       // Recalculate cumulative profits
@@ -559,17 +565,28 @@ export const GoalsProvider = ({ children }) => {
         };
       }
       
-      const weeks = goal.weeks;
+      // Filter to only consider filled weeks
+      const filledWeeks = goal.weeks.filter(week => week.isFilled);
+      
+      // If no filled weeks, return zeros
+      if (filledWeeks.length === 0) {
+        return {
+          currentStreak: 0,
+          longestStreak: 0,
+          totalWeeks: 0
+        };
+      }
+      
       let currentStreak = 0;
       let longestStreak = 0;
       let tempStreak = 0;
       
-      for (let i = 0; i < weeks.length; i++) {
-        if (weeks[i].profit > 0) {
+      for (let i = 0; i < filledWeeks.length; i++) {
+        if (filledWeeks[i].profit > 0) {
           tempStreak++;
           
           // If this is the last week or the next week breaks the streak
-          if (i === weeks.length - 1 || weeks[i+1].profit <= 0) {
+          if (i === filledWeeks.length - 1 || filledWeeks[i+1].profit <= 0) {
             currentStreak = tempStreak;
             longestStreak = Math.max(longestStreak, tempStreak);
             tempStreak = 0;
@@ -584,7 +601,7 @@ export const GoalsProvider = ({ children }) => {
       return {
         currentStreak,
         longestStreak,
-        totalWeeks: weeks.length
+        totalWeeks: filledWeeks.length // Only count filled weeks
       };
     } catch (err) {
       console.error('Error calculating streak info:', err);
@@ -609,7 +626,20 @@ export const GoalsProvider = ({ children }) => {
         };
       }
       
-      const totalSaved = goal.weeks[goal.weeks.length - 1].cumulative;
+      // Filter to only consider filled weeks
+      const filledWeeks = goal.weeks.filter(week => week.isFilled);
+      
+      // If no filled weeks, return zeros
+      if (filledWeeks.length === 0) {
+        return {
+          totalSaved: 0,
+          remaining: goal ? goal.target : 0,
+          percentComplete: 0
+        };
+      }
+      
+      // Calculate totalSaved using only filled weeks
+      const totalSaved = filledWeeks.reduce((sum, week) => sum + week.profit, 0);
       const remaining = goal.target - totalSaved;
       const percentComplete = (totalSaved / goal.target) * 100;
       

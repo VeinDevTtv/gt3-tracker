@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Info, Flame } from 'lucide-react';
+import { Info, Flame, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 const getEmojiForProfit = (profit, previousProfit = 0) => {
@@ -59,6 +59,7 @@ const WeekInput = ({
             const isPartOfCurrentStreak = currentStreak > 0 && 
                                        index >= weeks.length - currentStreak && 
                                        week.profit > 0;
+            const isFilled = week.isFilled !== undefined ? week.isFilled : week.profit !== 0;
             
             return (
               <div 
@@ -66,7 +67,8 @@ const WeekInput = ({
                 className={`p-3 border rounded-lg transition-all 
                   ${theme === 'dark' ? 'border-gray-700 bg-gray-700/50' : ''} 
                   ${colorClass} 
-                  ${isPartOfCurrentStreak ? 'border-primary-color' : ''}`}
+                  ${isPartOfCurrentStreak ? 'border-primary-color' : ''}
+                  ${!isFilled ? 'opacity-70' : ''}`}
               >
                 <div className={`font-medium mb-2 flex justify-between ${theme === 'dark' ? 'text-white' : ''}`}>
                   <span>Week {week.week}</span>
@@ -85,10 +87,22 @@ const WeekInput = ({
                       placeholder="0"
                       className={`w-full ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                     />
-                    {typeof weeklyTargetAverage === 'number' && weeklyTargetAverage > 0 && (
+                    {!isFilled && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer">
+                            <AlertCircle size={16} className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>This week isn't counted until you add data.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {typeof weeklyTargetAverage === 'number' && weeklyTargetAverage > 0 && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="absolute right-7 top-1/2 -translate-y-1/2 cursor-pointer">
                             <Info size={16} className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} />
                           </div>
                         </TooltipTrigger>
