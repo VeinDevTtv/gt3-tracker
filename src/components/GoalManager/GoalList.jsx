@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Trophy, Check, Edit, Trash2, ExternalLink, ListPlus } from 'lucide-react';
+import { Plus, Trophy, Check, Edit, Trash2, ExternalLink, ListPlus, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { formatCurrency } from '../../utils/formatters';
 import { useGoals } from '../../contexts/GoalsContext';
 import NewGoalForm from './NewGoalForm';
@@ -107,6 +108,8 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
         if (goalId === activeGoalId && onGoalChange) {
           onGoalChange(goalId);
         }
+        
+        toast.success('Goal updated successfully!');
       }
     } catch (err) {
       console.error('Error updating goal:', err);
@@ -140,6 +143,8 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
             onGoalChange(newActiveGoal.id);
           }
         }
+        
+        toast.success('Goal deleted successfully!');
       }
     } catch (err) {
       console.error('Error deleting goal:', err);
@@ -298,12 +303,23 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
                   onChange={(e) => setEditingGoal({...editingGoal, target: parseFloat(e.target.value)})}
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Textarea
+                  id="description"
+                  value={editingGoal.description || ''}
+                  onChange={(e) => setEditingGoal({...editingGoal, description: e.target.value})}
+                  rows={3}
+                  placeholder="Describe your savings goal"
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingGoal(null)}>Cancel</Button>
               <Button onClick={() => handleUpdateGoal(editingGoal.id, {
                 name: editingGoal.name,
-                target: editingGoal.target
+                target: editingGoal.target,
+                description: editingGoal.description
               })}>Save Changes</Button>
             </DialogFooter>
           </DialogContent>
@@ -315,10 +331,26 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
         <Dialog open={!!goalToDelete} onOpenChange={(open) => !open && setGoalToDelete(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Delete Goal</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <span>Delete Goal</span>
+              </DialogTitle>
+              <DialogDescription className="pt-2">
+                Are you sure you want to delete "{goalToDelete.name}"? All data including milestones, 
+                weekly inputs, and achievements linked to this goal will be permanently lost.
+              </DialogDescription>
             </DialogHeader>
             <div className="py-4">
-              <p className="mb-4">Are you sure you want to delete "{goalToDelete.name}"? This action cannot be undone.</p>
+              <div className="mb-4 p-3 bg-muted/40 rounded-md border">
+                <p className="font-medium">{goalToDelete.name}</p>
+                <p className="text-sm text-muted-foreground">Target: ${goalToDelete.target.toLocaleString()}</p>
+                <div className="mt-2 w-full bg-accent h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-primary h-full" 
+                    style={{ width: `${Math.min(100, calculateProgress(goalToDelete.id).percentComplete)}%` }}
+                  ></div>
+                </div>
+              </div>
               <p className="mb-4 text-sm text-muted-foreground">Type DELETE to confirm deletion:</p>
               <Input
                 value={deleteConfirmText}
