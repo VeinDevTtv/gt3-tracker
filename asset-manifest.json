@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/gt3-tracker/static/css/main.d70b02fe.css",
-    "main.js": "/gt3-tracker/static/js/main.1c1d95b4.js",
+    "main.css": "/gt3-tracker/static/css/main.95a704a2.css",
+    "main.js": "/gt3-tracker/static/js/main.e733a82f.js",
     "index.html": "/gt3-tracker/index.html",
-    "main.d70b02fe.css.map": "/gt3-tracker/static/css/main.d70b02fe.css.map",
-    "main.1c1d95b4.js.map": "/gt3-tracker/static/js/main.1c1d95b4.js.map"
+    "main.95a704a2.css.map": "/gt3-tracker/static/css/main.95a704a2.css.map",
+    "main.e733a82f.js.map": "/gt3-tracker/static/js/main.e733a82f.js.map"
   },
   "entrypoints": [
-    "static/css/main.d70b02fe.css",
-    "static/js/main.1c1d95b4.js"
+    "static/css/main.95a704a2.css",
+    "static/js/main.e733a82f.js"
   ]
 }
