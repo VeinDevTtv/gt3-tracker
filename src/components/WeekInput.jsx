@@ -365,14 +365,26 @@ const WeekInput = ({
                                 className={`p-1 rounded-full hover:bg-opacity-10 ${
                                   theme === 'dark' ? 'hover:bg-white' : 'hover:bg-gray-700'
                                 }`}
+                                title="Edit this entry"
+                                aria-label="Edit trade entry"
                               >
                                 <Edit2 size={12} />
                               </button>
                               <button 
-                                onClick={() => onDeleteEntry && onDeleteEntry(week.week, entryIndex)}
+                                onClick={() => {
+                                  if (onDeleteEntry) {
+                                    console.log(`WeekInput: Requesting deletion of trade entry ${entryIndex} from week ${week.week}`);
+                                    onDeleteEntry(week.week, entryIndex);
+                                  } else {
+                                    console.error('WeekInput: onDeleteEntry handler is not defined');
+                                    alert('Delete functionality is not available');
+                                  }
+                                }}
                                 className={`p-1 rounded-full hover:bg-opacity-10 ${
                                   theme === 'dark' ? 'hover:bg-white text-red-400' : 'hover:bg-gray-700 text-red-500'
                                 }`}
+                                title="Delete this entry"
+                                aria-label="Delete trade entry"
                               >
                                 <Trash size={12} />
                               </button>

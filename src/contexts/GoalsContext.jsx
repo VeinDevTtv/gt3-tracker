@@ -739,35 +739,60 @@ export const GoalsProvider = ({ children }) => {
   // Update a trade entry
   const updateTradeEntry = (goalId, weekNum, entryIndex, updatedEntry) => {
     try {
-      const goal = goals.find(g => g.id === goalId);
+      console.log(`--- Starting updateTradeEntry ---`);
+      console.log(`Goal ID: ${goalId}, Week: ${weekNum}, Entry Index: ${entryIndex}`);
+      console.log(`Updated entry data:`, updatedEntry);
+      
+      // Make sure we're using the most up-to-date goals data
+      const freshGoals = goalManager.getGoals();
+      const goal = freshGoals.find(g => g.id === goalId);
       
       if (!goal) {
+        console.error(`Goal not found: ${goalId}`);
         toast.error('Goal not found');
         return false;
       }
       
-      // Create a copy of weeks
-      let updatedWeeks = [...(goal.weeks || [])];
+      // Log the active goal ID for comparison
+      console.log(`Active goal ID: ${activeGoal?.id}`);
+      if (goalId !== activeGoal?.id) {
+        console.warn(`Warning: Updating trade in goal ${goalId} but active goal is ${activeGoal?.id}`);
+      }
+      
+      // Create a deep copy of weeks to avoid mutation issues
+      let updatedWeeks = JSON.parse(JSON.stringify(goal.weeks || []));
       
       // Ensure weekNum is valid (1-based)
       const weekIndex = weekNum - 1;
       if (weekIndex < 0 || weekIndex >= updatedWeeks.length) {
+        console.error(`Invalid week index: ${weekIndex} (from weekNum ${weekNum})`);
         toast.error('Invalid week number');
         return false;
       }
       
       // Ensure entries array exists
       if (!updatedWeeks[weekIndex].entries || 
+          !Array.isArray(updatedWeeks[weekIndex].entries) ||
           entryIndex < 0 || 
           entryIndex >= updatedWeeks[weekIndex].entries.length) {
+        console.error(`Entry not found at index ${entryIndex} in week ${weekNum}`);
+        console.log(`Week has ${updatedWeeks[weekIndex].entries?.length || 0} entries`);
         toast.error('Entry not found');
         return false;
       }
       
-      // Update the entry
+      // Store original values for validation
+      const originalEntry = updatedWeeks[weekIndex].entries[entryIndex];
+      const originalProfit = updatedWeeks[weekIndex].profit || 0;
+      console.log(`Original entry:`, originalEntry);
+      console.log(`Original week profit: ${originalProfit}`);
+      
+      // Update the entry - ensure all original properties are preserved
       updatedWeeks[weekIndex].entries[entryIndex] = {
-        ...updatedWeeks[weekIndex].entries[entryIndex],
-        ...updatedEntry
+        ...originalEntry,
+        ...updatedEntry,
+        // Ensure the timestamp is preserved or updated
+        timestamp: updatedEntry.timestamp || originalEntry.timestamp || new Date().toISOString()
       };
       
       // Update the week's total profit
@@ -776,14 +801,17 @@ export const GoalsProvider = ({ children }) => {
         0
       );
       
+      // Log profit change
+      console.log(`Week profit changing from ${originalProfit} to ${weekTotalProfit}`);
+      
       updatedWeeks[weekIndex].profit = weekTotalProfit;
       updatedWeeks[weekIndex].isFilled = weekTotalProfit !== 0;
       
       // Recalculate cumulative profits
+      let runningTotal = 0;
       for (let i = 0; i < updatedWeeks.length; i++) {
-        updatedWeeks[i].cumulative = i > 0 
-          ? updatedWeeks[i-1].cumulative + updatedWeeks[i].profit 
-          : updatedWeeks[i].profit;
+        runningTotal += (updatedWeeks[i].profit || 0);
+        updatedWeeks[i].cumulative = runningTotal;
       }
       
       // Get last milestone
@@ -791,36 +819,59 @@ export const GoalsProvider = ({ children }) => {
       
       // Check for milestones
       const goalTotalProfit = updatedWeeks[updatedWeeks.length - 1].cumulative;
-      const progressPercentage = (goalTotalProfit / goal.target) * 100;
       
       let newMilestone = null;
       
       // Check for milestones if amount has changed
-      if (updatedEntry.amount !== 0) {
+      if (Math.abs((originalEntry.amount || 0) - (updatedEntry.amount || 0)) > 0.001) {
         const milestoneResult = milestoneService.checkMilestones(goalId, goalTotalProfit);
         if (milestoneResult && milestoneResult.milestone) {
           newMilestone = milestoneResult.milestone;
         }
       }
       
-      // Save the updated goal
-      const success = goalManager.updateGoal(goalId, {
+      // Create a complete updated goal object
+      const fullUpdatedGoal = {
+        ...goal,
         weeks: updatedWeeks,
-        lastMilestone: newMilestone || lastMilestoneObject
-      });
+        lastMilestone: newMilestone || lastMilestoneObject,
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Save the updated goal
+      console.log('Saving updated goal to storage...');
+      const success = goalManager.updateGoal(goalId, fullUpdatedGoal);
       
       if (success) {
-        // Update state with fresh data from storage
-        const updatedGoals = goalManager.getGoals();
-        setGoals(updatedGoals);
+        // Get fresh data after saving
+        const refreshedGoals = goalManager.getGoals();
         
-        // If we're updating the active goal, refresh it
+        // Verify the update occurred correctly
+        const verificationGoal = refreshedGoals.find(g => g.id === goalId);
+        if (verificationGoal && verificationGoal.weeks[weekIndex]) {
+          const updatedWeek = verificationGoal.weeks[weekIndex];
+          console.log(`Verification - Week ${weekNum} profit after storage: ${updatedWeek.profit}`);
+          
+          if (Math.abs(updatedWeek.profit - weekTotalProfit) > 0.001) {
+            console.error(`ERROR: Week profit not updated correctly in storage!`);
+            console.error(`Expected: ${weekTotalProfit}, Got: ${updatedWeek.profit}`);
+          }
+        }
+        
+        // Update state with brand new references to force re-render
+        setGoals([...refreshedGoals]);
+        
+        // If we're updating the active goal, refresh it too
         if (activeGoal && activeGoal.id === goalId) {
-          setActiveGoal(goalManager.getActiveGoal());
+          const refreshedActive = goalManager.getActiveGoal();
+          setActiveGoal({...refreshedActive});
+          
+          // Force a toast notification for clear user feedback
+          toast.success(`Trade entry updated: ${formatCurrency(updatedEntry.amount || 0)}`);
         }
         
         // Log the update for debugging
-        console.log(`Trade entry updated in week ${weekNum}. Updated profit: ${weekTotalProfit}, Cumulative: ${updatedWeeks[weekIndex].cumulative}`);
+        console.log(`--- Trade entry successfully updated in week ${weekNum} ---`);
         
         // Show milestone toast if there's a new milestone
         if (newMilestone) {
@@ -830,8 +881,18 @@ export const GoalsProvider = ({ children }) => {
           });
         }
         
+        // Force another refresh after a small delay to ensure UI updates
+        setTimeout(() => {
+          const afterUpdateGoals = goalManager.getGoals();
+          setGoals([...afterUpdateGoals]);
+          if (activeGoal && activeGoal.id === goalId) {
+            setActiveGoal({...goalManager.getActiveGoal()});
+          }
+        }, 100);
+        
         return true;
       } else {
+        console.error('Failed to update goal in storage');
         toast.error('Failed to update trade entry');
         return false;
       }
@@ -845,51 +906,75 @@ export const GoalsProvider = ({ children }) => {
   // Delete a trade entry
   const deleteTradeEntry = (goalId, weekNum, entryIndex) => {
     try {
-      const goal = goals.find(g => g.id === goalId);
+      console.log(`--- Starting deleteTradeEntry ---`);
+      console.log(`Goal ID: ${goalId}, Week: ${weekNum}, Entry Index: ${entryIndex}`);
+      
+      // Make sure we're using the most up-to-date goals data
+      const freshGoals = goalManager.getGoals();
+      const goal = freshGoals.find(g => g.id === goalId);
       
       if (!goal) {
+        console.error(`Goal not found: ${goalId}`);
         toast.error('Goal not found');
         return false;
       }
       
-      // Create a copy of weeks
-      let updatedWeeks = [...(goal.weeks || [])];
+      // Log the active goal ID for comparison
+      console.log(`Active goal ID: ${activeGoal?.id}`);
+      if (goalId !== activeGoal?.id) {
+        console.warn(`Warning: Deleting trade from goal ${goalId} but active goal is ${activeGoal?.id}`);
+      }
+      
+      // Create a deep copy of weeks to avoid mutation issues
+      let updatedWeeks = JSON.parse(JSON.stringify(goal.weeks || []));
       
       // Ensure weekNum is valid (1-based)
       const weekIndex = weekNum - 1;
       if (weekIndex < 0 || weekIndex >= updatedWeeks.length) {
+        console.error(`Invalid week index: ${weekIndex} (from weekNum ${weekNum})`);
         toast.error('Invalid week number');
         return false;
       }
       
       // Ensure entries array exists
       if (!updatedWeeks[weekIndex].entries || 
+          !Array.isArray(updatedWeeks[weekIndex].entries) ||
           entryIndex < 0 || 
           entryIndex >= updatedWeeks[weekIndex].entries.length) {
+        console.error(`Entry not found at index ${entryIndex} in week ${weekNum}`);
+        console.log(`Week has ${updatedWeeks[weekIndex].entries?.length || 0} entries`);
         toast.error('Entry not found');
         return false;
       }
       
-      // Store the old value for logging
-      const oldEntryAmount = updatedWeeks[weekIndex].entries[entryIndex].amount;
+      // Store the old values for validation
+      const oldEntry = updatedWeeks[weekIndex].entries[entryIndex];
+      const oldEntryAmount = oldEntry.amount;
+      const originalProfit = updatedWeeks[weekIndex].profit || 0;
+      
+      console.log(`Deleting entry:`, oldEntry);
+      console.log(`Original week profit: ${originalProfit}`);
       
       // Remove the entry
       updatedWeeks[weekIndex].entries.splice(entryIndex, 1);
       
-      // Update the week's total profit
+      // Update the week's total profit by recalculating from remaining entries
       const weekTotalProfit = updatedWeeks[weekIndex].entries.reduce(
         (sum, e) => sum + (parseFloat(e.amount) || 0), 
         0
       );
       
+      // Log profit change
+      console.log(`Week profit changing from ${originalProfit} to ${weekTotalProfit}`);
+      
       updatedWeeks[weekIndex].profit = weekTotalProfit;
       updatedWeeks[weekIndex].isFilled = weekTotalProfit !== 0;
       
       // Recalculate cumulative profits
+      let runningTotal = 0;
       for (let i = 0; i < updatedWeeks.length; i++) {
-        updatedWeeks[i].cumulative = i > 0 
-          ? updatedWeeks[i-1].cumulative + updatedWeeks[i].profit 
-          : updatedWeeks[i].profit;
+        runningTotal += (updatedWeeks[i].profit || 0);
+        updatedWeeks[i].cumulative = runningTotal;
       }
       
       // Get last milestone
@@ -898,27 +983,67 @@ export const GoalsProvider = ({ children }) => {
       // Check for milestones
       const goalTotalProfit = updatedWeeks[updatedWeeks.length - 1].cumulative;
       
-      // Save the updated goal
-      const success = goalManager.updateGoal(goalId, {
+      // Create a complete updated goal object
+      const fullUpdatedGoal = {
+        ...goal,
         weeks: updatedWeeks,
-        lastMilestone: lastMilestoneObject
-      });
+        lastMilestone: lastMilestoneObject,
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Save the updated goal
+      console.log('Saving updated goal to storage after deletion...');
+      const success = goalManager.updateGoal(goalId, fullUpdatedGoal);
       
       if (success) {
-        // Update state with fresh data from storage
-        const updatedGoals = goalManager.getGoals();
-        setGoals(updatedGoals);
+        // Get fresh data after saving
+        const refreshedGoals = goalManager.getGoals();
         
-        // If we're updating the active goal, refresh it
+        // Verify the update occurred correctly
+        const verificationGoal = refreshedGoals.find(g => g.id === goalId);
+        if (verificationGoal && verificationGoal.weeks[weekIndex]) {
+          const updatedWeek = verificationGoal.weeks[weekIndex];
+          console.log(`Verification - Week ${weekNum} profit after deletion: ${updatedWeek.profit}`);
+          
+          if (Math.abs(updatedWeek.profit - weekTotalProfit) > 0.001) {
+            console.error(`ERROR: Week profit not updated correctly in storage!`);
+            console.error(`Expected: ${weekTotalProfit}, Got: ${updatedWeek.profit}`);
+          }
+          
+          if (updatedWeek.entries.length !== goal.weeks[weekIndex].entries.length - 1) {
+            console.error(`ERROR: Entry was not properly deleted!`);
+            console.error(`Expected ${goal.weeks[weekIndex].entries.length - 1} entries, got ${updatedWeek.entries.length}`);
+          }
+        }
+        
+        // Update state with brand new references to force re-render
+        setGoals([...refreshedGoals]);
+        
+        // If we're updating the active goal, refresh it too
         if (activeGoal && activeGoal.id === goalId) {
-          setActiveGoal(goalManager.getActiveGoal());
+          const refreshedActive = goalManager.getActiveGoal();
+          setActiveGoal({...refreshedActive});
+          
+          // Force a toast notification for clear user feedback
+          toast.success(`Trade entry deleted: ${formatCurrency(oldEntryAmount || 0)}`);
         }
         
         // Log the update for debugging
-        console.log(`Trade entry deleted from week ${weekNum}. Amount removed: ${oldEntryAmount}, New week profit: ${weekTotalProfit}`);
+        console.log(`--- Trade entry successfully deleted from week ${weekNum} ---`);
+        console.log(`Amount removed: ${oldEntryAmount}, New week profit: ${weekTotalProfit}`);
+        
+        // Force another refresh after a small delay to ensure UI updates
+        setTimeout(() => {
+          const afterDeleteGoals = goalManager.getGoals();
+          setGoals([...afterDeleteGoals]);
+          if (activeGoal && activeGoal.id === goalId) {
+            setActiveGoal({...goalManager.getActiveGoal()});
+          }
+        }, 100);
         
         return true;
       } else {
+        console.error('Failed to update goal in storage after deletion');
         toast.error('Failed to delete trade entry');
         return false;
       }

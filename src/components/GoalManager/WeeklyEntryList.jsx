@@ -9,6 +9,7 @@ import WeekInput from '../WeekInput';
 import WeeklyEntryForm from './WeeklyEntryForm';
 import { Badge } from '../ui/badge';
 import { cn } from '../../lib/utils';
+import { format } from 'date-fns';
 
 /**
  * Component for displaying and managing weekly savings entries for a goal
@@ -257,53 +258,142 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
   };
   
   const handleEditTradeEntry = (weekNum, entry, entryIndex) => {
-    setTradeToEdit({
-      weekNum,
-      entry,
-      entryIndex
-    });
+    try {
+      console.log(`WeeklyEntryList: Opening edit dialog for trade in Week ${weekNum}, Index ${entryIndex}`);
+      console.log(`Entry being edited:`, entry);
+      
+      if (!currentGoal || !currentGoal.id) {
+        console.error('WeeklyEntryList: Cannot edit trade - no current goal');
+        toast.error('No active goal selected');
+        return;
+      }
+      
+      // Make sure weekNum and entryIndex are valid before setting state
+      if (weekNum <= 0 || entryIndex < 0) {
+        console.error(`WeeklyEntryList: Invalid week or entry index (Week ${weekNum}, Index ${entryIndex})`);
+        toast.error('Invalid entry selected');
+        return;
+      }
+      
+      // Set the trade to edit state which will open the edit dialog
+      setTradeToEdit({
+        weekNum,
+        entry: {...entry}, // Create a copy to avoid unintended mutation
+        entryIndex
+      });
+      
+      console.log(`WeeklyEntryList: Edit dialog opened for trade in Week ${weekNum}`);
+    } catch (err) {
+      console.error('WeeklyEntryList: Error preparing trade edit:', err);
+      toast.error('Failed to open edit dialog');
+    }
   };
   
   const handleDeleteTradeEntry = (weekNum, entryIndex) => {
     try {
-      // Delete the trade entry
-      deleteTradeEntry(currentGoal.id, weekNum, entryIndex);
+      console.log(`WeeklyEntryList: Deleting trade in Week ${weekNum}, Index ${entryIndex}`);
       
-      // Notify parent component
-      if (onEntryChange) {
-        onEntryChange();
+      if (!currentGoal || !currentGoal.id) {
+        console.error('WeeklyEntryList: Cannot delete trade - no current goal');
+        toast.error('No active goal selected');
+        return;
       }
       
-      toast.success('Trade entry deleted successfully');
+      // Confirm with the user before deleting
+      if (!window.confirm(`Are you sure you want to delete this trade entry from Week ${weekNum}?`)) {
+        console.log('WeeklyEntryList: Deletion cancelled by user');
+        return;
+      }
+      
+      // Get the entry value for notification
+      let entryAmount = 0;
+      if (currentGoal.weeks && 
+          currentGoal.weeks[weekNum-1] && 
+          currentGoal.weeks[weekNum-1].entries && 
+          currentGoal.weeks[weekNum-1].entries[entryIndex]) {
+        entryAmount = currentGoal.weeks[weekNum-1].entries[entryIndex].amount;
+      }
+      
+      console.log(`WeeklyEntryList: Calling deleteTradeEntry for Week ${weekNum}, Entry ${entryIndex}, Amount ${entryAmount}`);
+      
+      // Delete the trade entry
+      const success = deleteTradeEntry(currentGoal.id, weekNum, entryIndex);
+      
+      if (success) {
+        console.log(`WeeklyEntryList: Successfully deleted trade entry`);
+        
+        // Notify parent component to refresh UI
+        if (onEntryChange) {
+          console.log('WeeklyEntryList: Calling onEntryChange after deletion');
+          onEntryChange();
+          
+          // Call it again after a delay to ensure renders complete
+          setTimeout(() => {
+            console.log('WeeklyEntryList: Calling delayed onEntryChange after deletion');
+            onEntryChange();
+          }, 200);
+        }
+        
+        toast.success(`Trade entry deleted from Week ${weekNum}`);
+      } else {
+        console.error('WeeklyEntryList: deleteTradeEntry returned false');
+        toast.error('Failed to delete trade entry');
+      }
     } catch (err) {
-      console.error('Error deleting trade entry:', err);
+      console.error('WeeklyEntryList: Error deleting trade entry:', err);
       toast.error('Failed to delete trade entry');
     }
   };
   
   const handleSaveTradeEdit = (updatedEntry) => {
     try {
-      if (!tradeToEdit) return;
+      if (!tradeToEdit) {
+        console.error('WeeklyEntryList: Cannot save edit - no trade being edited');
+        return;
+      }
+      
+      console.log(`WeeklyEntryList: Saving trade edit for Week ${tradeToEdit.weekNum}, Index ${tradeToEdit.entryIndex}`);
+      console.log(`Updated entry:`, updatedEntry);
+      
+      if (!currentGoal || !currentGoal.id) {
+        console.error('WeeklyEntryList: Cannot save edit - no current goal');
+        toast.error('No active goal selected');
+        return;
+      }
       
       // Update the trade entry
-      updateTradeEntry(
+      const success = updateTradeEntry(
         currentGoal.id, 
         tradeToEdit.weekNum, 
         tradeToEdit.entryIndex, 
         updatedEntry
       );
       
-      // Reset edit state
-      setTradeToEdit(null);
-      
-      // Notify parent component
-      if (onEntryChange) {
-        onEntryChange();
+      if (success) {
+        console.log(`WeeklyEntryList: Successfully updated trade entry`);
+        
+        // Reset edit state
+        setTradeToEdit(null);
+        
+        // Notify parent component to refresh UI
+        if (onEntryChange) {
+          console.log('WeeklyEntryList: Calling onEntryChange after edit');
+          onEntryChange();
+          
+          // Call it again after a delay to ensure renders complete
+          setTimeout(() => {
+            console.log('WeeklyEntryList: Calling delayed onEntryChange after edit');
+            onEntryChange();
+          }, 200);
+        }
+        
+        toast.success(`Trade entry updated in Week ${tradeToEdit.weekNum}: ${formatCurrency(updatedEntry.amount)}`);
+      } else {
+        console.error('WeeklyEntryList: updateTradeEntry returned false');
+        toast.error('Failed to update trade entry');
       }
-      
-      toast.success('Trade entry updated successfully');
     } catch (err) {
-      console.error('Error updating trade entry:', err);
+      console.error('WeeklyEntryList: Error updating trade entry:', err);
       toast.error('Failed to update trade entry');
     }
   };
@@ -431,7 +521,7 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
         >
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Edit Trade Entry</DialogTitle>
+              <DialogTitle>Edit Trade Entry for Week {tradeToEdit.weekNum}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -442,15 +532,26 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
                     type="number" 
                     className="w-full pl-8 py-2 border rounded-md"
                     value={tradeToEdit.entry.amount}
-                    onChange={(e) => setTradeToEdit({
-                      ...tradeToEdit, 
-                      entry: {
-                        ...tradeToEdit.entry, 
-                        amount: parseFloat(e.target.value) || 0
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Only update if input is valid or empty
+                      if (value === '' || !isNaN(parseFloat(value))) {
+                        setTradeToEdit({
+                          ...tradeToEdit, 
+                          entry: {
+                            ...tradeToEdit.entry, 
+                            amount: value === '' ? 0 : parseFloat(value)
+                          }
+                        });
                       }
-                    })}
+                    }}
+                    placeholder="0.00"
+                    step="any"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter a positive number for profit or negative for loss
+                </p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Note</label>
@@ -464,8 +565,14 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
                       note: e.target.value
                     }
                   })}
+                  placeholder="Add details about this trade (optional)"
                   rows={3}
                 />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <p>Entry date: {tradeToEdit.entry.timestamp 
+                  ? format(new Date(tradeToEdit.entry.timestamp), 'MMM d, yyyy h:mm a')
+                  : 'No date recorded'}</p>
               </div>
             </div>
             <DialogFooter>
@@ -478,6 +585,7 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
               <Button 
                 onClick={() => handleSaveTradeEdit(tradeToEdit.entry)}
                 className="bg-primary text-primary-foreground"
+                disabled={tradeToEdit.entry.amount === undefined || isNaN(tradeToEdit.entry.amount)}
               >
                 Save Changes
               </Button>
