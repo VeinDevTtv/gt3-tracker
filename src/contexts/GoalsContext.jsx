@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import confetti from 'canvas-confetti';
 import goalManager from '../services/GoalManager';
 import achievementManager from '../services/AchievementManager';
+import milestoneService from '../services/MilestoneService';
 import html2canvas from 'html2canvas';
 
 // Create the context
@@ -282,7 +283,6 @@ export const GoalsProvider = ({ children }) => {
       
       // Create default milestones explicitly
       try {
-        const milestoneService = require('../services/MilestoneService').default;
         milestoneService.createDefaultMilestones(goalId, goalData.target);
         console.log('GoalsContext: Created default milestones for goal');
       } catch (err) {
@@ -600,35 +600,65 @@ export const GoalsProvider = ({ children }) => {
       // Add the new entry
       updatedWeeks[weekIndex].entries.push(entry);
       
-      // Update the week's total profit
-      const totalProfit = updatedWeeks[weekIndex].entries.reduce(
+      // Update the week's total profit by summing all entries
+      const weekTotalProfit = updatedWeeks[weekIndex].entries.reduce(
         (sum, e) => sum + (parseFloat(e.amount) || 0), 
         0
       );
       
-      updatedWeeks[weekIndex].profit = totalProfit;
-      updatedWeeks[weekIndex].isFilled = totalProfit !== 0;
+      // Set the updated profit and filled flag
+      updatedWeeks[weekIndex].profit = weekTotalProfit;
+      updatedWeeks[weekIndex].isFilled = weekTotalProfit !== 0;
       
-      // Recalculate cumulative profits
+      // Recalculate cumulative profits for all weeks
       for (let i = 0; i < updatedWeeks.length; i++) {
         updatedWeeks[i].cumulative = i > 0 
           ? updatedWeeks[i-1].cumulative + updatedWeeks[i].profit 
           : updatedWeeks[i].profit;
       }
       
+      // Get last milestone
+      const lastMilestoneObject = goal.lastMilestone || null;
+      
+      // Check for milestones
+      const goalTotalProfit = updatedWeeks[updatedWeeks.length - 1].cumulative;
+      const progressPercentage = (goalTotalProfit / goal.target) * 100;
+      
+      let newMilestone = null;
+      
+      // Check for milestones if total has changed
+      if (entry.amount !== 0) {
+        const milestoneResult = milestoneService.checkMilestones(goalId, goalTotalProfit);
+        if (milestoneResult && milestoneResult.milestone) {
+          newMilestone = milestoneResult.milestone;
+        }
+      }
+      
       // Save the updated goal
       const success = goalManager.updateGoal(goalId, {
-        weeks: updatedWeeks
+        weeks: updatedWeeks,
+        lastMilestone: newMilestone || lastMilestoneObject
       });
       
       if (success) {
-        // Update state
+        // Update state with fresh data from storage
         const updatedGoals = goalManager.getGoals();
         setGoals(updatedGoals);
         
         // If we're updating the active goal, refresh it
         if (activeGoal && activeGoal.id === goalId) {
           setActiveGoal(goalManager.getActiveGoal());
+        }
+        
+        // Log the update for debugging
+        console.log(`Trade entry added to week ${weekNum}. Updated profit: ${weekTotalProfit}, Cumulative: ${updatedWeeks[weekIndex].cumulative}`);
+        
+        // Show milestone toast if there's a new milestone
+        if (newMilestone) {
+          toast.success(newMilestone.message, {
+            icon: '🏆',
+            duration: 5000
+          });
         }
         
         return true;
@@ -678,13 +708,13 @@ export const GoalsProvider = ({ children }) => {
       };
       
       // Update the week's total profit
-      const totalProfit = updatedWeeks[weekIndex].entries.reduce(
+      const weekTotalProfit = updatedWeeks[weekIndex].entries.reduce(
         (sum, e) => sum + (parseFloat(e.amount) || 0), 
         0
       );
       
-      updatedWeeks[weekIndex].profit = totalProfit;
-      updatedWeeks[weekIndex].isFilled = totalProfit !== 0;
+      updatedWeeks[weekIndex].profit = weekTotalProfit;
+      updatedWeeks[weekIndex].isFilled = weekTotalProfit !== 0;
       
       // Recalculate cumulative profits
       for (let i = 0; i < updatedWeeks.length; i++) {
@@ -693,19 +723,48 @@ export const GoalsProvider = ({ children }) => {
           : updatedWeeks[i].profit;
       }
       
+      // Get last milestone
+      const lastMilestoneObject = goal.lastMilestone || null;
+      
+      // Check for milestones
+      const goalTotalProfit = updatedWeeks[updatedWeeks.length - 1].cumulative;
+      const progressPercentage = (goalTotalProfit / goal.target) * 100;
+      
+      let newMilestone = null;
+      
+      // Check for milestones if amount has changed
+      if (updatedEntry.amount !== 0) {
+        const milestoneResult = milestoneService.checkMilestones(goalId, goalTotalProfit);
+        if (milestoneResult && milestoneResult.milestone) {
+          newMilestone = milestoneResult.milestone;
+        }
+      }
+      
       // Save the updated goal
       const success = goalManager.updateGoal(goalId, {
-        weeks: updatedWeeks
+        weeks: updatedWeeks,
+        lastMilestone: newMilestone || lastMilestoneObject
       });
       
       if (success) {
-        // Update state
+        // Update state with fresh data from storage
         const updatedGoals = goalManager.getGoals();
         setGoals(updatedGoals);
         
         // If we're updating the active goal, refresh it
         if (activeGoal && activeGoal.id === goalId) {
           setActiveGoal(goalManager.getActiveGoal());
+        }
+        
+        // Log the update for debugging
+        console.log(`Trade entry updated in week ${weekNum}. Updated profit: ${weekTotalProfit}, Cumulative: ${updatedWeeks[weekIndex].cumulative}`);
+        
+        // Show milestone toast if there's a new milestone
+        if (newMilestone) {
+          toast.success(newMilestone.message, {
+            icon: '🏆',
+            duration: 5000
+          });
         }
         
         return true;
@@ -748,17 +807,20 @@ export const GoalsProvider = ({ children }) => {
         return false;
       }
       
+      // Store the old value for logging
+      const oldEntryAmount = updatedWeeks[weekIndex].entries[entryIndex].amount;
+      
       // Remove the entry
       updatedWeeks[weekIndex].entries.splice(entryIndex, 1);
       
       // Update the week's total profit
-      const totalProfit = updatedWeeks[weekIndex].entries.reduce(
+      const weekTotalProfit = updatedWeeks[weekIndex].entries.reduce(
         (sum, e) => sum + (parseFloat(e.amount) || 0), 
         0
       );
       
-      updatedWeeks[weekIndex].profit = totalProfit;
-      updatedWeeks[weekIndex].isFilled = totalProfit !== 0;
+      updatedWeeks[weekIndex].profit = weekTotalProfit;
+      updatedWeeks[weekIndex].isFilled = weekTotalProfit !== 0;
       
       // Recalculate cumulative profits
       for (let i = 0; i < updatedWeeks.length; i++) {
@@ -767,13 +829,20 @@ export const GoalsProvider = ({ children }) => {
           : updatedWeeks[i].profit;
       }
       
+      // Get last milestone
+      const lastMilestoneObject = goal.lastMilestone || null;
+      
+      // Check for milestones
+      const goalTotalProfit = updatedWeeks[updatedWeeks.length - 1].cumulative;
+      
       // Save the updated goal
       const success = goalManager.updateGoal(goalId, {
-        weeks: updatedWeeks
+        weeks: updatedWeeks,
+        lastMilestone: lastMilestoneObject
       });
       
       if (success) {
-        // Update state
+        // Update state with fresh data from storage
         const updatedGoals = goalManager.getGoals();
         setGoals(updatedGoals);
         
@@ -781,6 +850,9 @@ export const GoalsProvider = ({ children }) => {
         if (activeGoal && activeGoal.id === goalId) {
           setActiveGoal(goalManager.getActiveGoal());
         }
+        
+        // Log the update for debugging
+        console.log(`Trade entry deleted from week ${weekNum}. Amount removed: ${oldEntryAmount}, New week profit: ${weekTotalProfit}`);
         
         return true;
       } else {
