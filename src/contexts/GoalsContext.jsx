@@ -480,7 +480,8 @@ export const GoalsProvider = ({ children }) => {
           cumulative: updatedWeeks.length > 0 
             ? updatedWeeks[updatedWeeks.length - 1].cumulative 
             : 0,
-          isFilled: false // Default is not filled
+          isFilled: false, // Default is not filled
+          entries: [] // Add entries array for trade journaling
         });
       }
       
@@ -493,6 +494,11 @@ export const GoalsProvider = ({ children }) => {
         profit: profitValue,
         isFilled: profitValue !== 0 // Set to true for non-zero values
       };
+      
+      // Ensure entries array exists
+      if (!updatedWeeks[weekIndex].entries) {
+        updatedWeeks[weekIndex].entries = [];
+      }
       
       // Recalculate cumulative profits
       for (let i = 0; i < updatedWeeks.length; i++) {
@@ -562,6 +568,228 @@ export const GoalsProvider = ({ children }) => {
     } catch (err) {
       console.error('Error updating week data:', err);
       toast.error('Failed to update week data');
+      return false;
+    }
+  };
+
+  // Add a trade entry to a specific week
+  const addTradeEntry = (goalId, entry, weekNum) => {
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      
+      if (!goal) {
+        toast.error('Goal not found');
+        return false;
+      }
+      
+      // Create a copy of weeks
+      let updatedWeeks = [...(goal.weeks || [])];
+      
+      // Ensure weekNum is valid (1-based)
+      const weekIndex = weekNum - 1;
+      if (weekIndex < 0 || weekIndex >= updatedWeeks.length) {
+        toast.error('Invalid week number');
+        return false;
+      }
+      
+      // Ensure entries array exists
+      if (!updatedWeeks[weekIndex].entries) {
+        updatedWeeks[weekIndex].entries = [];
+      }
+      
+      // Add the new entry
+      updatedWeeks[weekIndex].entries.push(entry);
+      
+      // Update the week's total profit
+      const totalProfit = updatedWeeks[weekIndex].entries.reduce(
+        (sum, e) => sum + (parseFloat(e.amount) || 0), 
+        0
+      );
+      
+      updatedWeeks[weekIndex].profit = totalProfit;
+      updatedWeeks[weekIndex].isFilled = totalProfit !== 0;
+      
+      // Recalculate cumulative profits
+      for (let i = 0; i < updatedWeeks.length; i++) {
+        updatedWeeks[i].cumulative = i > 0 
+          ? updatedWeeks[i-1].cumulative + updatedWeeks[i].profit 
+          : updatedWeeks[i].profit;
+      }
+      
+      // Save the updated goal
+      const success = goalManager.updateGoal(goalId, {
+        weeks: updatedWeeks
+      });
+      
+      if (success) {
+        // Update state
+        const updatedGoals = goalManager.getGoals();
+        setGoals(updatedGoals);
+        
+        // If we're updating the active goal, refresh it
+        if (activeGoal && activeGoal.id === goalId) {
+          setActiveGoal(goalManager.getActiveGoal());
+        }
+        
+        return true;
+      } else {
+        toast.error('Failed to add trade entry');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error adding trade entry:', err);
+      toast.error('Failed to add trade entry');
+      return false;
+    }
+  };
+  
+  // Update a trade entry
+  const updateTradeEntry = (goalId, weekNum, entryIndex, updatedEntry) => {
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      
+      if (!goal) {
+        toast.error('Goal not found');
+        return false;
+      }
+      
+      // Create a copy of weeks
+      let updatedWeeks = [...(goal.weeks || [])];
+      
+      // Ensure weekNum is valid (1-based)
+      const weekIndex = weekNum - 1;
+      if (weekIndex < 0 || weekIndex >= updatedWeeks.length) {
+        toast.error('Invalid week number');
+        return false;
+      }
+      
+      // Ensure entries array exists
+      if (!updatedWeeks[weekIndex].entries || 
+          entryIndex < 0 || 
+          entryIndex >= updatedWeeks[weekIndex].entries.length) {
+        toast.error('Entry not found');
+        return false;
+      }
+      
+      // Update the entry
+      updatedWeeks[weekIndex].entries[entryIndex] = {
+        ...updatedWeeks[weekIndex].entries[entryIndex],
+        ...updatedEntry
+      };
+      
+      // Update the week's total profit
+      const totalProfit = updatedWeeks[weekIndex].entries.reduce(
+        (sum, e) => sum + (parseFloat(e.amount) || 0), 
+        0
+      );
+      
+      updatedWeeks[weekIndex].profit = totalProfit;
+      updatedWeeks[weekIndex].isFilled = totalProfit !== 0;
+      
+      // Recalculate cumulative profits
+      for (let i = 0; i < updatedWeeks.length; i++) {
+        updatedWeeks[i].cumulative = i > 0 
+          ? updatedWeeks[i-1].cumulative + updatedWeeks[i].profit 
+          : updatedWeeks[i].profit;
+      }
+      
+      // Save the updated goal
+      const success = goalManager.updateGoal(goalId, {
+        weeks: updatedWeeks
+      });
+      
+      if (success) {
+        // Update state
+        const updatedGoals = goalManager.getGoals();
+        setGoals(updatedGoals);
+        
+        // If we're updating the active goal, refresh it
+        if (activeGoal && activeGoal.id === goalId) {
+          setActiveGoal(goalManager.getActiveGoal());
+        }
+        
+        return true;
+      } else {
+        toast.error('Failed to update trade entry');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error updating trade entry:', err);
+      toast.error('Failed to update trade entry');
+      return false;
+    }
+  };
+  
+  // Delete a trade entry
+  const deleteTradeEntry = (goalId, weekNum, entryIndex) => {
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      
+      if (!goal) {
+        toast.error('Goal not found');
+        return false;
+      }
+      
+      // Create a copy of weeks
+      let updatedWeeks = [...(goal.weeks || [])];
+      
+      // Ensure weekNum is valid (1-based)
+      const weekIndex = weekNum - 1;
+      if (weekIndex < 0 || weekIndex >= updatedWeeks.length) {
+        toast.error('Invalid week number');
+        return false;
+      }
+      
+      // Ensure entries array exists
+      if (!updatedWeeks[weekIndex].entries || 
+          entryIndex < 0 || 
+          entryIndex >= updatedWeeks[weekIndex].entries.length) {
+        toast.error('Entry not found');
+        return false;
+      }
+      
+      // Remove the entry
+      updatedWeeks[weekIndex].entries.splice(entryIndex, 1);
+      
+      // Update the week's total profit
+      const totalProfit = updatedWeeks[weekIndex].entries.reduce(
+        (sum, e) => sum + (parseFloat(e.amount) || 0), 
+        0
+      );
+      
+      updatedWeeks[weekIndex].profit = totalProfit;
+      updatedWeeks[weekIndex].isFilled = totalProfit !== 0;
+      
+      // Recalculate cumulative profits
+      for (let i = 0; i < updatedWeeks.length; i++) {
+        updatedWeeks[i].cumulative = i > 0 
+          ? updatedWeeks[i-1].cumulative + updatedWeeks[i].profit 
+          : updatedWeeks[i].profit;
+      }
+      
+      // Save the updated goal
+      const success = goalManager.updateGoal(goalId, {
+        weeks: updatedWeeks
+      });
+      
+      if (success) {
+        // Update state
+        const updatedGoals = goalManager.getGoals();
+        setGoals(updatedGoals);
+        
+        // If we're updating the active goal, refresh it
+        if (activeGoal && activeGoal.id === goalId) {
+          setActiveGoal(goalManager.getActiveGoal());
+        }
+        
+        return true;
+      } else {
+        toast.error('Failed to delete trade entry');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error deleting trade entry:', err);
+      toast.error('Failed to delete trade entry');
       return false;
     }
   };
@@ -1004,6 +1232,9 @@ export const GoalsProvider = ({ children }) => {
     duplicateGoal,
     importGoal,
     updateWeekData,
+    addTradeEntry,
+    updateTradeEntry,
+    deleteTradeEntry,
     calculateStreakInfo,
     calculateProgress,
     exportGoalAsCSV,
