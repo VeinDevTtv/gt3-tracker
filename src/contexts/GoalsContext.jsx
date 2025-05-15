@@ -256,7 +256,14 @@ export const GoalsProvider = ({ children }) => {
       console.log('GoalsContext: Creating new goal with data:', goalData);
       
       // Create the goal in the manager
-      const goalId = goalManager.createGoal(goalData);
+      const goalId = goalManager.createGoal({
+        name: goalData.name || goalData.goalName,
+        target: goalData.target,
+        startDate: goalData.startDate || new Date().toISOString().split('T')[0],
+        weeks: goalData.weeks || [],
+        isCompleted: goalData.isCompleted || false,
+        description: goalData.description || ''
+      });
       
       if (!goalId) {
         console.error('GoalManager did not return a valid goal ID');
@@ -305,6 +312,13 @@ export const GoalsProvider = ({ children }) => {
       
       // Success notification
       toast.success('Goal created successfully!');
+
+      // Trigger a render cycle to ensure components update
+      setTimeout(() => {
+        const refreshedGoals = goalManager.getGoals();
+        setGoals([...refreshedGoals]);
+        setActiveGoal({...goalManager.getActiveGoal()});
+      }, 0);
       
       return goalId;
     } catch (err) {

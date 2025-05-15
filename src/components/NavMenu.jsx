@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Home, Settings, User, Menu, X, LogOut, CalendarClock, Trophy, Flag } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ThemeToggle from './ThemeToggle';
+import GoalDropdown from './GoalDropdown';
 
 const NavMenu = ({ theme, toggleTheme }) => {
   const { currentUser, logout } = useAuth();
@@ -34,7 +35,16 @@ const NavMenu = ({ theme, toggleTheme }) => {
   return (
     <header className="sticky top-0 z-30 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="font-bold text-xl text-primary-color">GT3 Tracker</Link>
+        <div className="flex items-center gap-3">
+          <Link to="/" className="font-bold text-xl text-primary-color">GT3 Tracker</Link>
+          
+          {/* Goal selector (only on desktop) */}
+          {currentUser && (
+            <div className="hidden md:block">
+              <GoalDropdown className="ml-2" />
+            </div>
+          )}
+        </div>
         
         {currentUser ? (
           <>
@@ -115,6 +125,9 @@ const NavMenu = ({ theme, toggleTheme }) => {
             
             {/* Mobile menu button */}
             <div className="flex items-center gap-2 md:hidden">
+              {/* Goal selector on mobile */}
+              <GoalDropdown />
+              
               <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
               <button 
                 className="p-2 rounded-md hover:bg-muted"

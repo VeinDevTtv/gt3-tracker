@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Plus, Edit, Trash2, Calendar, TrendingUp, DollarSign, Calculator } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -22,13 +22,28 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [entryToDelete, setEntryToDelete] = useState(null);
+  const [currentGoal, setCurrentGoal] = useState(null);
   
-  // Get the current goal data
-  const goal = goalId 
-    ? goals.find(g => g.id === goalId) 
-    : activeGoal;
+  // Get the current goal data based on goalId prop or activeGoal from context
+  useEffect(() => {
+    // First try goalId if provided
+    if (goalId) {
+      const foundGoal = goals.find(g => g.id === goalId);
+      if (foundGoal) {
+        setCurrentGoal(foundGoal);
+        return;
+      }
+    }
+    
+    // Fallback to active goal
+    if (activeGoal) {
+      setCurrentGoal(activeGoal);
+    } else {
+      setCurrentGoal(null);
+    }
+  }, [goalId, activeGoal, goals]);
   
-  if (!goal) {
+  if (!currentGoal) {
     return (
       <div className="text-center p-12 bg-muted/20 rounded-lg border flex flex-col items-center">
         <Calendar className="w-12 h-12 text-muted-foreground mb-4" />
@@ -41,10 +56,10 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
   }
   
   // Get the weeks data, sorted newest first
-  const weeks = [...(goal.weeks || [])].sort((a, b) => b.week - a.week);
+  const weeks = [...(currentGoal.weeks || [])].sort((a, b) => b.week - a.week);
   
   // Get progress data
-  const progress = calculateProgress(goal.id);
+  const progress = calculateProgress(currentGoal.id);
   
   const handleAddEntry = (entryData) => {
     try {
@@ -52,7 +67,7 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
       const weekNum = entryData.week || (Math.max(0, ...weeks.map(w => w.week)) + 1);
       
       // Update the week data
-      updateWeekData(goal.id, weekNum - 1, entryData.profit, {
+      updateWeekData(currentGoal.id, weekNum - 1, entryData.profit, {
         notes: entryData.notes,
         date: entryData.date
       });
@@ -76,7 +91,7 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
   const handleDeleteEntry = (weekIndex) => {
     try {
       // Set the entry's profit to 0
-      updateWeekData(goal.id, weekIndex, 0, {
+      updateWeekData(currentGoal.id, weekIndex, 0, {
         notes: '',
         date: null
       });
@@ -95,12 +110,13 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
     }
   };
   
+  // Check if any weeks are filled (have a profit value > 0)
   const hasEntries = weeks.some(w => w.profit > 0);
   
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Weekly Savings Entries</h3>
+        <h3 className="text-lg font-medium">Weekly Savings Entries for {currentGoal.name}</h3>
         <Button 
           onClick={() => setShowEntryForm(true)} 
           size="sm" 
@@ -114,7 +130,7 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
         <div className="flex items-center">
           <DollarSign className="h-4 w-4 text-muted-foreground mr-1" />
           <span className="text-sm font-medium">Target: </span>
-          <span className="ml-1 text-sm">{formatCurrency(goal.target)}</span>
+          <span className="ml-1 text-sm">{formatCurrency(currentGoal.target)}</span>
         </div>
         
         <div className="flex items-center ml-4">
@@ -126,14 +142,14 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
         <div className="flex items-center ml-4">
           <Calendar className="h-4 w-4 text-muted-foreground mr-1" />
           <span className="text-sm font-medium">Started: </span>
-          <span className="ml-1 text-sm">{formatDate(goal.startDate)}</span>
+          <span className="ml-1 text-sm">{formatDate(currentGoal.startDate)}</span>
         </div>
         
-        {goal.deadline && (
+        {currentGoal.deadline && (
           <div className="flex items-center ml-4">
             <Calendar className="h-4 w-4 text-muted-foreground mr-1" />
             <span className="text-sm font-medium">Deadline: </span>
-            <span className="ml-1 text-sm">{formatDate(goal.deadline)}</span>
+            <span className="ml-1 text-sm">{formatDate(currentGoal.deadline)}</span>
           </div>
         )}
       </div>

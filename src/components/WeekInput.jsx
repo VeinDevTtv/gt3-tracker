@@ -68,7 +68,7 @@ const WeekInput = ({
                   ${theme === 'dark' ? 'border-gray-700 bg-gray-700/50' : ''} 
                   ${colorClass} 
                   ${isPartOfCurrentStreak ? 'border-primary-color' : ''}
-                  ${!isFilled ? 'opacity-70' : ''}`}
+                  ${!isFilled ? 'opacity-60 border-dashed' : ''}`}
               >
                 <div className={`font-medium mb-2 flex justify-between ${theme === 'dark' ? 'text-white' : ''}`}>
                   <span>Week {week.week}</span>
@@ -95,7 +95,7 @@ const WeekInput = ({
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>This week isn't counted until you add data.</p>
+                          <p className="text-sm max-w-[200px]">This week isn't counted in progress or streak calculations. Add a non-zero value to include it.</p>
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -112,8 +112,9 @@ const WeekInput = ({
                       </Tooltip>
                     )}
                   </div>
-                  <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Cumulative: ${(typeof week.cumulative === 'number' ? week.cumulative : 0).toLocaleString()}
+                  <div className={`text-xs flex justify-between ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <span>Cumulative: ${(typeof week.cumulative === 'number' ? week.cumulative : 0).toLocaleString()}</span>
+                    {!isFilled && <span className="italic text-xs">Not counted</span>}
                   </div>
                 </div>
               </div>

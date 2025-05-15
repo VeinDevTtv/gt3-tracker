@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Trophy, Target, Calendar, ListChecks, Award, AlertCircle } from 'lucide-react';
+import { Trophy, Target, Calendar, ListChecks, Award, AlertCircle, Plus } from 'lucide-react';
 import GoalList from '../components/GoalManager/GoalList';
 import WeeklyEntryList from '../components/GoalManager/WeeklyEntryList';
 import AchievementsList from '../components/Achievements/AchievementsList';
@@ -317,14 +317,28 @@ const Goals = () => {
           
           <div className="mt-6">
             <TabsContent value="goals" className="space-y-6">
+              {/* Add button to create new goal at the top */}
+              {!showEmptyState && (
+                <div className="flex justify-end mb-6">
+                  <Button 
+                    onClick={() => setShowNewGoalDialog(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus size={16} /> Create New Goal
+                  </Button>
+                </div>
+              )}
+              
               {/* Milestone Progress Map */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
-                <MilestoneProgressMap 
-                  key={`milestone-map-${refreshTrigger}`} 
-                  refreshKey={refreshTrigger}
-                  goalId={activeGoal ? activeGoal.id : null} 
-                />
-              </div>
+              {activeGoal && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
+                  <MilestoneProgressMap 
+                    key={`milestone-map-${refreshTrigger}`} 
+                    refreshKey={refreshTrigger}
+                    goalId={activeGoal ? activeGoal.id : null} 
+                  />
+                </div>
+              )}
               
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
                 {/* Sub tabs for Goal List vs Weekly Entries */}
@@ -349,10 +363,17 @@ const Goals = () => {
                   </TabsContent>
                 
                   <TabsContent value="entries" className="mt-4">
-                    <WeeklyEntryList 
-                      key={`entries-${refreshTrigger}`}
-                      onEntryChange={refreshComponents}
-                    />
+                    {activeGoal ? (
+                      <WeeklyEntryList 
+                        key={`entries-${refreshTrigger}-${activeGoal?.id}`}
+                        goalId={activeGoal.id}
+                        onEntryChange={refreshComponents}
+                      />
+                    ) : (
+                      <div className="text-center py-12">
+                        <p className="text-muted-foreground">Select a goal to view weekly entries</p>
+                      </div>
+                    )}
                   </TabsContent>
                 </Tabs>
               </div>

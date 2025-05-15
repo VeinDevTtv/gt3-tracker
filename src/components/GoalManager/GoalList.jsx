@@ -200,7 +200,7 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
           </div>
         ) : (
           goals.map(goal => {
-            const progress = calculateProgress(goal);
+            const progress = calculateProgress(goal.id);
             const isActive = goal.id === activeGoalId;
             
             return (
@@ -218,7 +218,7 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
                       <Check className="h-4 w-4 text-primary" />
                     )}
                     <h3 className="font-medium">{goal.name}</h3>
-                    {progress >= 100 && (
+                    {progress.percentComplete >= 100 && (
                       <Trophy className="h-4 w-4 text-yellow-500" />
                     )}
                   </div>
@@ -248,25 +248,23 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Target:</span>
-                  <span className="font-medium">{formatCurrency(goal.target)}</span>
-                </div>
-                
-                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-primary h-full rounded-full"
-                    style={{ width: `${progress}%` }}
-                  ></div>
-                </div>
-                
-                <div className="flex justify-between items-center mt-2 text-xs">
-                  <span className="text-muted-foreground">
-                    Started: {new Date(goal.startDate).toLocaleDateString()}
-                  </span>
-                  <span>
-                    {Math.round(progress)}% complete
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Target</span>
+                    <span>${goal.target.toLocaleString()}</span>
+                  </div>
+                  
+                  <div className="w-full bg-accent h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-primary h-full" 
+                      style={{ width: `${Math.min(100, progress.percentComplete)}%` }}
+                    ></div>
+                  </div>
+                  
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span>${progress.totalSaved.toLocaleString()} ({Math.round(progress.percentComplete)}%)</span>
+                  </div>
                 </div>
               </div>
             );
@@ -274,75 +272,85 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
         )}
       </div>
       
-      {/* Create Goal Dialog */}
-      {!onCreateNewGoal && (
-        <Dialog open={showNewGoalDialog} onOpenChange={setShowNewGoalDialog}>
-          <DialogContent className="sm:max-w-[500px]">
+      {/* Edit Goal Dialog */}
+      {editingGoal && (
+        <Dialog open={!!editingGoal} onOpenChange={(open) => !open && setEditingGoal(null)}>
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Goal</DialogTitle>
+              <DialogTitle>Edit Goal</DialogTitle>
             </DialogHeader>
-            <NewGoalForm 
-              onSubmit={handleCreateGoal}
-              onCancel={() => setShowNewGoalDialog(false)}
-            />
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Goal Name</Label>
+                <Input
+                  id="name"
+                  value={editingGoal.name || ''}
+                  onChange={(e) => setEditingGoal({...editingGoal, name: e.target.value})}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="target">Target Amount</Label>
+                <Input
+                  id="target"
+                  type="number"
+                  min="1"
+                  value={editingGoal.target || ''}
+                  onChange={(e) => setEditingGoal({...editingGoal, target: parseFloat(e.target.value)})}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingGoal(null)}>Cancel</Button>
+              <Button onClick={() => handleUpdateGoal(editingGoal.id, {
+                name: editingGoal.name,
+                target: editingGoal.target
+              })}>Save Changes</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
       
-      {/* Edit Goal Dialog */}
-      <Dialog open={!!editingGoal} onOpenChange={(open) => !open && setEditingGoal(null)}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Edit Goal</DialogTitle>
-          </DialogHeader>
-          {editingGoal && (
-            <NewGoalForm 
-              onSubmit={(updates) => handleUpdateGoal(editingGoal.id, updates)}
-              onCancel={() => setEditingGoal(null)}
-              initialValues={editingGoal}
-              isEditing
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={!!goalToDelete} onOpenChange={(open) => !open && setGoalToDelete(null)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Delete Goal</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="mb-4">
-              Are you sure you want to delete the goal "{goalToDelete?.name}"? This action cannot be undone.
-            </p>
-            <div className="mb-4">
-              <Label htmlFor="confirm" className="text-sm font-medium mb-2 block">
-                Type DELETE to confirm
-              </Label>
+      {/* Delete Goal Dialog */}
+      {goalToDelete && (
+        <Dialog open={!!goalToDelete} onOpenChange={(open) => !open && setGoalToDelete(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Goal</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="mb-4">Are you sure you want to delete "{goalToDelete.name}"? This action cannot be undone.</p>
+              <p className="mb-4 text-sm text-muted-foreground">Type DELETE to confirm deletion:</p>
               <Input
-                id="confirm"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="DELETE"
+                placeholder="Type DELETE"
               />
             </div>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setGoalToDelete(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => handleDeleteGoal(goalToDelete.id)}
-              disabled={deleteConfirmText !== 'DELETE'}
-            >
-              Delete Goal
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setGoalToDelete(null);
+                setDeleteConfirmText('');
+              }}>Cancel</Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => handleDeleteGoal(goalToDelete.id)}
+                disabled={deleteConfirmText !== 'DELETE'}
+              >Delete Goal</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Create Goal Dialog */}
+      <Dialog open={showNewGoalDialog} onOpenChange={setShowNewGoalDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Goal</DialogTitle>
+          </DialogHeader>
+          <NewGoalForm 
+            onSubmit={handleCreateGoal}
+            onCancel={() => setShowNewGoalDialog(false)}
+          />
         </DialogContent>
       </Dialog>
     </div>
