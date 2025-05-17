@@ -1,7 +1,7 @@
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import milestoneService from './MilestoneService';
-import { startOfWeek, endOfWeek, format, addWeeks, isBefore, isAfter, isWithinInterval, parseISO, addDays } from 'date-fns';
+import { startOfWeek, endOfWeek, format, addWeeks, isBefore, isAfter, isWithinInterval, parseISO, addDays, differenceInDays } from 'date-fns';
 
 /**
  * GoalManager - Handles all goal-related operations
@@ -544,6 +544,7 @@ class GoalManager {
         startDate: startDate,
         deadline: goalData.deadline || null,
         description: goalData.description || '',
+        isTimeSensitive: goalData.isTimeSensitive !== undefined ? goalData.isTimeSensitive : true,
         weeks: this.generateWeeksFromStartDate(startDate, 52),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -1007,6 +1008,216 @@ class GoalManager {
     } catch (error) {
       console.error('Error backfilling week data:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Check if a date is within a goal's time window
+   * @param {Object} goal - Goal object
+   * @param {Date|string} date - Date to check
+   * @returns {boolean} - Whether the date is within the goal's time window
+   */
+  isDateWithinGoalWindow(goal, date) {
+    try {
+      if (!goal || !goal.startDate) return false;
+      
+      const dateObj = typeof date === 'string' ? parseISO(date) : date;
+      const startDate = parseISO(goal.startDate);
+      
+      // Check if date is after or on start date
+      if (isBefore(dateObj, startDate)) return false;
+      
+      // If goal has a deadline, check if date is before or on deadline
+      if (goal.deadline) {
+        const deadlineDate = parseISO(goal.deadline);
+        if (isAfter(dateObj, deadlineDate)) return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error checking if date is within goal window:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Filter entries to only include those within a goal's time window
+   * @param {Object} goal - Goal object
+   * @param {Array} entries - Array of entries
+   * @returns {Array} - Filtered entries
+   */
+  filterEntriesByGoalWindow(goal, entries) {
+    if (!goal || !entries || !Array.isArray(entries)) return [];
+    
+    return entries.filter(entry => {
+      if (!entry.timestamp) return false;
+      return this.isDateWithinGoalWindow(goal, new Date(entry.timestamp));
+    });
+  }
+  
+  /**
+   * Get weeks data filtered to only include those relevant to the goal's time window
+   * @param {string} goalId - Goal ID
+   * @returns {Array} - Filtered weeks array
+   */
+  getGoalFilteredWeeks(goalId) {
+    try {
+      const goal = this.getGoalById(goalId);
+      if (!goal || !goal.weeks) return [];
+      
+      // If the goal is not time-sensitive, return all weeks
+      if (goal.isTimeSensitive === false) {
+        return [...goal.weeks];
+      }
+      
+      // Create a deep copy of weeks to avoid mutation
+      const filteredWeeks = JSON.parse(JSON.stringify(goal.weeks));
+      
+      // Filter the entries in each week by the goal's time window
+      filteredWeeks.forEach(week => {
+        if (week.entries && Array.isArray(week.entries)) {
+          week.entries = this.filterEntriesByGoalWindow(goal, week.entries);
+          
+          // Recalculate week profit based on filtered entries
+          const weekProfit = week.entries.reduce(
+            (sum, entry) => sum + (parseFloat(entry.amount) || 0), 0
+          );
+          
+          week.profit = weekProfit;
+          week.isFilled = weekProfit !== 0 || week.isFilled === true;
+        }
+      });
+      
+      // Recalculate cumulative values
+      this.recalculateCumulativeValues(filteredWeeks);
+      
+      return filteredWeeks;
+    } catch (error) {
+      console.error('Error getting goal filtered weeks:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Calculate streak information for a goal, considering only valid entries
+   * @param {string} goalId - Goal ID
+   * @returns {Object} - Streak information
+   */
+  calculateStreakInfo(goalId) {
+    try {
+      const filteredWeeks = this.getGoalFilteredWeeks(goalId);
+      
+      if (!filteredWeeks || filteredWeeks.length === 0) {
+        return {
+          currentStreak: 0,
+          longestStreak: 0,
+          totalFilledWeeks: 0
+        };
+      }
+      
+      // Filter to only consider filled weeks
+      const filledWeeks = filteredWeeks.filter(week => week.isFilled);
+      
+      // If no filled weeks, return zeros
+      if (filledWeeks.length === 0) {
+        return {
+          currentStreak: 0,
+          longestStreak: 0,
+          totalFilledWeeks: 0
+        };
+      }
+      
+      // Sort weeks by week number to ensure proper streak calculation
+      const sortedWeeks = [...filledWeeks].sort((a, b) => a.week - b.week);
+      
+      let currentStreak = 0;
+      let longestStreak = 0;
+      let tempStreak = 0;
+      
+      // Calculate streaks considering consecutive profitable weeks
+      for (let i = 0; i < sortedWeeks.length; i++) {
+        if (sortedWeeks[i].profit > 0) {
+          tempStreak++;
+          
+          // If this is the last week or the next week breaks the streak
+          if (i === sortedWeeks.length - 1 || sortedWeeks[i+1].profit <= 0) {
+            currentStreak = tempStreak;
+            longestStreak = Math.max(longestStreak, tempStreak);
+            tempStreak = 0;
+          }
+        } else {
+          // If this week has no profit, update longest streak
+          longestStreak = Math.max(longestStreak, tempStreak);
+          tempStreak = 0;
+        }
+      }
+      
+      return {
+        currentStreak,
+        longestStreak,
+        totalFilledWeeks: filledWeeks.length
+      };
+    } catch (error) {
+      console.error('Error calculating streak info:', error);
+      return {
+        currentStreak: 0,
+        longestStreak: 0,
+        totalFilledWeeks: 0
+      };
+    }
+  }
+  
+  /**
+   * Calculate progress for a goal, considering only valid entries
+   * @param {string} goalId - Goal ID
+   * @returns {Object} - Progress information
+   */
+  calculateProgress(goalId) {
+    try {
+      const goal = this.getGoalById(goalId);
+      const filteredWeeks = this.getGoalFilteredWeeks(goalId);
+      
+      if (!goal || !filteredWeeks || filteredWeeks.length === 0) {
+        return {
+          totalSaved: 0,
+          remaining: goal ? goal.target : 0,
+          percentComplete: 0,
+          weeksActive: 0,
+          targetEndDate: goal && goal.deadline ? parseISO(goal.deadline) : null
+        };
+      }
+      
+      // Calculate totalSaved using filtered weeks
+      const totalSaved = filteredWeeks.reduce((sum, week) => sum + (week.profit || 0), 0);
+      const remaining = goal.target - totalSaved;
+      const percentComplete = (totalSaved / goal.target) * 100;
+      
+      // Calculate weeks active
+      let weeksActive = 0;
+      if (goal.startDate) {
+        const startDate = parseISO(goal.startDate);
+        const now = new Date();
+        if (isAfter(now, startDate)) {
+          weeksActive = Math.ceil(differenceInDays(now, startDate) / 7);
+        }
+      }
+      
+      return {
+        totalSaved,
+        remaining,
+        percentComplete: Math.min(100, percentComplete),
+        weeksActive,
+        targetEndDate: goal.deadline ? parseISO(goal.deadline) : null
+      };
+    } catch (error) {
+      console.error('Error calculating progress:', error);
+      return {
+        totalSaved: 0,
+        remaining: 0,
+        percentComplete: 0,
+        weeksActive: 0,
+        targetEndDate: null
+      };
     }
   }
 }

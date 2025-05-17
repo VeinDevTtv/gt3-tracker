@@ -1645,7 +1645,125 @@ export const GoalsProvider = ({ children }) => {
     backfillWeekData,
     getCurrentWeekNumber,
     findWeekForDate,
-    ensureEnoughWeeks
+    ensureEnoughWeeks,
+    
+    // New methods for goal-specific filtered data
+    getFilteredWeeks: (goalId) => {
+      return goalManager.getGoalFilteredWeeks(goalId || (activeGoal ? activeGoal.id : null));
+    },
+    
+    isDateWithinGoalWindow: (date, goalId) => {
+      const goal = goalId ? goalManager.getGoalById(goalId) : activeGoal;
+      if (!goal) return false;
+      return goalManager.isDateWithinGoalWindow(goal, date);
+    },
+    
+    getMilestoneAchievementStatus: (goalId, milestoneId) => {
+      return milestoneService.getMilestoneAchievementStatus(
+        goalId || (activeGoal ? activeGoal.id : null), 
+        milestoneId
+      );
+    },
+    
+    getGoalProgressData: (goalId) => {
+      const targetGoalId = goalId || (activeGoal ? activeGoal.id : null);
+      if (!targetGoalId) return null;
+      
+      const goal = goalManager.getGoalById(targetGoalId);
+      if (!goal) return null;
+      
+      const filteredWeeks = goalManager.getGoalFilteredWeeks(targetGoalId);
+      const progressData = goalManager.calculateProgress(targetGoalId);
+      const streakInfo = goalManager.calculateStreakInfo(targetGoalId);
+      
+      return {
+        goal,
+        filteredWeeks,
+        progress: progressData,
+        streak: streakInfo,
+        isTimeSensitive: goal.isTimeSensitive !== false
+      };
+    },
+    
+    toggleGoalTimeSensitivity: (goalId) => {
+      const targetGoalId = goalId || (activeGoal ? activeGoal.id : null);
+      if (!targetGoalId) return false;
+      
+      const goal = goalManager.getGoalById(targetGoalId);
+      if (!goal) return false;
+      
+      // Toggle the time sensitivity flag
+      const isTimeSensitive = goal.isTimeSensitive !== false ? false : true;
+      
+      // Update the goal
+      const success = goalManager.updateGoal(targetGoalId, {
+        isTimeSensitive
+      });
+      
+      if (success) {
+        // Update state
+        const updatedGoals = goalManager.getGoals();
+        setGoals(updatedGoals);
+        
+        // If we're updating the active goal, refresh it
+        if (activeGoal && activeGoal.id === targetGoalId) {
+          setActiveGoal(goalManager.getActiveGoal());
+        }
+        
+        toast.success(`Goal ${isTimeSensitive ? 'now respects' : 'no longer restricts by'} time windows`);
+        
+        // Force a refresh to update UI
+        setTimeout(() => {
+          const refreshedGoals = goalManager.getGoals();
+          setGoals([...refreshedGoals]);
+          if (activeGoal && activeGoal.id === targetGoalId) {
+            setActiveGoal({...goalManager.getActiveGoal()});
+          }
+        }, 100);
+        
+        return true;
+      }
+      
+      return false;
+    },
+    
+    toggleMilestoneTimeSensitivity: (goalId, milestoneId) => {
+      if (!milestoneId) return false;
+      
+      const targetGoalId = goalId || (activeGoal ? activeGoal.id : null);
+      if (!targetGoalId) return false;
+      
+      const milestones = milestoneService.getMilestonesForGoal(targetGoalId);
+      const milestone = milestones.find(m => m.id === milestoneId);
+      
+      if (!milestone) return false;
+      
+      // Toggle the time sensitivity flag
+      const isTimeSensitive = milestone.isTimeSensitive !== false ? false : true;
+      
+      // Update the milestone
+      const success = milestoneService.updateMilestone(targetGoalId, milestoneId, {
+        isTimeSensitive
+      });
+      
+      if (success) {
+        toast.success(`Milestone ${isTimeSensitive ? 'now respects' : 'no longer restricted by'} time windows`);
+        
+        // Force a UI refresh by triggering a re-render
+        // No need for a dedicated refreshMilestones function
+        const updatedGoals = goalManager.getGoals();
+        setGoals([...updatedGoals]);
+        
+        // If we're updating the active goal, refresh it
+        if (activeGoal && activeGoal.id === targetGoalId) {
+          setActiveGoal({...goalManager.getActiveGoal()});
+        }
+        
+        return true;
+      }
+      
+      return false;
+    }
   };
 
   return (

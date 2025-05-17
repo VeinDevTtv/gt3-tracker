@@ -1,5 +1,69 @@
 import { toast } from 'react-hot-toast';
+import goalManager from './GoalManager';
 import { v4 as uuidv4 } from 'uuid';
+import { differenceInWeeks, parseISO, format } from 'date-fns';
+
+/**
+ * Default milestones that can be created for a new goal
+ */
+const DEFAULT_MILESTONE_TEMPLATES = [
+  {
+    type: 'percentage',
+    value: 25,
+    message: 'Reached 25% of your goal!',
+    isTimeSensitive: true,
+    icon: '🎯'
+  },
+  {
+    type: 'percentage',
+    value: 50,
+    message: 'Halfway there! 50% complete',
+    isTimeSensitive: true,
+    icon: '🏁'
+  },
+  {
+    type: 'percentage',
+    value: 75,
+    message: '75% of the way to your goal!',
+    isTimeSensitive: true,
+    icon: '🚀'
+  },
+  {
+    type: 'percentage',
+    value: 100,
+    message: 'Goal complete! Congratulations!',
+    isTimeSensitive: true,
+    icon: '🏆'
+  },
+  {
+    type: 'streak',
+    value: 3,
+    message: '3-week profitable streak achieved!',
+    isTimeSensitive: true,
+    icon: '🔥'
+  },
+  {
+    type: 'streak',
+    value: 5,
+    message: 'Amazing! 5-week profitable streak!',
+    isTimeSensitive: true,
+    icon: '⚡'
+  },
+  {
+    type: 'weekly',
+    value: 1000,
+    message: 'Your first $1,000+ week!',
+    isTimeSensitive: true,
+    icon: '💰'
+  },
+  {
+    type: 'weekly',
+    value: 5000,
+    message: 'Incredible! $5,000+ in a single week!',
+    isTimeSensitive: true,
+    icon: '💎'
+  }
+];
 
 /**
  * MilestoneService - Manages milestone data for savings goals
@@ -7,7 +71,7 @@ import { v4 as uuidv4 } from 'uuid';
  */
 class MilestoneService {
   constructor() {
-    this.MILESTONES_STORAGE_KEY = 'gt3_tracker_milestones_v1';
+    this.MILESTONES_STORAGE_KEY = 'gt3_tracker_milestones_v2';
     this.initialized = false;
   }
 
@@ -29,11 +93,55 @@ class MilestoneService {
       
       this.initialized = true;
       console.log('MilestoneService initialized successfully');
+      
+      // Migrate to new format if needed
+      this.migrateToNewFormat();
     } catch (error) {
       console.error('Failed to initialize MilestoneService:', error);
     }
     
     return this;
+  }
+
+  /**
+   * Migrate milestone data to new format if needed
+   */
+  migrateToNewFormat() {
+    try {
+      const milestones = this.getAllMilestones();
+      let hasUpdates = false;
+      
+      // Check each goal's milestones for format updates
+      Object.keys(milestones).forEach(goalId => {
+        if (!Array.isArray(milestones[goalId])) return;
+        
+        milestones[goalId].forEach(milestone => {
+          // Add isTimeSensitive if missing
+          if (milestone.isTimeSensitive === undefined) {
+            milestone.isTimeSensitive = true;
+            hasUpdates = true;
+          }
+          
+          // Add achieved info if missing
+          if (!milestone.achieved && milestone.completed) {
+            milestone.achieved = {
+              date: milestone.completedDate || new Date().toISOString(),
+              goalId: goalId,
+              weekNumber: milestone.completedWeek || null
+            };
+            hasUpdates = true;
+          }
+        });
+      });
+      
+      // Save if we made updates
+      if (hasUpdates) {
+        this.saveAllMilestones(milestones);
+        console.log('Migrated milestones to new format');
+      }
+    } catch (error) {
+      console.error('Error migrating milestones:', error);
+    }
   }
 
   /**
@@ -305,6 +413,87 @@ class MilestoneService {
     } catch (error) {
       console.error('Error resetting milestones:', error);
       return false;
+    }
+  }
+
+  /**
+   * Get milestone achievement status with real-time date details
+   * @param {string} goalId - Goal ID 
+   * @param {string} milestoneId - Milestone ID
+   * @returns {Object} - Achievement details
+   */
+  getMilestoneAchievementStatus(goalId, milestoneId) {
+    try {
+      if (!goalId || !milestoneId) {
+        return null;
+      }
+      
+      const allMilestones = this.getAllMilestones();
+      
+      // Check if goal has milestones
+      if (!allMilestones[goalId]) {
+        return null;
+      }
+      
+      // Find the milestone
+      const milestone = allMilestones[goalId].find(m => m.id === milestoneId);
+      if (!milestone) {
+        return null;
+      }
+      
+      // If milestone is not achieved, return basic status
+      if (!milestone.completed || !milestone.achieved) {
+        return {
+          achieved: false,
+          milestone: milestone
+        };
+      }
+      
+      // Get the goal to provide context for the achievement
+      const goal = goalManager.getGoalById(goalId);
+      if (!goal) {
+        return {
+          achieved: true,
+          milestone: milestone,
+          achievedDate: milestone.completedDate || milestone.achieved.date
+        };
+      }
+      
+      // Get formatted date
+      const achievedDate = milestone.achieved.date 
+        ? format(parseISO(milestone.achieved.date), 'MMM d, yyyy')
+        : format(parseISO(milestone.completedDate), 'MMM d, yyyy');
+      
+      // Get week information
+      let weekInfo = '';
+      if (milestone.achieved.weekNumber) {
+        const weekData = goal.weeks.find(w => w.week === milestone.achieved.weekNumber);
+        if (weekData && weekData.displayName) {
+          weekInfo = weekData.displayName;
+        } else {
+          weekInfo = `Week ${milestone.achieved.weekNumber}`;
+        }
+      }
+      
+      // Calculate weeks from start to achievement
+      let weeksToAchieve = null;
+      if (goal.startDate && milestone.achieved.date) {
+        const startDate = parseISO(goal.startDate);
+        const achievementDate = parseISO(milestone.achieved.date);
+        weeksToAchieve = differenceInWeeks(achievementDate, startDate) + 1;
+      }
+      
+      return {
+        achieved: true,
+        milestone: milestone,
+        achievedDate: achievedDate,
+        weekInfo: weekInfo,
+        weeksToAchieve: weeksToAchieve,
+        goalName: goal.name
+      };
+    } catch (error) {
+      console.error('Error getting milestone achievement status:', error);
+      return null;
     }
   }
 }

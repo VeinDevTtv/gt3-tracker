@@ -1,181 +1,181 @@
-import React, { useEffect, useState } from 'react';
-import { Trophy, Target, Check } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import { formatCurrency } from '../../utils/formatters';
-import useSavingsProgress from '../../utils/useSavingsProgress';
-import milestoneService from '../../services/MilestoneService';
-import { Button } from '../ui/button';
+import React, { useState, useEffect } from 'react';
+import { useGoals } from '@/contexts/GoalsContext';
+import milestoneService from '@/services/MilestoneService';
+import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Trophy, Calendar, Clock, ToggleLeft, ToggleRight, Info } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 /**
- * Displays a horizontal map of milestone progress for a goal
+ * Displays a visual milestone progress map for the current goal
  */
-const MilestoneProgressMap = ({ goalId = null, refreshKey }) => {
-  console.log('MilestoneProgressMap rendered with:', { goalId, refreshKey });
+const MilestoneProgressMap = ({ goalId, refreshKey = 0 }) => {
+  const [milestones, setMilestones] = useState([]);
+  const [totalProgress, setTotalProgress] = useState(0);
+  const { activeGoal, getGoalProgressData, toggleMilestoneTimeSensitivity } = useGoals();
   
-  const [internalRefreshKey, setInternalRefreshKey] = useState(0);
+  // Derive goalId if not provided
+  const targetGoalId = goalId || (activeGoal ? activeGoal.id : null);
   
-  // Force refresh when refreshKey prop changes
   useEffect(() => {
-    if (refreshKey) {
-      console.log('MilestoneProgressMap: External refresh triggered');
-      setInternalRefreshKey(prev => prev + 1);
+    if (!targetGoalId) return;
+    
+    // Use the new context method to get goal-specific filtered data
+    const progressData = getGoalProgressData(targetGoalId);
+    if (!progressData) return;
+    
+    // Get milestones for the current goal
+    const goalMilestones = milestoneService.getMilestonesForGoal(targetGoalId) || [];
+    
+    // Set milestones and progress
+    setMilestones(goalMilestones);
+    setTotalProgress(progressData.progress.percentComplete || 0);
+  }, [targetGoalId, refreshKey, getGoalProgressData]);
+  
+  // Handle milestone time sensitivity toggle
+  const handleToggleTimeSensitivity = (milestoneId) => {
+    if (toggleMilestoneTimeSensitivity) {
+      toggleMilestoneTimeSensitivity(targetGoalId, milestoneId);
     }
-  }, [refreshKey]);
-
-  const { 
-    isLoading, 
-    goal, 
-    progress, 
-    milestones, 
-    nextMilestone 
-  } = useSavingsProgress(goalId);
+  };
   
-  // Debug goal changes
-  useEffect(() => {
-    console.log('MilestoneProgressMap: Goal changed', {
-      id: goal?.id,
-      name: goal?.name,
-      target: goal?.target
-    });
-  }, [goal]);
-
-  // Create default milestones if none exist
-  useEffect(() => {
-    if (goal && (!milestones || milestones.length === 0)) {
-      console.log('No milestones found, creating defaults for goal:', goal.id);
-      milestoneService.createDefaultMilestones(goal.id, goal.target);
-      // Force refresh
-      setInternalRefreshKey(prev => prev + 1);
+  // Show help tooltip with detailed achievement info
+  const getMilestoneAchievementInfo = (milestone) => {
+    if (!milestone || !milestone.achieved) {
+      return 'Not yet achieved';
     }
-  }, [goal, milestones, internalRefreshKey]);
-
-  if (isLoading) {
+    
+    let info = 'Achieved';
+    if (milestone.achieved.date) {
+      const formattedDate = format(parseISO(milestone.achieved.date), 'MMM d, yyyy');
+      info += ` on ${formattedDate}`;
+    }
+    
+    if (milestone.achieved.weekNumber) {
+      info += `, Week ${milestone.achieved.weekNumber}`;
+    }
+    
+    if (milestone.achieved.progress) {
+      info += `, at $${milestone.achieved.progress.toLocaleString()}`;
+    }
+    
+    return info;
+  };
+  
+  if (!targetGoalId || milestones.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 bg-muted/20 animate-pulse rounded-lg">
-        <span className="text-muted-foreground">Loading milestones...</span>
+      <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
+        <div className="text-center text-muted-foreground">
+          No milestones available for this goal
+        </div>
       </div>
     );
   }
-
-  if (!goal) {
-    return (
-      <div className="flex flex-col items-center justify-center h-40 bg-muted/20 rounded-lg">
-        <Target className="h-8 w-8 text-muted-foreground mb-2" />
-        <span className="text-muted-foreground">No goal selected</span>
-        <p className="text-xs text-muted-foreground mt-1">Create or select a goal to track your milestones</p>
-      </div>
-    );
-  }
-
-  if (!milestones || milestones.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-40 bg-muted/20 rounded-lg">
-        <Trophy className="h-8 w-8 text-muted-foreground mb-2" />
-        <span className="text-muted-foreground font-medium">Setting up milestones...</span>
-        <p className="text-xs text-muted-foreground mt-2 mb-4">
-          We're creating default milestones for your goal
-        </p>
-        <Button 
-          size="sm" 
-          variant="outline"
-          onClick={() => {
-            console.log('Creating milestones for goal:', goal.id);
-            milestoneService.createDefaultMilestones(goal.id, goal.target);
-            // Force a refresh by updating the component state
-            setInternalRefreshKey(prev => prev + 1);
-          }}
-        >
-          Create Milestones Now
-        </Button>
-      </div>
-    );
-  }
-
-  // Sort milestones by amount
-  const sortedMilestones = [...milestones].sort((a, b) => a.amount - b.amount);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">Milestone Progress</h3>
-          <p className="text-sm text-muted-foreground">
-            {progress.percentComplete >= 100 
-              ? "Congratulations! You've reached your goal!"
-              : nextMilestone 
-                ? `Next milestone: ${nextMilestone.title} at ${formatCurrency(nextMilestone.amount)}`
-                : "You've achieved all milestones!"}
-          </p>
+    <div className="space-y-4">
+      {/* Overall Progress Bar */}
+      <div className="space-y-2">
+        <div className="flex justify-between items-center text-sm">
+          <div className="font-medium">Overall Progress</div>
+          <div>{Math.round(totalProgress)}%</div>
         </div>
-        
-        <div className="text-right">
-          <div className="text-lg font-medium">
-            {formatCurrency(progress.saved)} / {formatCurrency(goal.target)}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {Math.round(progress.percentComplete)}% complete
-          </p>
-        </div>
+        <Progress value={totalProgress} className="h-2" />
       </div>
       
-      {/* Progress Bar */}
-      <div className="relative pt-6 pb-12">
-        {/* Main progress bar */}
-        <div className="h-2 bg-muted rounded-full mb-3">
-          <div 
-            className="h-full bg-primary rounded-full transition-all duration-500"
-            style={{ width: `${progress.percentComplete > 100 ? 100 : progress.percentComplete}%` }}
-          />
-        </div>
-        
-        {/* Milestone markers */}
-        <div className="absolute top-0 left-0 w-full flex">
-          {sortedMilestones.map((milestone, index) => {
-            // Calculate position as percentage of goal
-            const position = (milestone.amount / goal.target) * 100;
-            // Cap at 100% for display purposes
-            const cappedPosition = position > 100 ? 100 : position;
-            // Check if milestone is achieved
-            const isAchieved = milestone.achieved || progress.saved >= milestone.amount;
-            
-            return (
-              <div 
-                key={milestone.id}
-                className="absolute -top-1"
-                style={{ left: `${cappedPosition}%` }}
-              >
-                <div className={cn(
-                  "flex flex-col items-center transform -translate-x-1/2",
-                  isAchieved ? "text-primary" : "text-muted-foreground"
-                )}>
-                  <div className={cn(
-                    "w-5 h-5 rounded-full flex items-center justify-center border-2",
-                    isAchieved 
-                      ? "text-primary-foreground bg-primary border-primary" 
-                      : "bg-muted border-muted-foreground"
-                  )}>
-                    {isAchieved ? (
-                      <Check className="h-3 w-3" />
+      {/* Milestones Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+        {milestones.map((milestone) => {
+          const isCompleted = milestone.completed;
+          
+          let statusColor = 'bg-muted';
+          if (isCompleted) {
+            statusColor = 'bg-green-500';
+          }
+          
+          return (
+            <TooltipProvider key={milestone.id}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div 
+                    className={`
+                      relative p-4 rounded-lg border transition-all
+                      ${isCompleted 
+                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900' 
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}
+                    `}
+                  >
+                    {/* Time Sensitivity Toggle */}
+                    <button 
+                      onClick={() => handleToggleTimeSensitivity(milestone.id)}
+                      className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-foreground"
+                      title={milestone.isTimeSensitive !== false 
+                        ? "Time-sensitive: Only counts activities within this goal's date range" 
+                        : "Not time-sensitive: Counts all activities regardless of date"}
+                    >
+                      {milestone.isTimeSensitive !== false ? (
+                        <ToggleRight className="h-4 w-4" />
+                      ) : (
+                        <ToggleLeft className="h-4 w-4" />
+                      )}
+                    </button>
+                    
+                    {/* Milestone Indicator */}
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-full ${statusColor} text-white flex-shrink-0`}>
+                        <div className="text-xl">{milestone.icon || '🏆'}</div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <div className="font-medium">{milestone.name}</div>
+                        <div className="text-sm text-muted-foreground">{milestone.description}</div>
+                        
+                        {/* Milestone Achievement Info */}
+                        {isCompleted && milestone.achieved && (
+                          <div className="flex items-center gap-1 text-xs mt-1 text-green-600 dark:text-green-400">
+                            <Clock className="h-3 w-3" />
+                            {milestone.achieved.date && (
+                              <span>{format(parseISO(milestone.achieved.date), 'MMM d, yyyy')}</span>
+                            )}
+                            
+                            {milestone.achieved.weekNumber && (
+                              <Badge variant="outline" className="text-xs ml-1">
+                                Week {milestone.achieved.weekNumber}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <div className="space-y-1 p-1">
+                    <div className="font-medium">{milestone.name}</div>
+                    <div className="text-sm">{milestone.description}</div>
+                    <div className="text-xs flex items-center gap-1 mt-1">
+                      <Info className="h-3 w-3" />
+                      <span>
+                        {milestone.isTimeSensitive !== false 
+                          ? "Time-sensitive: Only counts activities within this goal's date range" 
+                          : "Not time-sensitive: Counts all activities regardless of date"}
+                      </span>
+                    </div>
+                    {isCompleted ? (
+                      <div className="text-xs mt-1 text-green-600 dark:text-green-400">
+                        {getMilestoneAchievementInfo(milestone)}
+                      </div>
                     ) : (
-                      <Trophy className="h-3 w-3" />
+                      <div className="text-xs mt-1">Not yet achieved</div>
                     )}
                   </div>
-                  
-                  <div className="mt-2 text-xs whitespace-nowrap">
-                    {milestone.percentage}%
-                  </div>
-                  
-                  <div className={cn(
-                    "text-xs font-medium mt-1 max-w-[80px] text-center",
-                    !isAchieved && "opacity-70"
-                  )}>
-                    {formatCurrency(milestone.amount)}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })}
       </div>
     </div>
   );
