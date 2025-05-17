@@ -412,7 +412,30 @@ const AchievementCard = ({ achievement, theme }) => {
   console.log(`Rendering achievement card: ${title}, earned: ${isEarned}`);
   
   return (
-    <div className={`relative p-4 rounded-lg border-2 ${getBorderColor()} transition-colors ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
+    <div 
+      className={`relative p-4 rounded-lg border-2 transition-colors ${getBorderColor()} ${
+        theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+      } ${isEarned ? 'shadow-md' : ''}`}
+    >
+      {/* Status indicator ribbon */}
+      {isEarned && (
+        <div className="absolute -top-1 -right-1 w-auto h-auto">
+          <div className={`px-2 py-1 text-xs font-medium text-white rounded-bl-md rounded-tr-md ${
+            category === 'milestone' ? 'bg-blue-500' : 
+            category === 'consistency' ? 'bg-green-500' : 
+            category === 'special' ? 'bg-purple-500' : 
+            category === 'multi-goal' ? 'bg-orange-500' : 
+            category === 'time' ? 'bg-indigo-500' : 
+            'bg-primary'
+          }`}>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              <span>Unlocked</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Locked overlay */}
       {!isEarned && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900/10 dark:bg-gray-900/30 backdrop-blur-[1px] rounded-lg">
@@ -442,12 +465,7 @@ const AchievementCard = ({ achievement, theme }) => {
               )}
             </div>
             
-            {isEarned ? (
-              <div className="flex items-center text-green-500">
-                <CheckCircle className="h-4 w-4 mr-1" />
-                <span className="text-xs">Unlocked</span>
-              </div>
-            ) : (
+            {!isEarned && (
               <div className="flex items-center text-muted-foreground">
                 <Info className="h-4 w-4 mr-1" />
                 <span className="text-xs">Locked</span>

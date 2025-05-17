@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import NewGoalForm from '../components/GoalManager/NewGoalForm';
 import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 
 /**
  * Goals page component that displays and manages all goal-related functionality
@@ -31,12 +32,12 @@ const Goals = () => {
   
   // Local state
   const [activeTab, setActiveTab] = useState('goals');
-  const [activeSection, setActiveSection] = useState('list');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [theme, setTheme] = useState('dark');
   const [showNewGoalDialog, setShowNewGoalDialog] = useState(false);
+  const [showWeeklyEntries, setShowWeeklyEntries] = useState(false);
   
   // Force a refresh of child components
   const refreshComponents = useCallback(() => {
@@ -183,10 +184,15 @@ const Goals = () => {
     ((!activeGoal && (!goals || goals.length === 0)) || 
     (goals && goals.length === 0));
   
+  // Toggle weekly entries view
+  const toggleWeeklyEntries = () => {
+    setShowWeeklyEntries(prev => !prev);
+  };
+  
   if (error) {
     return (
       <>
-        <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+        <div className="container max-w-6xl mx-auto py-6 px-4 space-y-6">
           <h1 className="text-2xl font-bold">Goals & Achievements</h1>
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -214,7 +220,7 @@ const Goals = () => {
   if (isLoading || contextLoading) {
     return (
       <>
-        <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+        <div className="container max-w-6xl mx-auto py-6 px-4 space-y-6">
           <h1 className="text-2xl font-bold">Goals & Achievements</h1>
           <div className="p-8 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
@@ -241,7 +247,7 @@ const Goals = () => {
   if (showEmptyState) {
     return (
       <>
-        <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+        <div className="container max-w-6xl mx-auto py-6 px-4 space-y-6">
           <h1 className="text-2xl font-bold">Goals & Achievements</h1>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border text-center">
             <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -287,27 +293,83 @@ const Goals = () => {
   
   return (
     <>
-      <main className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Goals & Achievements</h1>
-          <div className="text-sm text-muted-foreground">
-            {activeGoal ? (
-              <span>
-                <span className="font-medium">{activeGoal.name}</span>
-                <span className="mx-2">•</span>
-                <span>{Math.round(progress.percentComplete)}% complete</span>
-              </span>
-            ) : (
-              <span>No active goal</span>
+      <main className="container max-w-6xl mx-auto py-6 px-4 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Goals & Achievements</h1>
+            {activeGoal && (
+              <p className="text-muted-foreground mt-1">
+                Active goal: <span className="font-medium">{activeGoal.name}</span> - 
+                <span className="ml-1">{Math.round(progress.percentComplete)}% complete</span>
+              </p>
             )}
+          </div>
+          
+          <div className="flex gap-2">
+            {activeGoal && (
+              <Button 
+                onClick={toggleWeeklyEntries} 
+                variant={showWeeklyEntries ? "default" : "outline"}
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <Calendar className="h-4 w-4" /> 
+                {showWeeklyEntries ? "Hide Weekly Entries" : "Show Weekly Entries"}
+              </Button>
+            )}
+            <Button 
+              onClick={() => setShowNewGoalDialog(true)}
+              size="sm"
+              className="flex items-center gap-1"
+            >
+              <Plus className="h-4 w-4" /> New Goal
+            </Button>
           </div>
         </div>
         
-        <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+        {/* Active Goal Milestone Map */}
+        {activeGoal && (
+          <Card className="border shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                Milestone Progress - {activeGoal.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MilestoneProgressMap 
+                key={`milestone-map-${refreshTrigger}`} 
+                refreshKey={refreshTrigger}
+                goalId={activeGoal ? activeGoal.id : null} 
+              />
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Weekly Entries for Active Goal (togglable) */}
+        {activeGoal && showWeeklyEntries && (
+          <Card className="border shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Weekly Entries - {activeGoal.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <WeeklyEntryList 
+                key={`entries-${refreshTrigger}-${activeGoal?.id}`}
+                goalId={activeGoal.id}
+                onEntryChange={refreshComponents}
+              />
+            </CardContent>
+          </Card>
+        )}
+        
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="goals" className="flex items-center gap-2">
               <Target className="h-4 w-4" /> 
-              Goals
+              My Goals
             </TabsTrigger>
             <TabsTrigger value="achievements" className="flex items-center gap-2">
               <Trophy className="h-4 w-4" /> 
@@ -315,77 +377,19 @@ const Goals = () => {
             </TabsTrigger>
           </TabsList>
           
-          <div className="mt-6">
-            <TabsContent value="goals" className="space-y-6">
-              {/* Add button to create new goal at the top */}
-              {!showEmptyState && (
-                <div className="flex justify-end mb-6">
-                  <Button 
-                    onClick={() => setShowNewGoalDialog(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus size={16} /> Create New Goal
-                  </Button>
-                </div>
-              )}
-              
-              {/* Milestone Progress Map */}
-              {activeGoal && (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
-                  <MilestoneProgressMap 
-                    key={`milestone-map-${refreshTrigger}`} 
-                    refreshKey={refreshTrigger}
-                    goalId={activeGoal ? activeGoal.id : null} 
-                  />
-                </div>
-              )}
-              
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
-                {/* Sub tabs for Goal List vs Weekly Entries */}
-                <Tabs defaultValue={activeSection} onValueChange={setActiveSection} className="mb-6">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="list" className="flex items-center gap-2">
-                      <ListChecks className="h-4 w-4" /> 
-                      My Goals
-                    </TabsTrigger>
-                    <TabsTrigger value="entries" className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" /> 
-                      Weekly Entries
-                    </TabsTrigger>
-                  </TabsList>
-                
-                  <TabsContent value="list" className="mt-4">
-                    <GoalList 
-                      onGoalChange={handleGoalChange}
-                      onCreateNewGoal={() => setShowNewGoalDialog(true)}
-                      refreshTrigger={refreshTrigger}
-                    />
-                  </TabsContent>
-                
-                  <TabsContent value="entries" className="mt-4">
-                    {activeGoal ? (
-                      <WeeklyEntryList 
-                        key={`entries-${refreshTrigger}-${activeGoal?.id}`}
-                        goalId={activeGoal.id}
-                        onEntryChange={refreshComponents}
-                      />
-                    ) : (
-                      <div className="text-center py-12">
-                        <p className="text-muted-foreground">Select a goal to view weekly entries</p>
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="achievements" className="space-y-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border">
-                {/* Force a refresh when tab changes or goal changes */}
-                <AchievementsList key={`achievements-${refreshTrigger}`} theme={theme} />
-              </div>
-            </TabsContent>
-          </div>
+          <TabsContent value="goals" className="space-y-6">
+            {/* Goals List - now displays all goals as cards */}
+            <GoalList 
+              onGoalChange={handleGoalChange}
+              onCreateNewGoal={() => setShowNewGoalDialog(true)}
+              refreshTrigger={refreshTrigger}
+            />
+          </TabsContent>
+          
+          <TabsContent value="achievements" className="space-y-6">
+            {/* Achievements List */}
+            <AchievementsList key={`achievements-${refreshTrigger}`} theme={theme} />
+          </TabsContent>
         </Tabs>
       </main>
       

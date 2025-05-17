@@ -514,15 +514,15 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
       </Dialog>
       
       {/* Edit Trade Dialog */}
-      {tradeToEdit && (
-        <Dialog 
-          open={!!tradeToEdit} 
-          onOpenChange={(open) => !open && setTradeToEdit(null)}
-        >
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Edit Trade Entry for Week {tradeToEdit.weekNum}</DialogTitle>
-            </DialogHeader>
+      <Dialog 
+        open={!!tradeToEdit} 
+        onOpenChange={(open) => !open && setTradeToEdit(null)}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Trade Entry for Week {tradeToEdit?.weekNum}</DialogTitle>
+          </DialogHeader>
+          {tradeToEdit && (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Amount</label>
@@ -575,13 +575,15 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
                   : 'No date recorded'}</p>
               </div>
             </div>
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => setTradeToEdit(null)}
-              >
-                Cancel
-              </Button>
+          )}
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setTradeToEdit(null)}
+            >
+              Cancel
+            </Button>
+            {tradeToEdit && (
               <Button 
                 onClick={() => handleSaveTradeEdit(tradeToEdit.entry)}
                 className="bg-primary text-primary-foreground"
@@ -589,10 +591,10 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
               >
                 Save Changes
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!entryToDelete} onOpenChange={(open) => !open && setEntryToDelete(null)}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Trophy, Check, Edit, Trash2, ExternalLink, ListPlus, AlertTriangle } from 'lucide-react';
+import { Plus, Trophy, Check, Edit, Trash2, ExternalLink, ListPlus, AlertTriangle, ArrowRightCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
 import { Label } from '../ui/label';
@@ -10,6 +10,8 @@ import { formatCurrency } from '../../utils/formatters';
 import { useGoals } from '../../contexts/GoalsContext';
 import NewGoalForm from './NewGoalForm';
 import { cn } from '../../lib/utils';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
 
 const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
   // Get context data
@@ -190,9 +192,9 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
         </Button>
       </div>
       
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {goals.length === 0 ? (
-          <div className="text-center py-12 border rounded-lg bg-muted/30 flex flex-col items-center">
+          <div className="text-center py-12 border rounded-lg bg-muted/30 flex flex-col items-center col-span-1 md:col-span-2">
             <ListPlus className="w-12 h-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-6">No goals yet. Create your first goal to start tracking your savings progress!</p>
             <Button 
@@ -207,71 +209,109 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
           goals.map(goal => {
             const progress = calculateProgress(goal.id);
             const isActive = goal.id === activeGoalId;
+            const progressPercentage = Math.round(progress.percentComplete);
+            const totalSaved = progress.totalSaved || 0;
             
             return (
-              <div 
+              <Card 
                 key={goal.id} 
                 className={cn(
-                  "p-4 rounded-md border cursor-pointer transition-all",
-                  isActive ? "border-primary bg-primary/10" : "hover:bg-accent/50"
+                  "border transition-all",
+                  isActive ? "border-primary shadow-md" : "hover:border-primary/50"
                 )}
-                onClick={() => !isActive && handleSelectGoal(goal.id)}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    {isActive && (
-                      <Check className="h-4 w-4 text-primary" />
-                    )}
-                    <h3 className="font-medium">{goal.name}</h3>
-                    {progress.percentComplete >= 100 && (
-                      <Trophy className="h-4 w-4 text-yellow-500" />
-                    )}
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">{goal.name}</CardTitle>
+                        {isActive && (
+                          <Badge className="bg-primary text-primary-foreground">Active</Badge>
+                        )}
+                        {progress.percentComplete >= 100 && (
+                          <Badge className="bg-yellow-500">
+                            <Trophy className="h-3 w-3 mr-1" />
+                            Completed
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription className="mt-1">
+                        {goal.description || "No description"}
+                      </CardDescription>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
+                </CardHeader>
+                
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Target</span>
+                        <span className="font-medium">${goal.target.toLocaleString()}</span>
+                      </div>
+                      
+                      <div className="w-full bg-accent h-2.5 rounded-full overflow-hidden">
+                        <div 
+                          className={cn(
+                            "h-full transition-all duration-500",
+                            progressPercentage >= 100 ? "bg-green-500" : "bg-primary"
+                          )}
+                          style={{ width: `${Math.min(100, progressPercentage)}%` }}
+                        ></div>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-medium">
+                          ${totalSaved.toLocaleString()} ({progressPercentage}%)
+                        </span>
+                      </div>
+
+                      {goal.weeks && goal.weeks.length > 0 && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Latest weekly entry: ${goal.weeks[goal.weeks.length - 1]?.profit?.toLocaleString() || 0}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+                
+                <CardFooter className="pt-2 pb-4 flex justify-between">
+                  {isActive ? (
+                    <Badge variant="outline" className="border-primary text-primary">
+                      <Check className="h-3 w-3 mr-1" /> Current Goal
+                    </Badge>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleSelectGoal(goal.id)}
+                      className="gap-1"
+                    >
+                      <ArrowRightCircle className="h-4 w-4" /> Switch
+                    </Button>
+                  )}
+                  
+                  <div className="flex gap-2">
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-7 w-7" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingGoal(goal);
-                      }}
+                      className="h-8 w-8"
+                      onClick={() => setEditingGoal(goal)}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-7 w-7 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setGoalToDelete(goal);
-                      }}
+                      className="h-8 w-8 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                      onClick={() => setGoalToDelete(goal)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Target</span>
-                    <span>${goal.target.toLocaleString()}</span>
-                  </div>
-                  
-                  <div className="w-full bg-accent h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-primary h-full" 
-                      style={{ width: `${Math.min(100, progress.percentComplete)}%` }}
-                    ></div>
-                  </div>
-                  
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span>${progress.totalSaved.toLocaleString()} ({Math.round(progress.percentComplete)}%)</span>
-                  </div>
-                </div>
-              </div>
+                </CardFooter>
+              </Card>
             );
           })
         )}
