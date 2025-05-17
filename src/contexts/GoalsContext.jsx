@@ -596,6 +596,9 @@ export const GoalsProvider = ({ children }) => {
       if (!goal) {
         console.error('Goal not found:', goalId);
         toast.error('Goal not found');
+        
+        // Still refresh UI state for consistency
+        setGoals([...freshGoals]);
         return false;
       }
       
@@ -607,6 +610,9 @@ export const GoalsProvider = ({ children }) => {
       if (weekIndex < 0 || weekIndex >= updatedWeeks.length) {
         console.error(`Invalid week index: ${weekIndex} (from weekNum ${weekNum})`);
         toast.error('Invalid week number');
+        
+        // Still refresh UI state for consistency
+        setGoals([...freshGoals]);
         return false;
       }
       
@@ -734,11 +740,35 @@ export const GoalsProvider = ({ children }) => {
       } else {
         console.error(`Failed to update goal in storage!`);
         toast.error('Failed to add trade entry');
+        
+        // Still refresh UI state for consistency
+        try {
+          const refreshedGoals = goalManager.getGoals();
+          setGoals([...refreshedGoals]);
+          if (activeGoal && activeGoal.id === goalId) {
+            setActiveGoal({...goalManager.getActiveGoal()});
+          }
+        } catch (refreshErr) {
+          console.error('Error refreshing state after failed save:', refreshErr);
+        }
+        
         return false;
       }
     } catch (err) {
       console.error('Error adding trade entry:', err);
-      toast.error('Failed to add trade entry');
+      toast.error('Something went wrong. Please try again.');
+      
+      // Still refresh UI state for consistency
+      try {
+        const freshGoals = goalManager.getGoals();
+        setGoals([...freshGoals]);
+        if (activeGoal && activeGoal.id === goalId) {
+          setActiveGoal({...goalManager.getActiveGoal()});
+        }
+      } catch (refreshErr) {
+        console.error('Error refreshing state after exception:', refreshErr);
+      }
+      
       return false;
     }
   };
@@ -757,6 +787,29 @@ export const GoalsProvider = ({ children }) => {
       // Use the GoalManager's method to add the entry to the correct week
       const result = goalManager.addTradeEntryWithTimestamp(goalId, entry);
       
+      // Log the result for debugging purposes
+      console.error('Add trade entry result:', result, 'Entry data:', {
+        goalId,
+        timestamp: entry.timestamp,
+        amount: entry.amount,
+        note: entry.note || ''
+      });
+      
+      // Check if result is null or undefined
+      if (!result) {
+        console.error('Add trade entry failed: Received null response');
+        toast.error('Trade entry failed: No response from server');
+        
+        // Still refresh UI state to ensure consistency
+        const freshGoals = goalManager.getGoals();
+        setGoals([...freshGoals]);
+        if (activeGoal && activeGoal.id === goalId) {
+          setActiveGoal({...goalManager.getActiveGoal()});
+        }
+        
+        return false;
+      }
+      
       if (result.success) {
         // Get fresh data after update
         const freshGoals = goalManager.getGoals();
@@ -772,18 +825,40 @@ export const GoalsProvider = ({ children }) => {
           // Force a new reference to ensure re-renders
           setActiveGoal({...freshActiveGoal}); 
           // Show confirmation toast
-          toast.success(`Added to ${result.displayName}: ${formatCurrency(entry.amount)}`);
+          toast.success(`Added to ${result.displayName || 'week'}: ${formatCurrency(entry.amount)}`);
         }
         
         return true;
       } else {
-        console.error(`Failed to add trade entry with timestamp: ${result.error}`);
-        toast.error(result.error || 'Failed to add trade entry');
+        // Get error message or use fallback
+        const errorMessage = result.error || 'Failed to add trade entry';
+        console.error(`Failed to add trade entry with timestamp: ${errorMessage}`);
+        toast.error(errorMessage);
+        
+        // Still refresh UI state to ensure consistency
+        const freshGoals = goalManager.getGoals();
+        setGoals([...freshGoals]);
+        if (activeGoal && activeGoal.id === goalId) {
+          setActiveGoal({...goalManager.getActiveGoal()});
+        }
+        
         return false;
       }
     } catch (err) {
       console.error('Error adding trade entry with timestamp:', err);
-      toast.error('Failed to add trade entry');
+      toast.error('Something went wrong. Please try again.');
+      
+      // Still refresh UI state to ensure consistency
+      try {
+        const freshGoals = goalManager.getGoals();
+        setGoals([...freshGoals]);
+        if (activeGoal && activeGoal.id === goalId) {
+          setActiveGoal({...goalManager.getActiveGoal()});
+        }
+      } catch (refreshErr) {
+        console.error('Error refreshing state after exception:', refreshErr);
+      }
+      
       return false;
     }
   };

@@ -834,8 +834,17 @@ class GoalManager {
         displayName: week.displayName
       };
     } catch (error) {
-      console.error('Error adding trade entry with timestamp:', error);
-      return { success: false, error: error.message };
+      console.error('Error adding trade entry with timestamp:', error, 'Entry data:', {
+        goalId, 
+        timestamp: entry?.timestamp,
+        amount: entry?.amount,
+        note: entry?.note || ''
+      });
+      // Always return an object with at least success and error fields
+      return { 
+        success: false, 
+        error: error.message || 'An unexpected error occurred adding the trade entry'
+      };
     }
   }
   

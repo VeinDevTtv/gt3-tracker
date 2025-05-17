@@ -210,49 +210,82 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
       
       // Add the trade entry with full logging
       console.log(`WeeklyEntryList: Calling addTradeEntry for goal ${currentGoal.id}`);
-      const success = addTradeEntry(currentGoal.id, entry, weekNum);
       
-      if (success) {
-        // Verify the update by checking if the profit was updated
-        console.log('WeeklyEntryList: Trade entry added successfully, verifying update...');
+      // Wrap the call to addTradeEntry in a try/catch
+      try {
+        const success = addTradeEntry(currentGoal.id, entry, weekNum);
         
-        // Get the updated goal from context
-        const updatedGoal = goals.find(g => g.id === currentGoal.id);
-        if (updatedGoal) {
-          const updatedWeek = updatedGoal.weeks[weekIndex];
-          console.log(`WeeklyEntryList: Verification - Week ${weekNum} profit before: ${originalProfit}, after: ${updatedWeek.profit}`);
+        if (success) {
+          // Verify the update by checking if the profit was updated
+          console.log('WeeklyEntryList: Trade entry added successfully, verifying update...');
           
-          // Calculate difference to confirm update
-          const difference = updatedWeek.profit - originalProfit;
-          if (Math.abs(difference - entry.amount) > 0.01) {
-            console.warn(`WeeklyEntryList: Unexpected profit difference. Expected ~${entry.amount}, got ${difference}`);
-          } else {
-            console.log(`WeeklyEntryList: Profit updated correctly by ${difference}`);
+          // Get the updated goal from context
+          const updatedGoal = goals.find(g => g.id === currentGoal.id);
+          if (updatedGoal) {
+            const updatedWeek = updatedGoal.weeks[weekIndex];
+            console.log(`WeeklyEntryList: Verification - Week ${weekNum} profit before: ${originalProfit}, after: ${updatedWeek.profit}`);
+            
+            // Calculate difference to confirm update
+            const difference = updatedWeek.profit - originalProfit;
+            if (Math.abs(difference - entry.amount) > 0.01) {
+              console.warn(`WeeklyEntryList: Unexpected profit difference. Expected ~${entry.amount}, got ${difference}`);
+            } else {
+              console.log(`WeeklyEntryList: Profit updated correctly by ${difference}`);
+            }
           }
-        }
-        
-        // Notify parent component to refresh UI
-        if (onEntryChange) {
-          console.log('WeeklyEntryList: Calling onEntryChange to propagate UI updates');
-          onEntryChange();
           
-          // Call it again after a delay to ensure renders complete
-          setTimeout(() => {
-            console.log('WeeklyEntryList: Calling delayed onEntryChange for final UI sync');
+          // Notify parent component to refresh UI
+          if (onEntryChange) {
+            console.log('WeeklyEntryList: Calling onEntryChange to propagate UI updates');
             onEntryChange();
-          }, 200);
+            
+            // Call it again after a delay to ensure renders complete
+            setTimeout(() => {
+              console.log('WeeklyEntryList: Calling delayed onEntryChange for final UI sync');
+              onEntryChange();
+            }, 200);
+          }
+          
+          toast.success(`Trade entry added to Week ${weekNum}: ${formatCurrency(entry.amount)}`);
+          return true;
+        } else {
+          console.error('WeeklyEntryList: addTradeEntry returned false');
+          
+          // Use onEntryChange to refresh the UI state even on failure
+          if (onEntryChange) {
+            console.log('WeeklyEntryList: Refreshing UI after failed trade entry');
+            onEntryChange();
+          }
+          
+          // Already showing a toast in the addTradeEntry method
+          return false;
+        }
+      } catch (tradeError) {
+        // Log the error and continue
+        console.error('WeeklyEntryList: Error in addTradeEntry call:', tradeError);
+        toast.error('Something went wrong adding your trade entry. Please try again.');
+        
+        // Use onEntryChange to refresh the UI state even on failure
+        if (onEntryChange) {
+          console.log('WeeklyEntryList: Refreshing UI after trade entry error');
+          onEntryChange();
         }
         
-        toast.success(`Trade entry added to Week ${weekNum}: ${formatCurrency(entry.amount)}`);
-        return true;
-      } else {
-        console.error('WeeklyEntryList: addTradeEntry returned false');
-        toast.error('Failed to add trade entry');
         return false;
       }
     } catch (err) {
-      console.error('WeeklyEntryList: Error adding trade entry:', err);
-      toast.error('Failed to add trade entry');
+      console.error('WeeklyEntryList: handleTradeEntry outer error:', err);
+      toast.error('An error occurred. Please try again.');
+      
+      // Attempt to refresh UI state
+      if (onEntryChange) {
+        try {
+          onEntryChange();
+        } catch (refreshErr) {
+          console.error('WeeklyEntryList: Error refreshing UI after failure:', refreshErr);
+        }
+      }
+      
       return false;
     }
   };
