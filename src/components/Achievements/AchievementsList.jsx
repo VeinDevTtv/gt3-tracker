@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Lock, Award, CheckCircle, Filter, Search, Info } from 'lucide-react';
+import { Trophy, Lock, Award, CheckCircle, Filter, Search, Info, Target, Plus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Input } from '../ui/input';
@@ -13,6 +13,7 @@ import {
   SelectValue 
 } from '../ui/select';
 import achievementManager from '../../services/AchievementManager';
+import { useGoals } from '../../contexts/GoalsContext';
 import { format } from 'date-fns';
 
 // Debug import
@@ -39,6 +40,7 @@ const AchievementsList = ({ theme }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'earned', 'locked'
   const [error, setError] = useState(null);
+  const { goals } = useGoals();
   
   console.log("AchievementsList render");
   
@@ -179,6 +181,36 @@ const AchievementsList = ({ theme }) => {
   const earnedCount = Object.keys(earnedAchievements).length;
   const totalCount = allAchievements.length;
   const earnedPercentage = totalCount > 0 ? Math.round((earnedCount / totalCount) * 100) : 0;
+  
+  // Check if we have no goals created yet
+  if (!goals || goals.length === 0) {
+    return (
+      <Card className={theme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-primary" />
+            Achievements
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Target className="h-8 w-8 text-muted-foreground/60" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No Goals Created Yet</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Start by creating your first savings goal. Achievements will unlock as you make progress.
+            </p>
+            <Button asChild className="gap-1">
+              <a href="/goals">
+                <Plus className="h-4 w-4" /> Create Goal
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   if (error) {
     return (

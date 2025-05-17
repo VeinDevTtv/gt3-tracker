@@ -76,6 +76,25 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
     }
   }, [goalId, activeGoal, goals]);
   
+  // Handle the case where no goals exist at all
+  if (!goals || goals.length === 0) {
+    return (
+      <div className="text-center p-12 bg-muted/20 rounded-lg border flex flex-col items-center">
+        <Calendar className="w-12 h-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium mb-2">No Goals Created Yet</h3>
+        <p className="text-muted-foreground mb-6 max-w-md">
+          Start by creating your first savings goal to track weekly entries and progress.
+        </p>
+        <Button asChild className="gap-1">
+          <a href="/goals">
+            <Plus className="h-4 w-4" /> Create Goal
+          </a>
+        </Button>
+      </div>
+    );
+  }
+  
+  // Handle the case where there is no active goal selected
   if (!currentGoal) {
     return (
       <div className="text-center p-12 bg-muted/20 rounded-lg border flex flex-col items-center">

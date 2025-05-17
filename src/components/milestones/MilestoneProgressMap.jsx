@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trophy, Calendar, Clock, ToggleLeft, ToggleRight, Info } from 'lucide-react';
+import { Trophy, Calendar, Clock, ToggleLeft, ToggleRight, Info, Target, Plus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 /**
@@ -14,7 +14,7 @@ import { format, parseISO } from 'date-fns';
 const MilestoneProgressMap = ({ goalId, refreshKey = 0 }) => {
   const [milestones, setMilestones] = useState([]);
   const [totalProgress, setTotalProgress] = useState(0);
-  const { activeGoal, getGoalProgressData, toggleMilestoneTimeSensitivity } = useGoals();
+  const { activeGoal, goals, getGoalProgressData, toggleMilestoneTimeSensitivity } = useGoals();
   
   // Derive goalId if not provided
   const targetGoalId = goalId || (activeGoal ? activeGoal.id : null);
@@ -64,6 +64,25 @@ const MilestoneProgressMap = ({ goalId, refreshKey = 0 }) => {
     return info;
   };
   
+  // No goals exist
+  if (!goals || goals.length === 0) {
+    return (
+      <div className="p-8 rounded-lg border bg-muted/20 flex flex-col items-center text-center">
+        <Target className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-medium mb-2">No Goals Created Yet</h3>
+        <p className="text-muted-foreground mb-6 max-w-md">
+          Start by creating your first savings goal to track milestones and progress.
+        </p>
+        <Button asChild className="gap-1">
+          <a href="/goals">
+            <Plus className="h-4 w-4" /> Create Goal
+          </a>
+        </Button>
+      </div>
+    );
+  }
+  
+  // Goal exists but no milestones
   if (!targetGoalId || milestones.length === 0) {
     return (
       <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
