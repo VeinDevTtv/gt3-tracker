@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Trophy, Check, Edit, Trash2, ExternalLink, ListPlus, AlertTriangle, ArrowRightCircle } from 'lucide-react';
+import { Plus, Trophy, Check, Edit, ListPlus, ArrowRightCircle } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -21,7 +21,6 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
     switchGoal,
     addGoal,
     updateGoal,
-    deleteGoal,
     calculateProgress
   } = useGoals();
   
@@ -30,127 +29,72 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
   const [activeGoalId, setActiveGoalId] = useState(null);
   const [showNewGoalDialog, setShowNewGoalDialog] = useState(false);
   const [editingGoal, setEditingGoal] = useState(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [goalToDelete, setGoalToDelete] = useState(null);
   const [error, setError] = useState(null);
 
   // Debug flag to log state for troubleshooting
   const DEBUG = true;
-
-  // Sync local state with context when it changes
+  
+  // Initialize and update state from context
   useEffect(() => {
-    try {
-      // Use context data instead of direct service calls
-      if (DEBUG) {
-        console.log('GoalList - contextGoals:', contextGoals);
-        console.log('GoalList - contextActiveGoal:', contextActiveGoal);
-      }
-      
-      setGoals(contextGoals || []);
-      setActiveGoalId(contextActiveGoal?.id || null);
-    } catch (err) {
-      console.error('Error syncing with context:', err);
-      setError('Failed to sync goals from context');
-    }
-  }, [contextGoals, contextActiveGoal, refreshTrigger, DEBUG]);
-
+    setGoals(contextGoals || []);
+    setActiveGoalId(contextActiveGoal?.id || null);
+    
+    if (DEBUG) console.log('GoalList state updated from context:', contextGoals, contextActiveGoal);
+  }, [contextGoals, contextActiveGoal, refreshTrigger]);
+  
+  // Handle selection of a goal (setting as active)
   const handleSelectGoal = (goalId) => {
     try {
-      if (DEBUG) console.log('Selecting goal:', goalId);
+      if (DEBUG) console.log('Switching to goal:', goalId);
       
-      // Use context function
-      if (switchGoal(goalId)) {
-        setActiveGoalId(goalId);
-        // Notify parent component of goal change
+      switchGoal(goalId);
+      
+      // Call parent's onChange handler
+      if (onGoalChange) {
+        onGoalChange(goalId);
+      }
+    } catch (err) {
+      console.error('Error selecting goal:', err);
+      toast.error('Failed to switch goal');
+    }
+  };
+  
+  // Handle goal creation
+  const handleCreateGoal = (newGoalData) => {
+    try {
+      if (DEBUG) console.log('Creating goal:', newGoalData);
+      
+      const goalId = addGoal(newGoalData);
+      
+      if (goalId) {
+        setShowNewGoalDialog(false);
+        toast.success('Goal created successfully!');
+        
+        // Call parent's onChange handler
         if (onGoalChange) {
           onGoalChange(goalId);
         }
       }
     } catch (err) {
-      console.error('Error selecting goal:', err);
-      toast.error('Failed to switch goals');
-    }
-  };
-
-  const handleCreateGoal = (newGoalData) => {
-    try {
-      if (DEBUG) console.log('Creating new goal:', newGoalData);
-      
-      // Ensure we have the required fields
-      if (!newGoalData.name || !newGoalData.target) {
-        toast.error('Goal name and target amount are required');
-        return null;
-      }
-      
-      // Use context function
-      const newGoalId = addGoal(newGoalData);
-      
-      if (DEBUG) console.log('New goal created with ID:', newGoalId);
-      
-      // Dialog will be closed by parent
-      setShowNewGoalDialog(false);
-      
-      return newGoalId;
-    } catch (err) {
       console.error('Error creating goal:', err);
-      toast.error('Failed to create new goal');
-      return null;
+      toast.error('Failed to create goal');
     }
   };
-
+  
+  // Handle goal update
   const handleUpdateGoal = (goalId, updates) => {
     try {
-      if (DEBUG) console.log(`Updating goal ${goalId}:`, updates);
+      if (DEBUG) console.log('Updating goal:', goalId, updates);
       
-      // Use context function
-      if (updateGoal(goalId, updates)) {
+      const success = updateGoal(goalId, updates);
+      
+      if (success) {
         setEditingGoal(null);
-        
-        // Notify parent component if the active goal was updated
-        if (goalId === activeGoalId && onGoalChange) {
-          onGoalChange(goalId);
-        }
-        
         toast.success('Goal updated successfully!');
       }
     } catch (err) {
       console.error('Error updating goal:', err);
       toast.error('Failed to update goal');
-    }
-  };
-
-  const handleDeleteGoal = (goalId) => {
-    try {
-      if (deleteConfirmText !== 'DELETE') {
-        toast.error('Please type DELETE to confirm');
-        return;
-      }
-      
-      if (goals.length <= 1) {
-        toast.error('Cannot delete the only goal. Create another goal first.');
-        return;
-      }
-      
-      if (DEBUG) console.log('Deleting goal:', goalId);
-      
-      // Use context function
-      if (deleteGoal(goalId)) {
-        setGoalToDelete(null);
-        setDeleteConfirmText('');
-        
-        // Handle active goal change
-        if (goalId === activeGoalId && onGoalChange) {
-          const newActiveGoal = contextGoals.find(g => g.id !== goalId);
-          if (newActiveGoal) {
-            onGoalChange(newActiveGoal.id);
-          }
-        }
-        
-        toast.success('Goal deleted successfully!');
-      }
-    } catch (err) {
-      console.error('Error deleting goal:', err);
-      toast.error('Failed to delete goal');
     }
   };
 
@@ -301,14 +245,6 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
-                      onClick={() => setGoalToDelete(goal)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 </CardFooter>
               </Card>
@@ -361,53 +297,6 @@ const GoalList = ({ onGoalChange, onCreateNewGoal, refreshTrigger = 0 }) => {
                 target: editingGoal.target,
                 description: editingGoal.description
               })}>Save Changes</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-      
-      {/* Delete Goal Dialog */}
-      {goalToDelete && (
-        <Dialog open={!!goalToDelete} onOpenChange={(open) => !open && setGoalToDelete(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                <span>Delete Goal</span>
-              </DialogTitle>
-              <DialogDescription className="pt-2">
-                Are you sure you want to delete "{goalToDelete.name}"? All data including milestones, 
-                weekly inputs, and achievements linked to this goal will be permanently lost.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <div className="mb-4 p-3 bg-muted/40 rounded-md border">
-                <p className="font-medium">{goalToDelete.name}</p>
-                <p className="text-sm text-muted-foreground">Target: ${goalToDelete.target.toLocaleString()}</p>
-                <div className="mt-2 w-full bg-accent h-2 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-primary h-full" 
-                    style={{ width: `${Math.min(100, calculateProgress(goalToDelete.id).percentComplete)}%` }}
-                  ></div>
-                </div>
-              </div>
-              <p className="mb-4 text-sm text-muted-foreground">Type DELETE to confirm deletion:</p>
-              <Input
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="Type DELETE"
-              />
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => {
-                setGoalToDelete(null);
-                setDeleteConfirmText('');
-              }}>Cancel</Button>
-              <Button 
-                variant="destructive" 
-                onClick={() => handleDeleteGoal(goalToDelete.id)}
-                disabled={deleteConfirmText !== 'DELETE'}
-              >Delete Goal</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
