@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,9 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from 'date-fns';
+import { format, parseISO, isWithinInterval, isAfter, startOfToday } from 'date-fns';
+import { Badge } from "@/components/ui/badge";
+import { useGoals } from "../contexts/GoalsContext";
 
 const getEmojiForProfit = (profit, previousProfit = 0) => {
   if (profit === 0) return '⚖️';
@@ -34,7 +36,8 @@ const WeekInput = ({
   weeklyTargetAverage, 
   theme, 
   currentStreak = 0,
-  goalStartDate
+  goalStartDate,
+  goalId
 }) => {
   const [expandedWeek, setExpandedWeek] = useState(null);
   const [quickEntry, setQuickEntry] = useState({
@@ -44,20 +47,48 @@ const WeekInput = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef(null);
+  const { getCurrentWeekNumber, ensureEnoughWeeks } = useGoals();
+  
+  // Ensure we have enough weeks whenever the component renders
+  useEffect(() => {
+    ensureEnoughWeeks(8); // Ensure we have at least 8 weeks ahead
+  }, [ensureEnoughWeeks]);
 
-  // Calculate current week based on goal start date
-  const getCurrentWeekNumber = () => {
-    if (!goalStartDate) return 1;
+  // Get current week number
+  const currentWeekNum = getCurrentWeekNumber();
+  
+  // Determine which week is the current week based on dates
+  const getCurrentWeekFromDates = () => {
+    const today = startOfToday();
+    if (!weeks || weeks.length === 0) return currentWeekNum;
     
-    const start = new Date(goalStartDate);
-    const now = new Date();
-    const diffTime = Math.abs(now - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.floor(diffDays / 7) + 1;
+    for (const week of weeks) {
+      if (!week.startDate || !week.endDate) continue;
+      
+      const startDate = parseISO(week.startDate);
+      const endDate = parseISO(week.endDate);
+      
+      // Check if today is within this week's range
+      if (isWithinInterval(today, { start: startDate, end: endDate })) {
+        return week.week;
+      }
+    }
+    
+    // If no match, find the earliest future week
+    for (const week of weeks) {
+      if (!week.startDate) continue;
+      const startDate = parseISO(week.startDate);
+      if (isAfter(startDate, today)) {
+        return week.week;
+      }
+    }
+    
+    return currentWeekNum;
   };
-
-  const currentWeek = getCurrentWeekNumber();
-
+  
+  // Determine the current week based on dates
+  const actualCurrentWeek = getCurrentWeekFromDates();
+  
   const handleQuickEntryChange = (e) => {
     const { name, value } = e.target;
     setQuickEntry(prev => ({ ...prev, [name]: value }));
@@ -75,7 +106,7 @@ const WeekInput = ({
     setIsSubmitting(true);
     
     // Determine which week to use
-    let weekNum = currentWeek;
+    let weekNum = actualCurrentWeek;
     if (quickEntry.selectedWeek !== 'current') {
       weekNum = parseInt(quickEntry.selectedWeek);
     }
@@ -188,10 +219,11 @@ const WeekInput = ({
                     <SelectValue placeholder="Select week" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="current">Current Week ({currentWeek})</SelectItem>
+                    <SelectItem value="current">Current Week ({actualCurrentWeek})</SelectItem>
                     {weeks.map((week, i) => (
                       <SelectItem key={i} value={week.week.toString()}>
-                        Week {week.week}
+                        {week.displayName || `Week ${week.week}`}
+                        {week.week === actualCurrentWeek && " (Current)"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -247,6 +279,7 @@ const WeekInput = ({
             const isFilled = week.isFilled !== undefined ? week.isFilled : week.profit !== 0;
             const hasEntries = week.entries && week.entries.length > 0;
             const isExpanded = expandedWeek === index;
+            const isCurrentWeek = week.week === currentWeekNum;
             
             return (
               <div 
@@ -255,15 +288,31 @@ const WeekInput = ({
                   ${theme === 'dark' ? 'border-gray-700 bg-gray-700/50' : ''} 
                   ${colorClass} 
                   ${isPartOfCurrentStreak ? 'border-primary-color' : ''}
+                  ${isCurrentWeek ? 'ring-2 ring-primary-color ring-opacity-70' : ''}
                   ${!isFilled ? 'opacity-60 border-dashed' : ''}`}
               >
                 <div className="p-3">
-                  <div className={`font-medium mb-2 flex justify-between ${theme === 'dark' ? 'text-white' : ''}`}>
-                    <span>Week {week.week}</span>
-                    <div className="flex items-center">
-                      {isPartOfCurrentStreak && <Flame size={14} className="mr-1 text-primary-color" />}
-                      {emoji && <span>{emoji}</span>}
+                  <div className="mb-2">
+                    <div className={`font-medium flex justify-between items-center ${theme === 'dark' ? 'text-white' : ''}`}>
+                      <div className="flex items-center">
+                        <span>Week {week.week}</span>
+                        {isCurrentWeek && (
+                          <Badge className="ml-1.5 text-xs px-1.5 py-0 h-4 bg-primary hover:bg-primary/80">
+                            Current
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center">
+                        {isPartOfCurrentStreak && <Flame size={14} className="mr-1 text-primary-color" />}
+                        {emoji && <span>{emoji}</span>}
+                      </div>
                     </div>
+                    {week.displayName && (
+                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center">
+                        <Calendar size={10} className="mr-1" />
+                        {week.displayName.replace('Week of ', '')}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col space-y-2">
                     <div className="relative">

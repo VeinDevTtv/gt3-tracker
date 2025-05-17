@@ -6,6 +6,7 @@ import goalManager from '../services/GoalManager';
 import achievementManager from '../services/AchievementManager';
 import milestoneService from '../services/MilestoneService';
 import html2canvas from 'html2canvas';
+import { format, parseISO } from 'date-fns';
 
 // Create the context
 const GoalsContext = createContext();
@@ -582,6 +583,11 @@ export const GoalsProvider = ({ children }) => {
         console.warn(`WARNING: Adding trade to goal ${goalId} but active goal is ${activeGoal?.id}`);
       }
       
+      // If entry has a timestamp, use the new timestamp-based method
+      if (entry.timestamp) {
+        return addTradeEntryWithTimestamp(goalId, entry);
+      }
+      
       // Ensure we're working with the most current goal data
       // Don't rely on the cached goals array
       const freshGoals = goalManager.getGoals();
@@ -613,6 +619,11 @@ export const GoalsProvider = ({ children }) => {
         updatedWeeks[weekIndex].entries = [];
       }
       
+      // Add timestamp to the entry if missing
+      if (!entry.timestamp) {
+        entry.timestamp = new Date().toISOString();
+      }
+      
       // Add the new entry
       updatedWeeks[weekIndex].entries.push(entry);
       
@@ -636,10 +647,6 @@ export const GoalsProvider = ({ children }) => {
         runningTotal += (updatedWeeks[i].profit || 0);
         updatedWeeks[i].cumulative = runningTotal;
       }
-      
-      // Log the update details before saving
-      console.log(`Week ${weekNum} before update: Profit=${originalProfit}, Cumulative=${originalCumulative}`);
-      console.log(`Week ${weekNum} after update: Profit=${weekTotalProfit}, Cumulative=${updatedWeeks[weekIndex].cumulative}`);
       
       // Get last milestone
       const lastMilestoneObject = goal.lastMilestone || null;
@@ -731,6 +738,51 @@ export const GoalsProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Error adding trade entry:', err);
+      toast.error('Failed to add trade entry');
+      return false;
+    }
+  };
+
+  // Add a trade entry with timestamp to be automatically assigned to the correct week
+  const addTradeEntryWithTimestamp = (goalId, entry) => {
+    try {
+      console.log(`--- Starting addTradeEntryWithTimestamp ---`);
+      console.log(`Goal ID: ${goalId}, Entry timestamp: ${entry.timestamp}`);
+      
+      // Ensure entry has a timestamp
+      if (!entry.timestamp) {
+        entry.timestamp = new Date().toISOString();
+      }
+      
+      // Use the GoalManager's method to add the entry to the correct week
+      const result = goalManager.addTradeEntryWithTimestamp(goalId, entry);
+      
+      if (result.success) {
+        // Get fresh data after update
+        const freshGoals = goalManager.getGoals();
+        // Create completely new references to force UI refresh 
+        const updatedGoals = [...freshGoals];
+        
+        // Update context state with fresh data and new references
+        setGoals(updatedGoals);
+        
+        // If we're updating the active goal, create a fresh reference 
+        if (activeGoal && activeGoal.id === goalId) {
+          const freshActiveGoal = goalManager.getActiveGoal();
+          // Force a new reference to ensure re-renders
+          setActiveGoal({...freshActiveGoal}); 
+          // Show confirmation toast
+          toast.success(`Added to ${result.displayName}: ${formatCurrency(entry.amount)}`);
+        }
+        
+        return true;
+      } else {
+        console.error(`Failed to add trade entry with timestamp: ${result.error}`);
+        toast.error(result.error || 'Failed to add trade entry');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error adding trade entry with timestamp:', err);
       toast.error('Failed to add trade entry');
       return false;
     }
@@ -1485,6 +1537,81 @@ export const GoalsProvider = ({ children }) => {
     }).format(amount || 0);
   };
 
+  // Backfill a week's data for a past period
+  const backfillWeekData = async (goalId, weekStartDate, profit, entries = []) => {
+    try {
+      console.log(`--- Starting backfillWeekData ---`);
+      console.log(`Goal ID: ${goalId}, Date: ${weekStartDate}, Profit: ${profit}`);
+      
+      // Use the GoalManager's method to backfill the week data
+      const result = goalManager.backfillWeekData(goalId, weekStartDate, profit, entries);
+      
+      if (result.success) {
+        // Get fresh data after update
+        const freshGoals = goalManager.getGoals();
+        // Create completely new references to force UI refresh 
+        const updatedGoals = [...freshGoals];
+        
+        // Update context state with fresh data and new references
+        setGoals(updatedGoals);
+        
+        // If we're updating the active goal, create a fresh reference 
+        if (activeGoal && activeGoal.id === goalId) {
+          const freshActiveGoal = goalManager.getActiveGoal();
+          // Force a new reference to ensure re-renders
+          setActiveGoal({...freshActiveGoal}); 
+        }
+        
+        return result;
+      } else {
+        console.error(`Failed to backfill week data: ${result.error}`);
+        return result;
+      }
+    } catch (err) {
+      console.error('Error backfilling week data:', err);
+      return { 
+        success: false, 
+        error: err.message || 'An unexpected error occurred' 
+      };
+    }
+  };
+  
+  // Get the current week number for the active goal
+  const getCurrentWeekNumber = () => {
+    if (!activeGoal || !activeGoal.startDate) {
+      return 1;
+    }
+    
+    return goalManager.getCurrentWeekNumber(activeGoal.startDate);
+  };
+  
+  // Find a week by date
+  const findWeekForDate = (date) => {
+    if (!activeGoal || !activeGoal.weeks || !activeGoal.weeks.length) {
+      return null;
+    }
+    
+    return goalManager.findWeekForDate(activeGoal.weeks, date);
+  };
+  
+  // Ensure active goal has enough weeks
+  const ensureEnoughWeeks = (minWeeksAhead = 4) => {
+    if (!activeGoal) {
+      return;
+    }
+    
+    const updatedGoal = goalManager.ensureEnoughWeeks(activeGoal, minWeeksAhead);
+    
+    if (JSON.stringify(updatedGoal) !== JSON.stringify(activeGoal)) {
+      // Update the active goal in state
+      setActiveGoal(updatedGoal);
+      
+      // Update the goal in the goals array
+      const updatedGoals = goals.map(g => g.id === activeGoal.id ? updatedGoal : g);
+      setGoals(updatedGoals);
+    }
+  };
+
   // Context value
   const value = {
     goals,
@@ -1503,6 +1630,7 @@ export const GoalsProvider = ({ children }) => {
     importGoal,
     updateWeekData,
     addTradeEntry,
+    addTradeEntryWithTimestamp,
     updateTradeEntry,
     deleteTradeEntry,
     calculateStreakInfo,
@@ -1513,7 +1641,11 @@ export const GoalsProvider = ({ children }) => {
     exportAllDataAsJSON,
     importBackupFromJSON,
     generatePdfReport,
-    resetAllApplicationData
+    resetAllApplicationData,
+    backfillWeekData,
+    getCurrentWeekNumber,
+    findWeekForDate,
+    ensureEnoughWeeks
   };
 
   return (

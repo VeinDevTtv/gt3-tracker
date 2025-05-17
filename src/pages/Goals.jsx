@@ -5,6 +5,7 @@ import GoalList from '../components/GoalManager/GoalList';
 import WeeklyEntryList from '../components/GoalManager/WeeklyEntryList';
 import AchievementsList from '../components/Achievements/AchievementsList';
 import MilestoneProgressMap from '../components/milestones/MilestoneProgressMap';
+import BackfillWeekForm from '../components/BackfillWeekForm';
 import goalManager from '../services/GoalManager';
 import achievementManager from '../services/AchievementManager';
 import milestoneService from '../services/MilestoneService';
@@ -361,6 +362,12 @@ const Goals = () => {
                 goalId={activeGoal.id}
                 onEntryChange={refreshComponents}
               />
+                              <BackfillWeekForm 
+                  key={`backfill-${refreshTrigger}-${activeGoal?.id}`}
+                  goalId={activeGoal.id}
+                  theme={theme}
+                  onBackfill={refreshComponents}
+                />
             </CardContent>
           </Card>
         )}

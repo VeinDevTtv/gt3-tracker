@@ -1,6 +1,7 @@
 import { toast } from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 import milestoneService from './MilestoneService';
+import { startOfWeek, endOfWeek, format, addWeeks, isBefore, isAfter, isWithinInterval, parseISO, addDays } from 'date-fns';
 
 /**
  * GoalManager - Handles all goal-related operations
@@ -36,6 +37,9 @@ class GoalManager {
       // Migrate to add isFilled flag to existing weeks
       this.migrateToAddIsFilledFlag();
       
+      // Migrate to real-time weeks if needed
+      this.migrateToRealTimeWeeks();
+      
       // Ensure we have at least one goal
       const goals = this.getGoals();
       if (goals.length === 0) {
@@ -68,12 +72,13 @@ class GoalManager {
    * Create a default goal
    */
   createDefaultGoal() {
+    const startDate = new Date().toISOString().split('T')[0];
     const defaultGoal = {
       id: uuidv4(),
       name: 'Porsche GT3',
       target: 200000,
-      startDate: new Date().toISOString().split('T')[0],
-      weeks: this.createEmptyWeeks(52),
+      startDate: startDate,
+      weeks: this.generateWeeksFromStartDate(startDate, 52),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -89,9 +94,10 @@ class GoalManager {
   }
 
   /**
-   * Create empty weeks array
+   * Create empty weeks array (legacy - use generateWeeksFromStartDate instead)
    */
   createEmptyWeeks(count = 52) {
+    // This is kept for backward compatibility but should not be used in new code
     return Array.from({ length: count }, (_, i) => ({
       week: i + 1,
       profit: 0,
@@ -240,6 +246,196 @@ class GoalManager {
   }
 
   /**
+   * Migrate goals to use real-time weeks
+   */
+  migrateToRealTimeWeeks() {
+    try {
+      const goals = this.getGoals();
+      let hasUpdates = false;
+
+      const updatedGoals = goals.map(goal => {
+        // Skip goals that already have week date ranges
+        if (goal.weeks && goal.weeks.length > 0 && goal.weeks[0].startDate) {
+          return goal;
+        }
+
+        hasUpdates = true;
+        
+        // Ensure goal has a startDate
+        if (!goal.startDate) {
+          goal.startDate = new Date().toISOString().split('T')[0];
+        }
+
+        // Generate real-time weeks based on the goal's start date
+        const weeks = this.generateWeeksFromStartDate(goal.startDate, goal.weeks?.length || 52);
+        
+        // Transfer existing week data to new structure
+        if (goal.weeks && goal.weeks.length > 0) {
+          goal.weeks.forEach((oldWeek, index) => {
+            if (index < weeks.length) {
+              weeks[index].profit = oldWeek.profit || 0;
+              weeks[index].cumulative = oldWeek.cumulative || 0;
+              weeks[index].isFilled = oldWeek.isFilled || oldWeek.profit !== 0;
+              weeks[index].entries = oldWeek.entries || [];
+              
+              // Apply timestamps to entries if they don't have any
+              if (weeks[index].entries && weeks[index].entries.length > 0) {
+                weeks[index].entries = weeks[index].entries.map(entry => {
+                  if (!entry.timestamp) {
+                    // Create a timestamp in the middle of the week for existing entries
+                    const weekStart = parseISO(weeks[index].startDate);
+                    const entryDate = addDays(weekStart, 3); // Wednesday of that week
+                    return {
+                      ...entry,
+                      timestamp: entryDate.toISOString()
+                    };
+                  }
+                  return entry;
+                });
+              }
+            }
+          });
+        }
+        
+        goal.weeks = weeks;
+        goal.updatedAt = new Date().toISOString();
+        
+        return goal;
+      });
+
+      if (hasUpdates) {
+        console.log('Migrating goals to use real-time weeks');
+        this.saveGoals(updatedGoals);
+        toast.success('Goals updated to use real-time weeks!');
+      }
+    } catch (error) {
+      console.error('Error migrating to real-time weeks:', error);
+    }
+  }
+
+  /**
+   * Generate weeks from a start date
+   * @param {string} startDateStr - ISO string for start date
+   * @param {number} count - Number of weeks to generate
+   * @returns {Array} Array of week objects with date ranges
+   */
+  generateWeeksFromStartDate(startDateStr, count = 52) {
+    const startDate = parseISO(startDateStr);
+    const weeks = [];
+
+    for (let i = 0; i < count; i++) {
+      const weekStartDate = addWeeks(startDate, i);
+      const weekEndDate = endOfWeek(weekStartDate);
+      
+      weeks.push({
+        week: i + 1,
+        startDate: format(weekStartDate, 'yyyy-MM-dd'),
+        endDate: format(weekEndDate, 'yyyy-MM-dd'),
+        displayName: `Week of ${format(weekStartDate, 'MMM d')}–${format(weekEndDate, 'MMM d, yyyy')}`,
+        profit: 0,
+        cumulative: 0,
+        isFilled: false,
+        entries: []
+      });
+    }
+
+    return weeks;
+  }
+
+  /**
+   * Get the current week number based on a goal's start date
+   * @param {string} startDateStr - ISO string for goal start date
+   * @returns {number} - Current week number (1-based)
+   */
+  getCurrentWeekNumber(startDateStr) {
+    const startDate = parseISO(startDateStr);
+    const now = new Date();
+    
+    // If now is before startDate, return 1
+    if (isBefore(now, startDate)) {
+      return 1;
+    }
+    
+    // Calculate weeks difference
+    const weekStart = startOfWeek(startDate);
+    const weekDiff = Math.floor((now - weekStart) / (7 * 24 * 60 * 60 * 1000));
+    
+    return weekDiff + 1;
+  }
+  
+  /**
+   * Find the week that a date falls into
+   * @param {Array} weeks - Array of week objects
+   * @param {Date|string} date - Date to find week for
+   * @returns {Object|null} - Week object or null if not found
+   */
+  findWeekForDate(weeks, date) {
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    
+    for (const week of weeks) {
+      const weekStart = parseISO(week.startDate);
+      const weekEnd = parseISO(week.endDate);
+      
+      if (isWithinInterval(dateObj, { start: weekStart, end: weekEnd })) {
+        return week;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Ensure a goal has enough weeks going forward
+   * @param {Object} goal - Goal object
+   * @param {number} minWeeksAhead - Minimum number of weeks to ensure ahead of current
+   * @returns {Object} - Updated goal object
+   */
+  ensureEnoughWeeks(goal, minWeeksAhead = 4) {
+    if (!goal.startDate || !goal.weeks || !goal.weeks.length) {
+      return goal;
+    }
+    
+    const currentWeekNum = this.getCurrentWeekNumber(goal.startDate);
+    const weeksNeeded = currentWeekNum + minWeeksAhead;
+    
+    // If we already have enough weeks, return the goal as is
+    if (goal.weeks.length >= weeksNeeded) {
+      return goal;
+    }
+    
+    // Get the last week
+    const lastWeek = goal.weeks[goal.weeks.length - 1];
+    const lastWeekEndDate = parseISO(lastWeek.endDate);
+    
+    // Generate new weeks
+    const additionalWeeksNeeded = weeksNeeded - goal.weeks.length;
+    const newWeeks = [];
+    
+    for (let i = 1; i <= additionalWeeksNeeded; i++) {
+      const weekStartDate = addDays(lastWeekEndDate, (i * 7) - 6);
+      const weekEndDate = addDays(lastWeekEndDate, i * 7);
+      
+      newWeeks.push({
+        week: goal.weeks.length + i,
+        startDate: format(weekStartDate, 'yyyy-MM-dd'),
+        endDate: format(weekEndDate, 'yyyy-MM-dd'),
+        displayName: `Week of ${format(weekStartDate, 'MMM d')}–${format(weekEndDate, 'MMM d, yyyy')}`,
+        profit: 0,
+        cumulative: 0,
+        isFilled: false,
+        entries: []
+      });
+    }
+    
+    // Create a new goal object with the additional weeks
+    return {
+      ...goal,
+      weeks: [...goal.weeks, ...newWeeks],
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  /**
    * Get all goals from localStorage
    */
   getGoals() {
@@ -338,15 +534,17 @@ class GoalManager {
    */
   createGoal(goalData) {
     try {
+      const startDate = goalData.startDate || new Date().toISOString().split('T')[0];
+      
       // Create a new goal
       const newGoal = {
         id: uuidv4(),
         name: goalData.name || 'New Goal',
         target: goalData.target || 0,
-        startDate: goalData.startDate || new Date().toISOString().split('T')[0],
+        startDate: startDate,
         deadline: goalData.deadline || null,
         description: goalData.description || '',
-        weeks: this.createEmptyWeeks(52),
+        weeks: this.generateWeeksFromStartDate(startDate, 52),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -470,7 +668,7 @@ class GoalManager {
       
       // Ensure weeks array exists
       if (!goal.weeks) {
-        goal.weeks = this.createEmptyWeeks(52);
+        goal.weeks = this.generateWeeksFromStartDate(goal.startDate, 52);
       }
       
       // Ensure the weekIndex is valid
@@ -479,41 +677,30 @@ class GoalManager {
         return false;
       }
       
-      // Calculate the old cumulative amount
-      const oldCumulative = goal.weeks[weekIndex].cumulative;
-      
-      // Calculate new cumulative by adjusting all subsequent weeks
-      const profitChange = profit - goal.weeks[weekIndex].profit;
-      
-      // Update the specific week
-      goal.weeks[weekIndex] = {
-        ...goal.weeks[weekIndex],
-        profit,
-        isFilled: profit !== 0,
-        ...additionalData,
+      // Update the week data
+      const updatedWeeks = [...goal.weeks];
+      updatedWeeks[weekIndex] = {
+        ...updatedWeeks[weekIndex],
+        profit: parseFloat(profit) || 0,
+        isFilled: (parseFloat(profit) !== 0) || (additionalData.isFilled === true),
+        ...additionalData
       };
       
-      // Recalculate all cumulative values
-      this.recalculateCumulativeValues(goal.weeks);
+      // Recalculate cumulative values
+      this.recalculateCumulativeValues(updatedWeeks);
       
       // Update the goal
-      const goals = this.getGoals();
-      const goalIndex = goals.findIndex(g => g.id === goalId);
-      goals[goalIndex] = {
+      const updatedGoal = {
         ...goal,
+        weeks: updatedWeeks,
         updatedAt: new Date().toISOString()
       };
       
-      // Save updated goals
-      this.saveGoals(goals);
+      // Ensure we have enough weeks going forward
+      const goalWithEnoughWeeks = this.ensureEnoughWeeks(updatedGoal);
       
-      // Calculate total saved to check milestones
-      const totalSaved = goal.weeks.reduce((sum, week) => sum + (week.profit || 0), 0);
-      
-      // Check if any milestones are achieved with this update
-      milestoneService.checkMilestones(goalId, totalSaved);
-      
-      return true;
+      // Save the updated goal
+      return this.updateGoal(goalId, goalWithEnoughWeeks);
     } catch (error) {
       console.error('Error updating week profit:', error);
       return false;
@@ -561,6 +748,265 @@ class GoalManager {
     } catch (error) {
       console.error('Error resetting goal data:', error);
       return false;
+    }
+  }
+
+  /**
+   * Add a trade entry to the correct week based on timestamp
+   * @param {string} goalId - Goal ID
+   * @param {Object} entry - Trade entry with timestamp
+   * @returns {Object} - Result with success flag and weekNum
+   */
+  addTradeEntryWithTimestamp(goalId, entry) {
+    try {
+      // Get goal data
+      const goal = this.getGoalById(goalId);
+      if (!goal) {
+        console.error('Goal not found:', goalId);
+        return { success: false, error: 'Goal not found' };
+      }
+      
+      // Ensure entry has a timestamp
+      if (!entry.timestamp) {
+        entry.timestamp = new Date().toISOString();
+      }
+      
+      // Create date object from timestamp
+      const entryDate = parseISO(entry.timestamp);
+      
+      // Ensure weeks array exists and has date ranges
+      if (!goal.weeks || goal.weeks.length === 0 || !goal.weeks[0].startDate) {
+        goal.weeks = this.generateWeeksFromStartDate(goal.startDate, 52);
+      }
+      
+      // Ensure we have enough weeks
+      const updatedGoal = this.ensureEnoughWeeks(goal);
+      
+      // Find the week that this date falls into
+      const week = this.findWeekForDate(updatedGoal.weeks, entryDate);
+      
+      if (!week) {
+        console.error('Could not find matching week for date:', entry.timestamp);
+        return { 
+          success: false, 
+          error: 'No matching week found for this date' 
+        };
+      }
+      
+      // Get the week index (0-based)
+      const weekIndex = updatedGoal.weeks.findIndex(w => w.week === week.week);
+      
+      // Clone the weeks array
+      const updatedWeeks = [...updatedGoal.weeks];
+      
+      // Ensure the week has an entries array
+      if (!updatedWeeks[weekIndex].entries) {
+        updatedWeeks[weekIndex].entries = [];
+      }
+      
+      // Add the entry to the appropriate week
+      updatedWeeks[weekIndex].entries.push(entry);
+      
+      // Calculate the new profit for the week
+      const weekProfit = updatedWeeks[weekIndex].entries.reduce(
+        (sum, e) => sum + (parseFloat(e.amount) || 0), 0
+      );
+      
+      // Update the week's profit and filled flag
+      updatedWeeks[weekIndex].profit = weekProfit;
+      updatedWeeks[weekIndex].isFilled = weekProfit !== 0;
+      
+      // Recalculate cumulative values
+      this.recalculateCumulativeValues(updatedWeeks);
+      
+      // Update the goal
+      const success = this.updateGoal(goalId, {
+        ...updatedGoal,
+        weeks: updatedWeeks,
+        updatedAt: new Date().toISOString()
+      });
+      
+      return { 
+        success, 
+        weekNum: week.week, 
+        weekIndex,
+        displayName: week.displayName
+      };
+    } catch (error) {
+      console.error('Error adding trade entry with timestamp:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  /**
+   * Add or update past week data (backfill)
+   * @param {string} goalId - Goal ID
+   * @param {string} weekStartDate - Start date of the week (ISO string)
+   * @param {number} profit - Profit amount for the week
+   * @param {Array} entries - Optional entries to add
+   * @returns {Object} - Result with success flag and weekNum
+   */
+  backfillWeekData(goalId, weekStartDate, profit, entries = []) {
+    try {
+      // Get goal data
+      const goal = this.getGoalById(goalId);
+      if (!goal) {
+        console.error('Goal not found:', goalId);
+        return { success: false, error: 'Goal not found' };
+      }
+      
+      // Ensure weeks array exists and has date ranges
+      if (!goal.weeks || goal.weeks.length === 0 || !goal.weeks[0].startDate) {
+        goal.weeks = this.generateWeeksFromStartDate(goal.startDate, 52);
+      }
+      
+      // Parse the week start date
+      const startDate = parseISO(weekStartDate);
+      
+      // Find the matching week
+      let matchingWeek = null;
+      let weekIndex = -1;
+      
+      for (let i = 0; i < goal.weeks.length; i++) {
+        const weekStart = parseISO(goal.weeks[i].startDate);
+        const weekEnd = parseISO(goal.weeks[i].endDate);
+        
+        if (isWithinInterval(startDate, { start: weekStart, end: weekEnd })) {
+          matchingWeek = goal.weeks[i];
+          weekIndex = i;
+          break;
+        }
+      }
+      
+      // If no matching week, check if we need to add earlier weeks
+      if (!matchingWeek) {
+        // If the date is before the goal start date, we need to prepend weeks
+        const goalStartDate = parseISO(goal.startDate);
+        
+        if (isBefore(startDate, goalStartDate)) {
+          // Calculate how many weeks to prepend
+          const weeksDiff = Math.ceil((goalStartDate - startDate) / (7 * 24 * 60 * 60 * 1000));
+          
+          // Generate the new weeks
+          const newStartDate = format(addDays(startDate, -(startDate.getDay())), 'yyyy-MM-dd');
+          const prependWeeks = this.generateWeeksFromStartDate(newStartDate, weeksDiff);
+          
+          // Update the goal's start date and weeks
+          goal.startDate = newStartDate;
+          goal.weeks = [...prependWeeks, ...goal.weeks];
+          
+          // Adjust week numbers for all weeks
+          goal.weeks.forEach((week, i) => {
+            week.week = i + 1;
+          });
+          
+          // Recalculate week index
+          weekIndex = 0; // First week in the prepended array
+          matchingWeek = goal.weeks[weekIndex];
+        }
+        // If the date is after the last week, we need to append weeks
+        else {
+          const lastWeek = goal.weeks[goal.weeks.length - 1];
+          const lastWeekEndDate = parseISO(lastWeek.endDate);
+          
+          if (isAfter(startDate, lastWeekEndDate)) {
+            // Generate enough weeks to cover the target date
+            const weeksDiff = Math.ceil((startDate - lastWeekEndDate) / (7 * 24 * 60 * 60 * 1000));
+            const updatedGoal = this.ensureEnoughWeeks(goal, weeksDiff + 1);
+            
+            // Find the matching week again in the updated weeks array
+            for (let i = 0; i < updatedGoal.weeks.length; i++) {
+              const weekStart = parseISO(updatedGoal.weeks[i].startDate);
+              const weekEnd = parseISO(updatedGoal.weeks[i].endDate);
+              
+              if (isWithinInterval(startDate, { start: weekStart, end: weekEnd })) {
+                matchingWeek = updatedGoal.weeks[i];
+                weekIndex = i;
+                break;
+              }
+            }
+            
+            // If we still don't have a matching week, something is wrong
+            if (!matchingWeek) {
+              return { 
+                success: false, 
+                error: 'Failed to find or create a matching week for this date' 
+              };
+            }
+            
+            // Update the goal reference
+            goal.weeks = updatedGoal.weeks;
+          }
+        }
+      }
+      
+      // Now we should have a valid week index
+      if (weekIndex === -1 || !matchingWeek) {
+        return { 
+          success: false, 
+          error: 'Could not determine week for this date' 
+        };
+      }
+      
+      // Update the week
+      const updatedWeeks = [...goal.weeks];
+      
+      // If entries are provided, add them
+      if (entries && entries.length > 0) {
+        if (!updatedWeeks[weekIndex].entries) {
+          updatedWeeks[weekIndex].entries = [];
+        }
+        
+        // Add timestamp to entries if missing
+        const entriesWithTimestamps = entries.map(entry => {
+          if (!entry.timestamp) {
+            return {
+              ...entry,
+              timestamp: new Date().toISOString()
+            };
+          }
+          return entry;
+        });
+        
+        updatedWeeks[weekIndex].entries.push(...entriesWithTimestamps);
+        
+        // Calculate profit from entries
+        const weekProfit = updatedWeeks[weekIndex].entries.reduce(
+          (sum, e) => sum + (parseFloat(e.amount) || 0), 0
+        );
+        
+        // Use the calculated profit if no explicit profit was provided
+        if (profit === undefined || profit === null) {
+          profit = weekProfit;
+        }
+      }
+      
+      // Update the week data
+      updatedWeeks[weekIndex] = {
+        ...updatedWeeks[weekIndex],
+        profit: parseFloat(profit) || 0,
+        isFilled: true
+      };
+      
+      // Recalculate cumulative values
+      this.recalculateCumulativeValues(updatedWeeks);
+      
+      // Update the goal
+      const success = this.updateGoal(goalId, {
+        ...goal,
+        weeks: updatedWeeks,
+        updatedAt: new Date().toISOString()
+      });
+      
+      return { 
+        success, 
+        weekNum: matchingWeek.week, 
+        weekIndex,
+        displayName: matchingWeek.displayName
+      };
+    } catch (error) {
+      console.error('Error backfilling week data:', error);
+      return { success: false, error: error.message };
     }
   }
 }
