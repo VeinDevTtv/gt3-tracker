@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Calendar, DollarSign, Plus, Check, Clock, HelpCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/tooltip';
 import { useGoals } from '@/contexts/GoalsContext';
 import { format, parseISO, startOfWeek, endOfWeek, addDays, isSameWeek } from 'date-fns';
+import { formatCurrency } from '../../utils/formatters';
+import { CalendarIcon } from 'lucide-react';
+import { DialogFooter } from '../ui/dialog';
 
 /**
  * Component for backfilling week data for past periods with real-time calendar dates

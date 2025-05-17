@@ -28,12 +28,14 @@ import {
   Clock9,
   AlertTriangle,
   Eye,
-  EyeOff
+  EyeOff,
+  History
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import GoalSummaryReport from '@/components/GoalSummaryReport';
 import TimelineView from '@/components/TimelineView';
 import MilestoneProgressMap from '@/components/milestones/MilestoneProgressMap';
+import BackfillWeekForm from '@/components/GoalManager/BackfillWeekForm';
 import { parseISO, differenceInDays, addDays, format, isAfter, differenceInWeeks } from 'date-fns';
 
 const Dashboard = () => {
@@ -56,6 +58,14 @@ const Dashboard = () => {
   useEffect(() => {
     setRefreshKey(prev => prev + 1);
   }, [activeGoal?.id]);
+  
+  // Handle backfill completion
+  const handleBackfillComplete = (result) => {
+    if (result && result.success) {
+      // Force a refresh of the dashboard
+      setRefreshKey(prev => prev + 1);
+    }
+  };
   
   if (!activeGoal) {
     return (
@@ -417,6 +427,9 @@ const Dashboard = () => {
           
           {/* Timeline View */}
           <TimelineView refreshKey={refreshKey} />
+          
+          {/* Backfill Week Form */}
+          <BackfillWeekForm goalId={activeGoal.id} onBackfillComplete={handleBackfillComplete} />
         </TabsContent>
         
         {/* Milestones Tab */}

@@ -2,12 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Info, Flame, AlertCircle, ChevronDown, ChevronUp, Calendar, Plus, Edit2, Trash, DollarSign, Clock } from 'lucide-react';
+import { Info, Flame, AlertCircle, ChevronDown, ChevronUp, Calendar, Plus, Edit2, Trash, DollarSign, Clock, History, ArrowLeftRight } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, parseISO, isWithinInterval, isAfter, startOfToday, addDays, isSameWeek } from 'date-fns';
+import { format, parseISO, isWithinInterval, isAfter, startOfToday, addDays, isSameWeek, compareDesc, isBefore } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { useGoals } from "../contexts/GoalsContext";
 
@@ -47,6 +47,7 @@ const WeekInput = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc'
   const inputRef = useRef(null);
   const { getCurrentWeekNumber, ensureEnoughWeeks } = useGoals();
   
@@ -59,8 +60,20 @@ const WeekInput = ({
   const currentWeekNum = getCurrentWeekNumber();
   const today = new Date();
   
-  // Sort weeks for consistent display
-  const sortedWeeks = [...weeks].sort((a, b) => a.week - b.week);
+  // Sort weeks according to the chosen sort direction
+  const sortedWeeks = [...weeks].sort((a, b) => {
+    // Always ensure weeks with valid dates appear first
+    const aDate = a.startDate ? parseISO(a.startDate) : null;
+    const bDate = b.startDate ? parseISO(b.startDate) : null;
+    
+    if (!aDate && !bDate) return a.week - b.week;
+    if (!aDate) return 1;
+    if (!bDate) return -1;
+    
+    return sortDirection === 'desc' ? 
+      compareDesc(aDate, bDate) : 
+      compareDesc(bDate, aDate);
+  });
   
   // Determine which week is the current week based on dates
   const getCurrentWeekFromDates = () => {
@@ -122,9 +135,22 @@ const WeekInput = ({
     
     console.log(`WeekInput: Creating trade entry for Week ${weekNum}`);
     
+    // Get the selected week to find its date range
+    const selectedWeek = weeks.find(w => w.week === weekNum);
+    let entryTimestamp = new Date().toISOString();
+    
+    // If this is a past week, use the middle of that week for the timestamp
+    if (selectedWeek && selectedWeek.startDate) {
+      const weekStart = parseISO(selectedWeek.startDate);
+      if (isBefore(weekStart, today)) {
+        // Use the middle (Wednesday) of the selected week for past entries
+        entryTimestamp = addDays(weekStart, 3).toISOString();
+      }
+    }
+    
     // Create the entry with timestamp
     const entry = {
-      timestamp: new Date().toISOString(),
+      timestamp: entryTimestamp,
       amount: parseFloat(quickEntry.amount),
       note: quickEntry.note.trim(),
       week: weekNum
@@ -173,6 +199,10 @@ const WeekInput = ({
   const toggleViewMode = () => {
     setViewMode(prev => prev === 'grid' ? 'list' : 'grid');
   };
+  
+  const toggleSortDirection = () => {
+    setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+  };
 
   // Function to get week display info
   const getWeekDisplayInfo = (week) => {
@@ -218,14 +248,25 @@ const WeekInput = ({
               <span className="text-sm font-medium">week streak</span>
             </div>
           )}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="h-8 px-2"
-            onClick={toggleViewMode}
-          >
-            {viewMode === 'grid' ? 'List View' : 'Grid View'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 px-2"
+              onClick={toggleSortDirection}
+            >
+              <ArrowLeftRight className="h-4 w-4 mr-1" />
+              {sortDirection === 'desc' ? 'Newest' : 'Oldest'} First
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 px-2"
+              onClick={toggleViewMode}
+            >
+              {viewMode === 'grid' ? 'List View' : 'Grid View'}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -273,6 +314,8 @@ const WeekInput = ({
                       <SelectItem key={i} value={week.week.toString()}>
                         {week.displayName || `Week ${week.week}`}
                         {week.week === actualCurrentWeek && " (Current)"}
+                        {getWeekDisplayInfo(week).timeStatus === 'past' && " (Past)"}
+                        {getWeekDisplayInfo(week).timeStatus === 'future' && " (Future)"}
                       </SelectItem>
                     ))}
                   </SelectContent>

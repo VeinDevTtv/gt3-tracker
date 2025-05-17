@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { Plus, Edit, Trash2, Calendar, TrendingUp, DollarSign, Calculator, BarChart2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar, TrendingUp, DollarSign, Calculator, BarChart2, Clock, History } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { useGoals } from '../../contexts/GoalsContext';
 import WeekInput from '../WeekInput';
 import WeeklyEntryForm from './WeeklyEntryForm';
+import BackfillWeekForm from './BackfillWeekForm';
 import { Badge } from '../ui/badge';
 import { cn } from '../../lib/utils';
 import { format } from 'date-fns';
@@ -22,10 +23,12 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
     activeGoal,
     addTradeEntry,
     deleteTradeEntry,
-    updateTradeEntry
+    updateTradeEntry,
+    backfillWeekData
   } = useGoals();
 
   const [showEntryForm, setShowEntryForm] = useState(false);
+  const [showBackfillForm, setShowBackfillForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [tradeToEdit, setTradeToEdit] = useState(null);
   const [entryToDelete, setEntryToDelete] = useState(null);
@@ -146,6 +149,25 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
     } catch (err) {
       console.error('Error adding savings entry:', err);
       toast.error('Failed to add savings entry');
+    }
+  };
+  
+  const handleBackfillComplete = (result) => {
+    try {
+      console.log('Backfill complete:', result);
+      setShowBackfillForm(false);
+      
+      // Notify parent component to refresh UI
+      if (onEntryChange) {
+        onEntryChange();
+        
+        // Call it again after a delay to ensure renders complete
+        setTimeout(() => {
+          onEntryChange();
+        }, 200);
+      }
+    } catch (err) {
+      console.error('Error handling backfill completion:', err);
     }
   };
   
@@ -453,6 +475,17 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
             <BarChart2 className="h-3 w-3 mr-1" />
             Progress: {Math.round(progress.percentComplete)}%
           </Badge>
+          
+          {/* Add Backfill Week Button */}
+          <Button 
+            onClick={() => setShowBackfillForm(true)} 
+            size="sm" 
+            variant="outline"
+            className="text-muted-foreground"
+          >
+            <History className="mr-1 h-4 w-4" /> Past Week
+          </Button>
+          
           <Button 
             onClick={() => setShowEntryForm(true)} 
             size="sm" 
@@ -498,13 +531,22 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
           <p className="text-muted-foreground mb-6 max-w-md">
             Track your progress by adding weekly savings entries. Each entry represents money you've saved toward your goal.
           </p>
-          <Button 
-            onClick={() => setShowEntryForm(true)} 
-            className="bg-primary text-primary-foreground"
-            size="lg"
-          >
-            <Plus className="mr-2 h-4 w-4" /> Add First Entry
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              onClick={() => setShowBackfillForm(true)} 
+              className="bg-muted text-muted-foreground hover:bg-muted/80"
+              size="lg"
+            >
+              <History className="mr-2 h-4 w-4" /> Add Past Week
+            </Button>
+            <Button 
+              onClick={() => setShowEntryForm(true)} 
+              className="bg-primary text-primary-foreground"
+              size="lg"
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add Week
+            </Button>
+          </div>
         </div>
       ) : (
         <WeekInput
@@ -542,6 +584,22 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
             initialValues={editingEntry}
             weekNumber={editingEntry?.week}
             isEditing={!!editingEntry}
+          />
+        </DialogContent>
+      </Dialog>
+      
+      {/* Backfill Past Week Dialog */}
+      <Dialog open={showBackfillForm} onOpenChange={(open) => !open && setShowBackfillForm(false)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" /> 
+              Add Past Week Data
+            </DialogTitle>
+          </DialogHeader>
+          <BackfillWeekForm 
+            goalId={currentGoal.id}
+            onBackfillComplete={handleBackfillComplete}
           />
         </DialogContent>
       </Dialog>
