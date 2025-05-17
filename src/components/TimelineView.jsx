@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { format, parseISO } from 'date-fns';
-import { Calendar, ArrowRight, ChevronRight, Info } from 'lucide-react';
+import { format, parseISO, isToday, isSameWeek, differenceInWeeks } from 'date-fns';
+import { Calendar, ArrowRight, ChevronRight, Info, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -14,6 +14,9 @@ import { Button } from "@/components/ui/button";
 import { useGoals } from '@/contexts/GoalsContext';
 import { formatCurrency } from '@/utils/formatters';
 
+/**
+ * Get color class for a week based on its profit and target
+ */
 const getColorIntensity = (profit, target) => {
   if (profit === 0) return 'bg-muted/30';
   if (profit < 0) return 'bg-red-500/40 dark:bg-red-500/30';
@@ -28,6 +31,9 @@ const getColorIntensity = (profit, target) => {
   return 'bg-green-500/30 dark:bg-green-500/20'; // Minimal
 };
 
+/**
+ * TimelineView component - Visualizes goal weeks in a timeline
+ */
 const TimelineView = ({ theme = 'light' }) => {
   const { activeGoal, getCurrentWeekNumber } = useGoals();
   const [selectedWeek, setSelectedWeek] = useState(null);
@@ -53,8 +59,29 @@ const TimelineView = ({ theme = 'light' }) => {
   }
   
   // Get weeks from active goal
-  const { weeks = [] } = activeGoal;
+  const { weeks = [], startDate, target } = activeGoal;
   const currentWeekNum = getCurrentWeekNumber();
+  const today = new Date();
+  const goalStartDate = parseISO(startDate);
+  
+  // Calculate weeks passed
+  const weeksPassed = differenceInWeeks(today, goalStartDate) + 1;
+  
+  // Group weeks by month for better visualization
+  const weeksByMonth = {};
+  
+  weeks.forEach(week => {
+    if (!week.startDate) return;
+    
+    const startDateObj = parseISO(week.startDate);
+    const monthKey = format(startDateObj, 'MMM yyyy');
+    
+    if (!weeksByMonth[monthKey]) {
+      weeksByMonth[monthKey] = [];
+    }
+    
+    weeksByMonth[monthKey].push(week);
+  });
   
   // Open dialog with week details
   const handleWeekClick = (week) => {
@@ -73,11 +100,12 @@ const TimelineView = ({ theme = 'light' }) => {
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex justify-between items-center">
-            <div className="text-sm text-muted-foreground">
-              Progress from {format(parseISO(activeGoal.startDate), 'MMM d, yyyy')}
-              {activeGoal.deadline && (
-                <> to {format(parseISO(activeGoal.deadline), 'MMM d, yyyy')}</>
-              )}
+            <div className="text-sm text-muted-foreground flex items-center">
+              <Clock className="h-3.5 w-3.5 mr-1" />
+              <span>
+                Week {currentWeekNum} of your journey
+                {weeksPassed > 0 ? ` (${weeksPassed} ${weeksPassed === 1 ? 'week' : 'weeks'} passed)` : ''}
+              </span>
             </div>
             <div className="text-sm">
               <TooltipProvider>
@@ -121,54 +149,90 @@ const TimelineView = ({ theme = 'light' }) => {
             </div>
           </div>
           
-          <div className="flex gap-1 flex-wrap">
-            {weeks.map((week) => {
-              const isCurrentWeek = week.week === currentWeekNum;
-              const isFilled = week.isFilled || (week.profit !== 0);
-              const isUpcoming = week.week > currentWeekNum;
-              
-              return (
-                <TooltipProvider key={week.week}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button 
-                        className={`h-8 w-8 rounded-md border shadow-sm flex items-center justify-center text-xs relative transition-all
-                          ${isCurrentWeek ? 'ring-2 ring-primary' : ''}
-                          ${getColorIntensity(week.profit, activeGoal.target)}
-                          ${!isFilled ? 'border-dashed opacity-60' : ''}
-                          ${isUpcoming ? 'opacity-40' : ''}
-                          hover:opacity-100 hover:scale-110
-                        `}
-                        onClick={() => handleWeekClick(week)}
-                      >
-                        {isCurrentWeek && (
-                          <div className="absolute -top-1 -right-1">
-                            <div className="h-2 w-2 rounded-full bg-primary"></div>
-                          </div>
-                        )}
-                        {week.week}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="space-y-1 text-xs">
-                        <div className="font-medium">Week {week.week}</div>
-                        {week.displayName && <div>{week.displayName}</div>}
-                        <div className="flex items-center">
-                          <span>Profit: {formatCurrency(week.profit)}</span>
-                          {isCurrentWeek && (
-                            <Badge className="ml-2 bg-primary text-xs px-1 py-0">Current</Badge>
-                          )}
-                        </div>
-                        <div>Cumulative: {formatCurrency(week.cumulative)}</div>
-                        {week.entries?.length > 0 && (
-                          <div>{week.entries.length} {week.entries.length === 1 ? 'entry' : 'entries'}</div>
-                        )}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              );
-            })}
+          {/* Timeline by month */}
+          <div className="space-y-4">
+            {Object.keys(weeksByMonth).map(monthKey => (
+              <div key={monthKey} className="space-y-1">
+                <div className="text-sm font-medium flex items-center">
+                  <CalendarIcon className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> 
+                  {monthKey}
+                </div>
+                
+                <div className="flex gap-1 flex-wrap">
+                  {weeksByMonth[monthKey].map((week) => {
+                    const isCurrentWeek = week.week === currentWeekNum;
+                    const isFilled = week.isFilled || (week.profit !== 0);
+                    const isUpcoming = week.week > currentWeekNum;
+                    const hasEntries = week.entries && week.entries.length > 0;
+                    
+                    // Check if this week contains today
+                    const weekStartDate = parseISO(week.startDate);
+                    const weekEndDate = parseISO(week.endDate);
+                    const containsToday = isToday(weekStartDate) || 
+                      (weekStartDate <= today && today <= weekEndDate);
+                    
+                    return (
+                      <TooltipProvider key={week.week}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button 
+                              className={`h-9 w-9 rounded-md border shadow-sm flex items-center justify-center text-xs relative transition-all
+                                ${isCurrentWeek || containsToday ? 'ring-2 ring-primary' : ''}
+                                ${getColorIntensity(week.profit, target)}
+                                ${!isFilled ? 'border-dashed opacity-60' : ''}
+                                ${isUpcoming ? 'opacity-40' : ''}
+                                hover:opacity-100 hover:scale-110
+                              `}
+                              onClick={() => handleWeekClick(week)}
+                            >
+                              {(isCurrentWeek || containsToday) && (
+                                <div className="absolute -top-1 -right-1">
+                                  <div className="h-2 w-2 rounded-full bg-primary"></div>
+                                </div>
+                              )}
+                              {hasEntries && (
+                                <div className="absolute -bottom-1 -right-1">
+                                  <div className="h-2 w-2 rounded-full bg-primary opacity-60"></div>
+                                </div>
+                              )}
+                              {week.week}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="space-y-1 text-xs">
+                              <div className="font-medium">Week {week.week}</div>
+                              {week.displayName && <div>{week.displayName}</div>}
+                              {week.startDate && week.endDate && (
+                                <div>{format(parseISO(week.startDate), 'MMM d')} - {format(parseISO(week.endDate), 'MMM d, yyyy')}</div>
+                              )}
+                              <div className="flex items-center">
+                                <span>Profit: {formatCurrency(week.profit)}</span>
+                                {isCurrentWeek && (
+                                  <Badge className="ml-2 bg-primary text-xs px-1 py-0">Current</Badge>
+                                )}
+                                {containsToday && !isCurrentWeek && (
+                                  <Badge className="ml-2 bg-primary text-xs px-1 py-0">Today</Badge>
+                                )}
+                              </div>
+                              <div>Cumulative: {formatCurrency(week.cumulative)}</div>
+                              {week.entries?.length > 0 && (
+                                <div>{week.entries.length} {week.entries.length === 1 ? 'entry' : 'entries'}</div>
+                              )}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            
+            {Object.keys(weeksByMonth).length === 0 && (
+              <div className="text-center py-4 text-muted-foreground">
+                No week data available
+              </div>
+            )}
           </div>
           
           <div className="mt-4 text-xs text-muted-foreground flex items-center justify-center">
@@ -221,6 +285,16 @@ const TimelineView = ({ theme = 'light' }) => {
                 <span className="text-muted-foreground">End Date:</span>
                 <span className="ml-1">
                   {selectedWeek.endDate && format(parseISO(selectedWeek.endDate), 'MMM d, yyyy')}
+                </span>
+              </div>
+              
+              <div className="text-sm col-span-2">
+                <span className="text-muted-foreground">Weekly Target:</span>
+                <span className="ml-1 font-medium">
+                  {formatCurrency(activeGoal.target / 52)}
+                </span>
+                <span className="ml-1 text-xs text-muted-foreground">
+                  ({selectedWeek.profit > 0 ? Math.round((selectedWeek.profit / (activeGoal.target / 52)) * 100) : 0}% of target)
                 </span>
               </div>
             </div>

@@ -1,24 +1,46 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Calendar, DollarSign, Plus, Check } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, DollarSign, Plus, Check, Clock, HelpCircle, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useGoals } from '@/contexts/GoalsContext';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, addDays, isSameWeek } from 'date-fns';
 
 /**
- * Component for backfilling week data for past periods
+ * Component for backfilling week data for past periods with real-time calendar dates
  */
 const BackfillWeekForm = ({ goalId, onBackfillComplete }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backfillDate, setBackfillDate] = useState(new Date());
   const [profit, setProfit] = useState('');
   const [note, setNote] = useState('');
-  const { backfillWeekData, activeGoal } = useGoals();
+  const { backfillWeekData, activeGoal, findWeekForDate } = useGoals();
+  
+  // Find the week for the selected date
+  const selectedWeek = findWeekForDate ? findWeekForDate(backfillDate) : null;
+  
+  // Calculate week date range for display
+  const weekStart = startOfWeek(backfillDate, { weekStartsOn: 1 }); // Monday start
+  const weekEnd = endOfWeek(backfillDate, { weekStartsOn: 1 });
+  
+  // Check if this is trying to backfill the current week
+  const isSameWeekAsCurrent = activeGoal?.weeks?.some(week => {
+    if (!week.startDate || !week.endDate) return false;
+    const weekStartDate = parseISO(week.startDate);
+    const weekEndDate = parseISO(week.endDate);
+    return isSameWeek(backfillDate, new Date()) && 
+           isSameWeek(weekStartDate, backfillDate);
+  });
   
   const handleBackfill = async (e) => {
     e.preventDefault();
@@ -86,23 +108,72 @@ const BackfillWeekForm = ({ goalId, onBackfillComplete }) => {
           <Calendar className="h-5 w-5 text-primary" />
           Backfill Past Week Data
         </CardTitle>
+        <CardDescription>
+          Add profit/loss data for previous weeks
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleBackfill} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="backfillDate" className="mb-2 block">
-                Select Week
-              </Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="backfillDate" className="flex items-center gap-1">
+                  Select Week
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-sm max-w-[250px]">
+                          Select any date within the week you want to backfill. 
+                          The entire week containing this date will be updated.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </Label>
+              </div>
+              
               <DatePicker
                 id="backfillDate"
                 date={backfillDate}
                 setDate={setBackfillDate}
                 className="w-full"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Select any date within the week you want to backfill
-              </p>
+              
+              {/* Week date range display */}
+              <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Week of {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}</span>
+              </div>
+              
+              {/* If this is the current week, show a warning */}
+              {isSameWeekAsCurrent && (
+                <div className="mt-2 text-xs text-amber-500 flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>This appears to be the current week</span>
+                </div>
+              )}
+              
+              {/* If we found an existing week, show that information */}
+              {selectedWeek && (
+                <div className="mt-2 text-xs">
+                  <span className="text-muted-foreground">Week {selectedWeek.week}:</span>
+                  {' '}
+                  <span className={selectedWeek.profit > 0 
+                    ? 'text-green-600 dark:text-green-400' 
+                    : selectedWeek.profit < 0 
+                    ? 'text-red-600 dark:text-red-400' 
+                    : 'text-muted-foreground'
+                  }>
+                    {selectedWeek.profit 
+                      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(selectedWeek.profit)
+                      : 'No data'
+                    }
+                  </span>
+                </div>
+              )}
             </div>
             
             <div>

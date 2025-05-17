@@ -1,16 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Calendar, Download, FileText, Award, TrendingUp, BarChart2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Download, FileText, Award, TrendingUp, BarChart2, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useGoals } from '@/contexts/GoalsContext';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import html2canvas from 'html2canvas';
-import { format, differenceInDays, parseISO } from 'date-fns';
+import { format, differenceInDays, parseISO, startOfWeek, endOfWeek, formatDistance } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 
 /**
- * Component for generating a goal summary report
+ * Component for generating a goal summary report with real-time calendar data
  */
 const GoalSummaryReport = ({ theme = 'light' }) => {
   const { activeGoal, goals, getCurrentWeekNumber } = useGoals();
@@ -45,6 +45,9 @@ const GoalSummaryReport = ({ theme = 'light' }) => {
   const daysActive = differenceInDays(currentDate, startDateObj);
   const weeksActive = Math.max(1, Math.ceil(daysActive / 7));
   
+  // Format duration in a human-readable way
+  const formattedDuration = formatDistance(startDateObj, currentDate, { addSuffix: false });
+  
   // Calculate weekly average
   const filledWeeks = weeks.filter(week => week.isFilled || week.profit !== 0);
   let totalProfit = 0;
@@ -52,17 +55,36 @@ const GoalSummaryReport = ({ theme = 'light' }) => {
   let totalLossWeeks = 0;
   let biggestGain = 0;
   let biggestLoss = 0;
+  let biggestGainWeek = null;
+  let biggestLossWeek = null;
   
   filledWeeks.forEach(week => {
     totalProfit += week.profit || 0;
-    if (week.profit > 0) totalProfitableWeeks++;
-    if (week.profit < 0) totalLossWeeks++;
-    if (week.profit > biggestGain) biggestGain = week.profit;
-    if (week.profit < 0 && week.profit < biggestLoss) biggestLoss = week.profit;
+    if (week.profit > 0) {
+      totalProfitableWeeks++;
+      if (week.profit > biggestGain) {
+        biggestGain = week.profit;
+        biggestGainWeek = week;
+      }
+    }
+    if (week.profit < 0) {
+      totalLossWeeks++;
+      if (week.profit < biggestLoss) {
+        biggestLoss = week.profit;
+        biggestLossWeek = week;
+      }
+    }
   });
   
   const weeklyAverage = filledWeeks.length > 0 ? totalProfit / filledWeeks.length : 0;
   const weeklyAveragePercent = target ? (weeklyAverage / (target / 52)) * 100 : 0;
+  const weeklyTarget = target / 52;
+  
+  // Get estimated completion calculations
+  const weeksToComplete = weeklyAverage > 0 ? Math.ceil((target - totalProfit) / weeklyAverage) : 0;
+  const estimatedCompletionDate = weeklyAverage > 0 
+    ? new Date(currentDate.getTime() + (weeksToComplete * 7 * 24 * 60 * 60 * 1000))
+    : null;
   
   // Get total trades
   const totalTrades = weeks.reduce((total, week) => total + (week.entries?.length || 0), 0);
@@ -121,8 +143,9 @@ const GoalSummaryReport = ({ theme = 'light' }) => {
         <CardContent className="space-y-6">
           <div className="text-center mb-2">
             <h2 className="text-xl font-bold">{activeGoal.name}</h2>
-            <p className="text-sm text-muted-foreground">
-              Started on {formatDate(startDate)} ({daysActive} days / {weeksActive} weeks)
+            <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              Started on {formatDate(startDate)} ({formattedDuration} ago)
             </p>
           </div>
           
@@ -159,11 +182,32 @@ const GoalSummaryReport = ({ theme = 'light' }) => {
                     <div className="font-medium">
                       {formatCurrency(weeklyAverage)}
                       <span className="text-xs ml-1 text-muted-foreground">
-                        ({Math.round(weeklyAveragePercent)}% of target)
+                        ({Math.round(weeklyAveragePercent)}% of weekly target)
                       </span>
                     </div>
                   </div>
                   
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Weekly Target</div>
+                    <div className="font-medium">{formatCurrency(weeklyTarget)}</div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">Est. Completion</div>
+                    <div className="font-medium">
+                      {estimatedCompletionDate && weeklyAverage > 0 ? (
+                        <>
+                          {format(estimatedCompletionDate, 'MMM d, yyyy')}
+                          <span className="text-xs ml-1 text-muted-foreground">
+                            ({weeksToComplete} weeks)
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="space-y-1">
                     <div className="text-sm text-muted-foreground">Total Trades</div>
                     <div className="font-medium">{totalTrades}</div>
@@ -183,14 +227,24 @@ const GoalSummaryReport = ({ theme = 'light' }) => {
                   </div>
                   
                   <div className="space-y-1">
-                    <div className="text-sm text-muted-foreground">Biggest Week</div>
-                    <div className="font-medium">
+                    <div className="text-sm text-muted-foreground">Best/Worst Weeks</div>
+                    <div className="font-medium flex flex-col">
                       <span className="text-green-600 dark:text-green-400">
                         {formatCurrency(biggestGain)}
+                        {biggestGainWeek?.displayName && (
+                          <span className="text-xs ml-1 text-muted-foreground">
+                            ({biggestGainWeek.displayName.replace('Week of ', '')})
+                          </span>
+                        )}
                       </span>
                       {biggestLoss !== 0 && (
-                        <span className="text-red-600 dark:text-red-400 ml-2">
+                        <span className="text-red-600 dark:text-red-400">
                           {formatCurrency(biggestLoss)}
+                          {biggestLossWeek?.displayName && (
+                            <span className="text-xs ml-1 text-muted-foreground">
+                              ({biggestLossWeek.displayName.replace('Week of ', '')})
+                            </span>
+                          )}
                         </span>
                       )}
                     </div>
@@ -255,52 +309,135 @@ const GoalSummaryReport = ({ theme = 'light' }) => {
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                  {filledWeeks.map((week) => (
-                    <div 
-                      key={week.week}
-                      className={`flex items-center justify-between p-2 rounded-md border ${
-                        week.profit > 0
-                          ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-900' 
-                          : week.profit < 0
-                          ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900'
-                          : 'bg-muted/10'
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <div className="font-medium flex items-center">
-                          Week {week.week}
-                          {week.week === currentWeekNum && (
-                            <Badge className="ml-2 bg-primary text-xs">Current</Badge>
+                  {filledWeeks.length > 0 ? (
+                    filledWeeks.map((week) => (
+                      <div 
+                        key={week.week}
+                        className={`flex items-center justify-between p-2 rounded-md border ${
+                          week.profit > 0
+                            ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-900' 
+                            : week.profit < 0
+                            ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900'
+                            : 'bg-muted/10'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <div className="font-medium flex items-center">
+                            Week {week.week}
+                            {week.week === currentWeekNum && (
+                              <Badge className="ml-2 bg-primary text-xs">Current</Badge>
+                            )}
+                          </div>
+                          {week.displayName && (
+                            <div className="text-xs text-muted-foreground">
+                              {week.displayName}
+                            </div>
+                          )}
+                          {week.startDate && week.endDate && (
+                            <div className="text-xs text-muted-foreground">
+                              {format(parseISO(week.startDate), 'MMM d')} - {format(parseISO(week.endDate), 'MMM d, yyyy')}
+                            </div>
+                          )}
+                          {week.entries && week.entries.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              {week.entries.length} {week.entries.length === 1 ? 'trade' : 'trades'}
+                            </div>
                           )}
                         </div>
-                        {week.displayName && (
-                          <div className="text-xs text-muted-foreground">
-                            {week.displayName}
-                          </div>
-                        )}
-                        {week.entries && week.entries.length > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            {week.entries.length} {week.entries.length === 1 ? 'trade' : 'trades'}
-                          </div>
-                        )}
+                        <div className={`font-medium ${
+                          week.profit > 0 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : week.profit < 0 
+                            ? 'text-red-600 dark:text-red-400' 
+                            : ''
+                        }`}>
+                          {formatCurrency(week.profit)}
+                        </div>
                       </div>
-                      <div className={`font-medium ${
-                        week.profit > 0 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : week.profit < 0 
-                          ? 'text-red-600 dark:text-red-400' 
-                          : ''
-                      }`}>
-                        {formatCurrency(week.profit)}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {filledWeeks.length === 0 && (
+                    ))
+                  ) : (
                     <div className="text-center py-4 text-muted-foreground">
                       No weekly data available
                     </div>
                   )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+            
+            {/* New Calendar Timeline Section */}
+            <AccordionItem value="calendar">
+              <AccordionTrigger className="text-base font-medium py-2">
+                <div className="flex items-center">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Calendar View
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-7 gap-1 mt-2">
+                  {/* Week Day Headers */}
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                    <div key={day} className="text-center text-xs font-medium text-muted-foreground">
+                      {day}
+                    </div>
+                  ))}
+                  
+                  {/* Calendar Cells */}
+                  {Array.from({ length: Math.min(filledWeeks.length * 7, 28) }, (_, i) => {
+                    // Get the week and day
+                    const weekIndex = Math.floor(i / 7);
+                    const dayIndex = i % 7;
+                    const week = filledWeeks[weekIndex];
+                    
+                    if (!week || !week.startDate) return (
+                      <div key={i} className="h-6 w-full rounded-sm bg-muted/30" />
+                    );
+                    
+                    // Calculate the day date
+                    const weekStart = startOfWeek(parseISO(week.startDate), { weekStartsOn: 1 });
+                    const dayDate = new Date(weekStart);
+                    dayDate.setDate(weekStart.getDate() + dayIndex);
+                    
+                    // Check if there are entries on this day
+                    const dayEntries = week.entries?.filter(entry => {
+                      if (!entry.timestamp) return false;
+                      const entryDate = new Date(entry.timestamp);
+                      return entryDate.getDate() === dayDate.getDate() &&
+                             entryDate.getMonth() === dayDate.getMonth() &&
+                             entryDate.getFullYear() === dayDate.getFullYear();
+                    }) || [];
+                    
+                    // Check if this day is today
+                    const isToday = dayDate.toDateString() === new Date().toDateString();
+                    
+                    let dayTotal = 0;
+                    dayEntries.forEach(entry => {
+                      dayTotal += parseFloat(entry.amount) || 0;
+                    });
+                    
+                    // Calculate the color intensity based on activity
+                    const bgColor = dayEntries.length > 0 
+                      ? dayTotal > 0 
+                        ? 'bg-green-500/30 dark:bg-green-500/20' 
+                        : 'bg-red-500/30 dark:bg-red-500/20'
+                      : 'bg-muted/30';
+                    
+                    return (
+                      <div 
+                        key={i} 
+                        className={`h-6 w-full rounded-sm flex items-center justify-center relative ${bgColor} ${isToday ? 'ring-1 ring-primary' : ''}`}
+                        title={`${format(dayDate, 'MMM d, yyyy')}${dayEntries.length > 0 ? ` - ${dayEntries.length} entries` : ''}`}
+                      >
+                        <span className="text-xs">{dayDate.getDate()}</span>
+                        {dayEntries.length > 0 && (
+                          <div className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div className="text-xs text-center text-muted-foreground mt-2">
+                  Calendar view shows up to 4 weeks of activity
                 </div>
               </AccordionContent>
             </AccordionItem>
