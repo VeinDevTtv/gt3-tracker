@@ -11,6 +11,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ComingSoonPage from './pages/ComingSoonPage';
 import Charts from './pages/Charts';
 import Milestones from './pages/Milestones';
+import Performance from './pages/Performance';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/auth/PrivateRoute';
 import NavMenu from './components/NavMenu';
@@ -242,6 +243,7 @@ export default function GT3Tracker() {
                         <Route path="/goals" element={<Goals />} />
                         <Route path="/milestones" element={<Milestones />} />
                         <Route path="/charts" element={<Charts />} />
+                        <Route path="/performance" element={<Performance />} />
                         <Route path="/settings" element={
                           <Settings 
                             theme={theme}

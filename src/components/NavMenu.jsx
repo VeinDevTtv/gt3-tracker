@@ -1,11 +1,4 @@
-import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { Button } from './ui/button';
-import { Home, Settings, User, Menu, X, LogOut, CalendarClock, Trophy, Flag } from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import ThemeToggle from './ThemeToggle';
-import GoalDropdown from './GoalDropdown';
+import React, { useState } from 'react';import { Link, useLocation, useNavigate } from 'react-router-dom';import { useAuth } from '../contexts/AuthContext';import { Button } from './ui/button';import { Home, Settings, User, Menu, X, LogOut, CalendarClock, Trophy, Flag, BarChart3 } from 'lucide-react';import { toast } from 'react-hot-toast';import ThemeToggle from './ThemeToggle';import GoalDropdown from './GoalDropdown';
 
 const NavMenu = ({ theme, toggleTheme }) => {
   const { currentUser, logout } = useAuth();
@@ -78,6 +71,16 @@ const NavMenu = ({ theme, toggleTheme }) => {
               >
                 <Trophy size={18} />
                 <span>Goals</span>
+              </Link>
+              
+              <Link 
+                to="/performance" 
+                className={`flex items-center gap-1 px-2 py-1 rounded-md ${
+                  location.pathname === '/performance' ? 'text-primary-color' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <BarChart3 size={18} />
+                <span>Performance</span>
               </Link>
               
               <Link 
@@ -184,6 +187,17 @@ const NavMenu = ({ theme, toggleTheme }) => {
           >
             <Trophy size={18} />
             <span>Goals</span>
+          </Link>
+          
+          <Link 
+            to="/performance" 
+            className={`flex items-center gap-2 px-3 py-2 rounded-md ${
+              location.pathname === '/performance' ? 'bg-muted text-primary-color' : 'hover:bg-muted'
+            }`}
+            onClick={() => setIsOpen(false)}
+          >
+            <BarChart3 size={18} />
+            <span>Performance</span>
           </Link>
           
           <Link 
