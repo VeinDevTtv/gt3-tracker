@@ -108,13 +108,16 @@ const WeeklyEntryList = ({ goalId, onEntryChange }) => {
   }
   
   // Get the weeks data, maintain original order
-  const weeks = [...(currentGoal.weeks || [])];
+  // Filter to only include weeks up to the goal's duration
+  const goalDuration = currentGoal.duration || 52;
+  const weeks = [...(currentGoal.weeks || [])]
+    .filter(week => week.week <= goalDuration);
   
   // Get progress data
   const progress = calculateProgress(currentGoal.id);
   
   // Calculate weekly average target
-  const weeklyTargetAverage = currentGoal.target / 52;
+  const weeklyTargetAverage = currentGoal.target / goalDuration;
   
   // Calculate streak info
   const calculateStreak = () => {

@@ -29,8 +29,17 @@ const BackfillWeekForm = ({ goalId, onBackfillComplete }) => {
   const [note, setNote] = useState('');
   const { backfillWeekData, activeGoal, goals, findWeekForDate } = useGoals();
   
+  // Find the goal to use (either from props or active goal)
+  const currentGoal = goalId ? goals.find(g => g.id === goalId) : activeGoal;
+  
+  // Get the goal's duration (default to 52 if not set)
+  const goalDuration = currentGoal?.duration || 52;
+  
   // Find the week for the selected date
   const selectedWeek = findWeekForDate ? findWeekForDate(backfillDate) : null;
+  
+  // Check if selected week is beyond the goal's duration
+  const isWeekBeyondDuration = selectedWeek && selectedWeek.week > goalDuration;
   
   // Calculate week date range for display
   const weekStart = startOfWeek(backfillDate, { weekStartsOn: 1 }); // Monday start
@@ -107,6 +116,12 @@ const BackfillWeekForm = ({ goalId, onBackfillComplete }) => {
     
     if (!backfillDate) {
       toast.error('Please select a date');
+      return;
+    }
+    
+    // Check if week is beyond the goal's duration
+    if (isWeekBeyondDuration) {
+      toast.error(`Cannot add data for Week ${selectedWeek.week} as it exceeds the goal's duration of ${goalDuration} weeks`);
       return;
     }
     
@@ -210,6 +225,14 @@ const BackfillWeekForm = ({ goalId, onBackfillComplete }) => {
                 </div>
               )}
               
+              {/* If the week is beyond the goal duration, show a warning */}
+              {isWeekBeyondDuration && (
+                <div className="mt-2 text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>This week is beyond the goal's duration of {goalDuration} {goalDuration === 1 ? 'week' : 'weeks'}</span>
+                </div>
+              )}
+              
               {/* If we found an existing week, show that information */}
               {selectedWeek && (
                 <div className="mt-2 text-xs">
@@ -261,21 +284,29 @@ const BackfillWeekForm = ({ goalId, onBackfillComplete }) => {
             />
           </div>
           
-          <div className="flex justify-end">
+          <DialogFooter className="flex justify-between mt-6 pt-2 border-t items-center">
+            <div className="text-xs text-muted-foreground">
+              <Clock className="h-3.5 w-3.5 inline mr-1" />
+              {selectedWeek 
+                ? `Adding to Week ${selectedWeek.week}` 
+                : 'Select a date within a tracked week'}
+            </div>
+            
             <Button 
               type="submit" 
-              className="bg-primary text-primary-foreground"
-              disabled={!backfillDate || !profit || isNaN(parseFloat(profit)) || isSubmitting}
+              disabled={isSubmitting || isWeekBeyondDuration} 
+              className="flex items-center gap-1"
             >
               {isSubmitting ? (
                 <>Processing...</>
               ) : (
                 <>
-                  <Plus size={16} className="mr-1" /> Add Past Week
+                  <Check className="h-4 w-4" />
+                  Save
                 </>
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </CardContent>
     </Card>

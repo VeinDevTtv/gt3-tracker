@@ -17,12 +17,12 @@ import { formatCurrency } from '@/utils/formatters';
 /**
  * Get color class for a week based on its profit and target
  */
-const getColorIntensity = (profit, target) => {
+const getColorIntensity = (profit, target, duration = 52) => {
   if (profit === 0) return 'bg-muted/30';
   if (profit < 0) return 'bg-red-500/40 dark:bg-red-500/30';
   
   // For positive profits, calculate intensity as a percentage of the target
-  const weeklyTarget = target / 52; // Simple weekly target estimation
+  const weeklyTarget = target / duration; // Calculate based on goal duration
   const ratio = profit / weeklyTarget;
   
   if (ratio >= 1.5) return 'bg-green-500/90 dark:bg-green-500/80'; // Excellent
@@ -59,7 +59,7 @@ const TimelineView = ({ theme = 'light' }) => {
   }
   
   // Get weeks from active goal
-  const { weeks = [], startDate, target } = activeGoal;
+  const { weeks = [], startDate, target, duration = 52 } = activeGoal;
   const currentWeekNum = getCurrentWeekNumber();
   const today = new Date();
   const goalStartDate = parseISO(startDate);
@@ -67,21 +67,23 @@ const TimelineView = ({ theme = 'light' }) => {
   // Calculate weeks passed
   const weeksPassed = differenceInWeeks(today, goalStartDate) + 1;
   
-  // Group weeks by month for better visualization
+  // Group weeks by month for better visualization, respecting the goal duration
   const weeksByMonth = {};
   
-  weeks.forEach(week => {
-    if (!week.startDate) return;
-    
-    const startDateObj = parseISO(week.startDate);
-    const monthKey = format(startDateObj, 'MMM yyyy');
-    
-    if (!weeksByMonth[monthKey]) {
-      weeksByMonth[monthKey] = [];
-    }
-    
-    weeksByMonth[monthKey].push(week);
-  });
+  weeks
+    .filter(week => week.week <= duration) // Only include weeks up to the goal's duration
+    .forEach(week => {
+      if (!week.startDate) return;
+      
+      const startDateObj = parseISO(week.startDate);
+      const monthKey = format(startDateObj, 'MMM yyyy');
+      
+      if (!weeksByMonth[monthKey]) {
+        weeksByMonth[monthKey] = [];
+      }
+      
+      weeksByMonth[monthKey].push(week);
+    });
   
   // Open dialog with week details
   const handleWeekClick = (week) => {
@@ -178,7 +180,7 @@ const TimelineView = ({ theme = 'light' }) => {
                             <button 
                               className={`h-9 w-9 rounded-md border shadow-sm flex items-center justify-center text-xs relative transition-all
                                 ${isCurrentWeek || containsToday ? 'ring-2 ring-primary' : ''}
-                                ${getColorIntensity(week.profit, target)}
+                                ${getColorIntensity(week.profit, target, duration)}
                                 ${!isFilled ? 'border-dashed opacity-60' : ''}
                                 ${isUpcoming ? 'opacity-40' : ''}
                                 hover:opacity-100 hover:scale-110
@@ -291,10 +293,10 @@ const TimelineView = ({ theme = 'light' }) => {
               <div className="text-sm col-span-2">
                 <span className="text-muted-foreground">Weekly Target:</span>
                 <span className="ml-1 font-medium">
-                  {formatCurrency(activeGoal.target / 52)}
+                  {formatCurrency(activeGoal.target / duration)}
                 </span>
                 <span className="ml-1 text-xs text-muted-foreground">
-                  ({selectedWeek.profit > 0 ? Math.round((selectedWeek.profit / (activeGoal.target / 52)) * 100) : 0}% of target)
+                  ({selectedWeek.profit > 0 ? Math.round((selectedWeek.profit / (activeGoal.target / duration)) * 100) : 0}% of target)
                 </span>
               </div>
             </div>

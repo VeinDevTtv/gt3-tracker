@@ -30,7 +30,48 @@ const Performance = () => {
   const [exportIncludeNotes, setExportIncludeNotes] = useState(true);
   const [selectedWeeks, setSelectedWeeks] = useState({ start: 1, end: 999 });
 
-    // When the active goal changes, update the weekly table  useEffect(() => {    if (activeGoal && activeGoal.weeks) {      // Get weekly data and notes from localStorage or create empty ones      const storedNotes = JSON.parse(localStorage.getItem(`goal-${activeGoal.id}-weekly-notes`) || '{}');      const storedGoalsMet = JSON.parse(localStorage.getItem(`goal-${activeGoal.id}-goals-met`) || '{}');            // Get the goal's duration (default to 52 if not set)      const goalDuration = activeGoal.duration || 52;            // Create the table data - only include weeks up to the goal's duration      const tableData = activeGoal.weeks        .filter(week => week.week <= goalDuration) // Only include weeks up to the duration        .map((week, index) => {          const weekNumber = week.week;          const profit = week.profit || 0;          const startDate = calculateWeekDateRange(weekNumber, activeGoal.startDate).start;          const endDate = calculateWeekDateRange(weekNumber, activeGoal.startDate).end;          const dateRange = `${format(startDate, 'MMM d')}–${format(endDate, 'MMM d, yyyy')}`;          const goalMet = storedGoalsMet[weekNumber] !== undefined             ? storedGoalsMet[weekNumber]             : profit >= parseFloat(weeklyTarget);                    return {            weekNumber,            dateRange,            profit,            goalMet,            isFilled: week.isFilled || false,            notes: storedNotes[weekNumber] || ''          };        });            setWeeklyTable(tableData);    }  }, [activeGoal, weeklyTarget]);
+  // When the active goal changes, update the weekly table
+  useEffect(() => {
+    if (activeGoal && activeGoal.weeks) {
+      // Get weekly data and notes from localStorage or create empty ones
+      const storedNotes = JSON.parse(localStorage.getItem(`goal-${activeGoal.id}-weekly-notes`) || '{}');
+      const storedGoalsMet = JSON.parse(localStorage.getItem(`goal-${activeGoal.id}-goals-met`) || '{}');
+      
+      // Get the goal's duration (default to 52 if not set)
+      const goalDuration = activeGoal.duration || 52;
+      
+      // Create the table data - only include weeks up to the goal's duration
+      const tableData = activeGoal.weeks
+        .filter(week => week.week <= goalDuration) // Only include weeks up to the duration
+        .map((week, index) => {
+          const weekNumber = week.week;
+          const profit = week.profit || 0;
+          const startDate = calculateWeekDateRange(weekNumber, activeGoal.startDate).start;
+          const endDate = calculateWeekDateRange(weekNumber, activeGoal.startDate).end;
+          const dateRange = `${format(startDate, 'MMM d')}–${format(endDate, 'MMM d, yyyy')}`;
+          const goalMet = storedGoalsMet[weekNumber] !== undefined 
+            ? storedGoalsMet[weekNumber] 
+            : profit >= parseFloat(weeklyTarget);
+          
+          return {
+            weekNumber,
+            dateRange,
+            profit,
+            goalMet,
+            isFilled: week.isFilled || false,
+            notes: storedNotes[weekNumber] || ''
+          };
+        });
+      
+      setWeeklyTable(tableData);
+      
+      // Update selected weeks range to match goal duration
+      setSelectedWeeks(prev => ({
+        ...prev,
+        end: Math.min(prev.end, goalDuration)
+      }));
+    }
+  }, [activeGoal, weeklyTarget]);
 
   // Handle changing the weekly target
   const handleWeeklyTargetChange = (e) => {
@@ -88,14 +129,18 @@ const Performance = () => {
   const calculateSummaryStats = (data) => {
     if (!data || data.length === 0) return null;
     
+    // The data already comes pre-filtered from weeklyTable, which respects goal duration
     const filteredData = exportRange === 'all' 
       ? data 
-      : data.filter(row => row.weekNumber >= selectedWeeks.start && row.weekNumber <= selectedWeeks.end);
+      : data.filter(row => 
+          row.weekNumber >= selectedWeeks.start && 
+          row.weekNumber <= Math.min(selectedWeeks.end, activeGoal?.duration || 52)
+        );
     
     // Filter out weeks that don't have logged data
     const filledWeeks = filteredData.filter(row => {
       const originalWeek = activeGoal?.weeks?.find(w => w.week === row.weekNumber);
-      return originalWeek?.isFilled;
+      return originalWeek?.isFilled && row.weekNumber <= (activeGoal?.duration || 52);
     });
     
     const totalProfit = filteredData.reduce((sum, row) => sum + row.profit, 0);
@@ -123,8 +168,11 @@ const Performance = () => {
   const downloadAsPdf = async () => {
     // Define the content to export based on selected options
     const filteredData = exportRange === 'all' 
-      ? weeklyTable 
-      : weeklyTable.filter(row => row.weekNumber >= selectedWeeks.start && row.weekNumber <= selectedWeeks.end);
+      ? weeklyTable // Weekly table is already filtered by goal duration in useEffect
+      : weeklyTable.filter(row => 
+          row.weekNumber >= selectedWeeks.start && 
+          row.weekNumber <= Math.min(selectedWeeks.end, activeGoal?.duration || 52)
+        );
     
     if (filteredData.length === 0) {
       toast.error('No data to export');
@@ -182,7 +230,7 @@ const Performance = () => {
               </div>
               <div style="flex: 1; min-width: 120px;">
                 <p style="font-size: 12px; color: ${mutedTextColor}; margin-bottom: 4px;">Total Weeks</p>
-                <p style="font-size: 14px; font-weight: bold;">${stats?.totalWeeks || 0}</p>
+                <p style="font-size: 14px; font-weight: bold;">${stats?.totalWeeks || 0} / ${activeGoal?.duration || 52}</p>
               </div>
               <div style="flex: 1; min-width: 120px;">
                 <p style="font-size: 12px; color: ${mutedTextColor}; margin-bottom: 4px;">Weekly Target</p>
@@ -309,8 +357,11 @@ const Performance = () => {
   const downloadAsImage = async () => {
     // Similar to PDF but export as image
     const filteredData = exportRange === 'all' 
-      ? weeklyTable 
-      : weeklyTable.filter(row => row.weekNumber >= selectedWeeks.start && row.weekNumber <= selectedWeeks.end);
+      ? weeklyTable // Weekly table is already filtered by goal duration in useEffect
+      : weeklyTable.filter(row => 
+          row.weekNumber >= selectedWeeks.start && 
+          row.weekNumber <= Math.min(selectedWeeks.end, activeGoal?.duration || 52)
+        );
     
     if (filteredData.length === 0) {
       toast.error('No data to export');
@@ -457,6 +508,7 @@ const Performance = () => {
                         onChange={(e) => setSelectedWeeks({...selectedWeeks, start: parseInt(e.target.value) || 1})}
                         className="w-16"
                         min="1"
+                        max={activeGoal?.duration || 52}
                       />
                       <label className="text-sm">To Week:</label>
                       <Input 
@@ -465,6 +517,7 @@ const Performance = () => {
                         onChange={(e) => setSelectedWeeks({...selectedWeeks, end: parseInt(e.target.value) || 1})}
                         className="w-16"
                         min={selectedWeeks.start}
+                        max={activeGoal?.duration || 52}
                       />
                     </div>
                   )}
@@ -515,7 +568,7 @@ const Performance = () => {
             <div className="mb-4">
               <h2 className="text-xl font-bold">{activeGoal.name}</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Target: ${activeGoal.target.toLocaleString()} | Weekly Target: ${weeklyTarget}
+                Target: ${activeGoal.target.toLocaleString()} | Weekly Target: ${weeklyTarget} | Duration: {activeGoal.duration || 52} weeks
               </p>
             </div>
           )}
