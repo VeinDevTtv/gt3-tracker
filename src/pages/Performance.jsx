@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGoals } from '../contexts/GoalsContext';
-import html2pdf from 'html2pdf.js';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Download, FileEdit, Save, Check, X, ChevronDown } from 'lucide-react';
+import { Download, FileEdit, Save, ChevronDown } from 'lucide-react';
 
 // UI Components
 import { Button } from '../components/ui/button';
@@ -17,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popove
 
 const Performance = () => {
   const navigate = useNavigate();
-  const { activeGoal, goals } = useGoals();
+  const { activeGoal } = useGoals();
   const pdfContainerRef = useRef(null);
   
   const [weeklyTable, setWeeklyTable] = useState([]);
@@ -339,7 +338,6 @@ const Performance = () => {
 
     // Get current theme and styling
     const currentTheme = localStorage.getItem('savings-tracker-theme') || 'light';
-    const themeColor = localStorage.getItem('savings-tracker-theme-color') || 'blue';
     const isDarkMode = currentTheme === 'dark';
     const bgColor = isDarkMode ? '#1f2937' : '#ffffff';
 
