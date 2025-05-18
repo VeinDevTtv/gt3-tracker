@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { Download, FileEdit, Save, ChevronDown } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../components/ui/tooltip";
 
 // UI Components
 import { Button } from '../components/ui/button';
@@ -120,13 +121,22 @@ const Performance = () => {
       ? data 
       : data.filter(row => row.weekNumber >= selectedWeeks.start && row.weekNumber <= selectedWeeks.end);
     
+    // Filter out weeks that don't have logged data
+    const filledWeeks = filteredData.filter(row => {
+      const originalWeek = activeGoal?.weeks?.find(w => w.week === row.weekNumber);
+      return originalWeek?.isFilled;
+    });
+    
     const totalProfit = filteredData.reduce((sum, row) => sum + row.profit, 0);
-    const avgProfit = filteredData.length > 0 ? totalProfit / filteredData.length : 0;
-    const goalsMetCount = filteredData.filter(row => row.goalMet).length;
-    const targetMet = goalsMetCount / filteredData.length;
+    const avgProfit = filledWeeks.length > 0 ? totalProfit / filledWeeks.length : 0;
+    
+    // Only count goals met for weeks that have been filled
+    const goalsMetCount = filledWeeks.filter(row => row.goalMet).length;
+    const targetMet = filledWeeks.length > 0 ? goalsMetCount / filledWeeks.length : 0;
     
     return {
       totalWeeks: filteredData.length,
+      filledWeeks: filledWeeks.length,
       totalProfit,
       avgProfit,
       goalsMetCount,
@@ -217,7 +227,7 @@ const Performance = () => {
               </div>
               <div style="flex: 1; min-width: 120px;">
                 <p style="font-size: 12px; color: ${mutedTextColor}; margin-bottom: 4px;">Goals Met</p>
-                <p style="font-size: 14px; font-weight: bold;">${stats?.goalsMetCount || 0}/${stats?.totalWeeks || 0} (${Math.round((stats?.targetMet || 0) * 100)}%)</p>
+                <p style="font-size: 14px; font-weight: bold;">${stats?.goalsMetCount || 0}/${activeGoal?.weeks?.filter(w => w.isFilled).length || 0} (${Math.round((stats?.targetMet || 0) * 100)}%)</p>
               </div>
             </div>
           </div>
@@ -236,20 +246,27 @@ const Performance = () => {
               </tr>
             </thead>
             <tbody>
-              ${filteredData.map((row, index) => `
-                <tr style="background-color: ${index % 2 === 0 ? bgColor : altRowBgColor}; border-bottom: 1px solid ${borderColor};">
-                  <td style="padding: 12px 16px; font-size: 14px;">${row.weekNumber}</td>
-                  <td style="padding: 12px 16px; font-size: 14px;">${row.dateRange}</td>
-                  <td style="padding: 12px 16px; font-size: 14px;">$${row.profit.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                  <td style="padding: 12px 16px; font-size: 14px;">
-                    ${row.goalMet 
-                      ? `<span style="color: #22c55e; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(34, 197, 94, 0.1);">✓</span>` 
-                      : `<span style="color: #ef4444; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(239, 68, 68, 0.1);">✕</span>`
-                    }
-                  </td>
-                  ${exportIncludeNotes ? `<td style="padding: 12px 16px; font-size: 14px;">${row.notes}</td>` : ''}
-                </tr>
-              `).join('')}
+              ${filteredData.map((row, index) => {
+                // Get the original week data to check if it's filled
+                const weekIsFilled = activeGoal?.weeks?.find(w => w.week === row.weekNumber)?.isFilled || false;
+                
+                return `
+                  <tr style="background-color: ${index % 2 === 0 ? bgColor : altRowBgColor}; border-bottom: 1px solid ${borderColor};">
+                    <td style="padding: 12px 16px; font-size: 14px;">${row.weekNumber}</td>
+                    <td style="padding: 12px 16px; font-size: 14px;">${row.dateRange}</td>
+                    <td style="padding: 12px 16px; font-size: 14px;">$${row.profit.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                    <td style="padding: 12px 16px; font-size: 14px;">
+                      ${weekIsFilled 
+                        ? row.goalMet 
+                          ? `<span style="color: #22c55e; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(34, 197, 94, 0.1);">✓</span>` 
+                          : `<span style="color: #ef4444; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(239, 68, 68, 0.1);">✕</span>`
+                        : `<span style="color: ${mutedTextColor};">—</span>`
+                      }
+                    </td>
+                    ${exportIncludeNotes ? `<td style="padding: 12px 16px; font-size: 14px;">${row.notes}</td>` : ''}
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -555,13 +572,26 @@ const Performance = () => {
                       ${row.profit.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center">
-                        <Checkbox 
-                          checked={row.goalMet}
-                          onCheckedChange={(checked) => handleGoalMetChange(row.weekNumber, checked)}
-                          id={`goal-met-${row.weekNumber}`}
-                        />
-                      </div>
+                      {row.profit !== undefined && row.profit !== null && activeGoal.weeks.find(w => w.week === row.weekNumber)?.isFilled ? (
+                        <div className="flex items-center">
+                          <Checkbox 
+                            checked={row.goalMet}
+                            onCheckedChange={(checked) => handleGoalMetChange(row.weekNumber, checked)}
+                            id={`goal-met-${row.weekNumber}`}
+                          />
+                        </div>
+                      ) : (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-muted-foreground text-opacity-60">—</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">Log this week's result to enable Goal Met tracking</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       {isEditing ? (
