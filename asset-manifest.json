@@ -1,13 +1,17 @@
 {
   "files": {
-    "main.css": "/gt3-tracker/static/css/main.f2f2a8f3.css",
-    "main.js": "/gt3-tracker/static/js/main.36388cfd.js",
+    "main.css": "/gt3-tracker/static/css/main.9d2df920.css",
+    "main.js": "/gt3-tracker/static/js/main.7a55b5db.js",
+    "static/js/977.712e7d14.chunk.js": "/gt3-tracker/static/js/977.712e7d14.chunk.js",
+    "static/js/732.0ed5c23a.chunk.js": "/gt3-tracker/static/js/732.0ed5c23a.chunk.js",
     "index.html": "/gt3-tracker/index.html",
-    "main.f2f2a8f3.css.map": "/gt3-tracker/static/css/main.f2f2a8f3.css.map",
-    "main.36388cfd.js.map": "/gt3-tracker/static/js/main.36388cfd.js.map"
+    "main.9d2df920.css.map": "/gt3-tracker/static/css/main.9d2df920.css.map",
+    "main.7a55b5db.js.map": "/gt3-tracker/static/js/main.7a55b5db.js.map",
+    "977.712e7d14.chunk.js.map": "/gt3-tracker/static/js/977.712e7d14.chunk.js.map",
+    "732.0ed5c23a.chunk.js.map": "/gt3-tracker/static/js/732.0ed5c23a.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.f2f2a8f3.css",
-    "static/js/main.36388cfd.js"
+    "static/css/main.9d2df920.css",
+    "static/js/main.7a55b5db.js"
   ]
 }
