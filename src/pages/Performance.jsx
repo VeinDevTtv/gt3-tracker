@@ -30,36 +30,7 @@ const Performance = () => {
   const [exportIncludeNotes, setExportIncludeNotes] = useState(true);
   const [selectedWeeks, setSelectedWeeks] = useState({ start: 1, end: 999 });
 
-  // When the active goal changes, update the weekly table
-  useEffect(() => {
-    if (activeGoal && activeGoal.weeks) {
-      // Get weekly data and notes from localStorage or create empty ones
-      const storedNotes = JSON.parse(localStorage.getItem(`goal-${activeGoal.id}-weekly-notes`) || '{}');
-      const storedGoalsMet = JSON.parse(localStorage.getItem(`goal-${activeGoal.id}-goals-met`) || '{}');
-      
-      // Create the table data
-      const tableData = activeGoal.weeks.map((week, index) => {
-        const weekNumber = week.week;
-        const profit = week.profit || 0;
-        const startDate = calculateWeekDateRange(weekNumber, activeGoal.startDate).start;
-        const endDate = calculateWeekDateRange(weekNumber, activeGoal.startDate).end;
-        const dateRange = `${format(startDate, 'MMM d')}–${format(endDate, 'MMM d, yyyy')}`;
-        const goalMet = storedGoalsMet[weekNumber] !== undefined 
-          ? storedGoalsMet[weekNumber] 
-          : profit >= parseFloat(weeklyTarget);
-        
-        return {
-          weekNumber,
-          dateRange,
-          profit,
-          goalMet,
-          notes: storedNotes[weekNumber] || ''
-        };
-      });
-      
-      setWeeklyTable(tableData);
-    }
-  }, [activeGoal, weeklyTarget]);
+    // When the active goal changes, update the weekly table  useEffect(() => {    if (activeGoal && activeGoal.weeks) {      // Get weekly data and notes from localStorage or create empty ones      const storedNotes = JSON.parse(localStorage.getItem(`goal-${activeGoal.id}-weekly-notes`) || '{}');      const storedGoalsMet = JSON.parse(localStorage.getItem(`goal-${activeGoal.id}-goals-met`) || '{}');            // Get the goal's duration (default to 52 if not set)      const goalDuration = activeGoal.duration || 52;            // Create the table data - only include weeks up to the goal's duration      const tableData = activeGoal.weeks        .filter(week => week.week <= goalDuration) // Only include weeks up to the duration        .map((week, index) => {          const weekNumber = week.week;          const profit = week.profit || 0;          const startDate = calculateWeekDateRange(weekNumber, activeGoal.startDate).start;          const endDate = calculateWeekDateRange(weekNumber, activeGoal.startDate).end;          const dateRange = `${format(startDate, 'MMM d')}–${format(endDate, 'MMM d, yyyy')}`;          const goalMet = storedGoalsMet[weekNumber] !== undefined             ? storedGoalsMet[weekNumber]             : profit >= parseFloat(weeklyTarget);                    return {            weekNumber,            dateRange,            profit,            goalMet,            isFilled: week.isFilled || false,            notes: storedNotes[weekNumber] || ''          };        });            setWeeklyTable(tableData);    }  }, [activeGoal, weeklyTarget]);
 
   // Handle changing the weekly target
   const handleWeeklyTargetChange = (e) => {

@@ -73,12 +73,14 @@ class GoalManager {
    */
   createDefaultGoal() {
     const startDate = new Date().toISOString().split('T')[0];
+    const defaultDuration = 52; // Default to 52 weeks
     const defaultGoal = {
       id: uuidv4(),
       name: 'Porsche GT3',
       target: 200000,
       startDate: startDate,
-      weeks: this.generateWeeksFromStartDate(startDate, 52),
+      duration: defaultDuration,
+      weeks: this.generateWeeksFromStartDate(startDate, defaultDuration),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -398,8 +400,14 @@ class GoalManager {
     const currentWeekNum = this.getCurrentWeekNumber(goal.startDate);
     const weeksNeeded = currentWeekNum + minWeeksAhead;
     
-    // If we already have enough weeks, return the goal as is
-    if (goal.weeks.length >= weeksNeeded) {
+    // Get the goal's duration (default to 52 if not specified)
+    const goalDuration = goal.duration || 52;
+    
+    // Don't exceed the goal's duration 
+    const maxWeeks = Math.min(weeksNeeded, goalDuration);
+    
+    // If we already have enough weeks or have reached the goal's duration, return the goal as is
+    if (goal.weeks.length >= maxWeeks) {
       return goal;
     }
     
@@ -408,7 +416,7 @@ class GoalManager {
     const lastWeekEndDate = parseISO(lastWeek.endDate);
     
     // Generate new weeks
-    const additionalWeeksNeeded = weeksNeeded - goal.weeks.length;
+    const additionalWeeksNeeded = maxWeeks - goal.weeks.length;
     const newWeeks = [];
     
     for (let i = 1; i <= additionalWeeksNeeded; i++) {
@@ -535,6 +543,8 @@ class GoalManager {
   createGoal(goalData) {
     try {
       const startDate = goalData.startDate || new Date().toISOString().split('T')[0];
+      // Use custom duration if provided, otherwise default to 52 weeks
+      const duration = goalData.duration ? parseInt(goalData.duration, 10) : 52;
       
       // Create a new goal
       const newGoal = {
@@ -545,7 +555,8 @@ class GoalManager {
         deadline: goalData.deadline || null,
         description: goalData.description || '',
         isTimeSensitive: goalData.isTimeSensitive !== undefined ? goalData.isTimeSensitive : true,
-        weeks: this.generateWeeksFromStartDate(startDate, 52),
+        duration: duration, // Store the duration in the goal object
+        weeks: this.generateWeeksFromStartDate(startDate, duration),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

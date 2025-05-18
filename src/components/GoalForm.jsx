@@ -20,7 +20,8 @@ const GoalForm = ({ onSuccess, initialGoal, isEditing = false }) => {
     description: initialGoal?.description || '',
     startDate: initialGoal?.startDate ? new Date(initialGoal.startDate) : new Date(),
     deadline: initialGoal?.deadline ? new Date(initialGoal.deadline) : null,
-    isTimeSensitive: initialGoal?.isTimeSensitive !== false
+    isTimeSensitive: initialGoal?.isTimeSensitive !== false,
+    duration: initialGoal?.duration || 52
   });
   
   const [errors, setErrors] = useState({});
@@ -76,6 +77,13 @@ const GoalForm = ({ onSuccess, initialGoal, isEditing = false }) => {
       newErrors.deadline = 'Deadline must be after start date';
     }
     
+    // Validate duration
+    if (!formData.duration) {
+      newErrors.duration = 'Duration is required';
+    } else if (isNaN(formData.duration) || parseInt(formData.duration) < 1 || parseInt(formData.duration) > 104) {
+      newErrors.duration = 'Duration must be between 1 and 104 weeks';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -94,6 +102,7 @@ const GoalForm = ({ onSuccess, initialGoal, isEditing = false }) => {
       const formattedData = {
         ...formData,
         target: parseFloat(formData.target),
+        duration: parseInt(formData.duration, 10),
         startDate: formData.startDate.toISOString().split('T')[0],
         deadline: formData.deadline ? formData.deadline.toISOString().split('T')[0] : null
       };
@@ -123,7 +132,7 @@ const GoalForm = ({ onSuccess, initialGoal, isEditing = false }) => {
   };
   
   // Calculate estimated weekly target
-  const weeklyTarget = formData.target ? (parseFloat(formData.target) / 52).toFixed(2) : '0.00';
+  const weeklyTarget = formData.target ? (parseFloat(formData.target) / formData.duration).toFixed(2) : '0.00';
   
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -161,7 +170,38 @@ const GoalForm = ({ onSuccess, initialGoal, isEditing = false }) => {
               className={errors.target ? 'border-red-500' : ''}
             />
             {errors.target && <p className="text-sm text-red-500">{errors.target}</p>}
-            {formData.target && (
+          </div>
+          
+          {/* Goal Duration */}
+          <div className="space-y-2">
+            <div className="flex items-center">
+              <Label htmlFor="duration">Goal Duration (in weeks)</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoCircledIcon className="h-4 w-4 text-muted-foreground ml-2" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    <p>
+                      Choose how many weeks to track for this goal. This determines the number of weeks shown in tracking views.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Input
+              id="duration"
+              name="duration"
+              value={formData.duration}
+              onChange={handleChange}
+              placeholder="e.g., 52"
+              type="number"
+              min="1"
+              max="104"
+              className={errors.duration ? 'border-red-500' : ''}
+            />
+            {errors.duration && <p className="text-sm text-red-500">{errors.duration}</p>}
+            {formData.target && formData.duration && (
               <p className="text-sm text-muted-foreground mt-1">
                 Est. weekly target: ${weeklyTarget}
               </p>
@@ -248,21 +288,27 @@ const GoalForm = ({ onSuccess, initialGoal, isEditing = false }) => {
             />
           </div>
           
-          {/* General Error Message */}
+          {/* Error Display */}
           {errors.form && (
-            <div className="p-3 bg-red-100 border border-red-300 rounded-md text-red-800">
-              {errors.form}
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <span className="block sm:inline">{errors.form}</span>
             </div>
           )}
           
-          {/* Submit Button */}
-          <Button 
-            type="submit" 
-            className="w-full"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Saving...' : isEditing ? 'Update Goal' : 'Create Goal'}
-          </Button>
+          {/* Form Actions */}
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onSuccess && onSuccess(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : isEditing ? 'Update Goal' : 'Create Goal'}
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
